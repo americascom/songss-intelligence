@@ -1,0 +1,100 @@
+import { Link, useLocation } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Menu, X } from "lucide-react";
+import { useState } from "react";
+import songssLogo from "@/assets/songss-logo.png";
+
+const Header = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const location = useLocation();
+
+  const navLinks = [
+    { href: "/", label: "Home" },
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/pricing", label: "Pricing" },
+  ];
+
+  const isActive = (path: string) => location.pathname === path;
+
+  return (
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
+      <div className="container flex items-center justify-between h-16 md:h-20">
+        <Link to="/" className="flex items-center gap-2">
+          <img 
+            src={songssLogo} 
+            alt="SONGSS Intelligence" 
+            className="h-10 md:h-12 w-auto"
+          />
+        </Link>
+
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center gap-8">
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              to={link.href}
+              className={`text-sm font-medium transition-colors hover:text-primary ${
+                isActive(link.href) 
+                  ? "text-primary" 
+                  : "text-foreground/70"
+              }`}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Desktop Auth Buttons */}
+        <div className="hidden md:flex items-center gap-3">
+          <Button variant="ghost" size="sm">
+            Log In
+          </Button>
+          <Button size="sm" className="gradient-primary font-semibold">
+            Sign Up Free
+          </Button>
+        </div>
+
+        {/* Mobile Menu Button */}
+        <button
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="md:hidden p-2"
+          aria-label="Toggle menu"
+        >
+          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </div>
+
+      {/* Mobile Menu */}
+      {isMenuOpen && (
+        <div className="md:hidden bg-background border-b border-border animate-fade-in">
+          <nav className="container py-4 flex flex-col gap-4">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                to={link.href}
+                onClick={() => setIsMenuOpen(false)}
+                className={`text-base font-medium py-2 ${
+                  isActive(link.href) 
+                    ? "text-primary" 
+                    : "text-foreground/70"
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <div className="flex flex-col gap-2 pt-4 border-t border-border">
+              <Button variant="ghost" className="justify-start">
+                Log In
+              </Button>
+              <Button className="gradient-primary font-semibold">
+                Sign Up Free
+              </Button>
+            </div>
+          </nav>
+        </div>
+      )}
+    </header>
+  );
+};
+
+export default Header;
