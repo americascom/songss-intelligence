@@ -27,6 +27,7 @@ export type Database = {
           streams: number
           top_artist: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           artists_count?: number
@@ -40,6 +41,7 @@ export type Database = {
           streams?: number
           top_artist?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           artists_count?: number
@@ -53,6 +55,7 @@ export type Database = {
           streams?: number
           top_artist?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
