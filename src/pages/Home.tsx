@@ -3,10 +3,14 @@ import { Link } from "react-router-dom";
 import { Music, DollarSign, Users, TrendingUp, BarChart3, Globe } from "lucide-react";
 import MetricCard from "@/components/MetricCard";
 import DemoChart from "@/components/DemoChart";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 
 const Home = () => {
   return (
-    <main className="pt-16 md:pt-20">
+    <div className="min-h-screen flex flex-col bg-background">
+      <Header />
+      <main className="flex-1 pt-16 md:pt-20">
       {/* Hero Section */}
       <section className="relative gradient-hero overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(160_100%_33%_/_0.1),transparent_50%)]" />
@@ -175,6 +179,8 @@ const Home = () => {
         </div>
       </section>
     </main>
+    <Footer />
+    </div>
   );
 };
 

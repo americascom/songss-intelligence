@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import PricingCard from "@/components/PricingCard";
 import { Check } from "lucide-react";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 
 const plans = [
   {
@@ -53,7 +55,9 @@ const plans = [
 
 const Pricing = () => {
   return (
-    <main className="pt-16 md:pt-20 min-h-screen">
+    <div className="min-h-screen flex flex-col bg-background">
+      <Header />
+      <main className="flex-1 pt-16 md:pt-20">
       {/* Header */}
       <section className="py-16 md:py-24 gradient-hero">
         <div className="container text-center">
@@ -180,6 +184,8 @@ const Pricing = () => {
         </div>
       </section>
     </main>
+    <Footer />
+    </div>
   );
 };
 
