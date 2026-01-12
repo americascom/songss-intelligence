@@ -1,68 +1,103 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Music, DollarSign, Users, TrendingUp, BarChart3, Globe } from "lucide-react";
+import { Suspense, lazy } from "react";
 import MetricCard from "@/components/MetricCard";
 import DemoChart from "@/components/DemoChart";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import FestivalIcons from "@/components/FestivalIcons";
+import MiniRevenueChart from "@/components/MiniRevenueChart";
+
+const Globe3D = lazy(() => import("@/components/Globe3D"));
 
 const Home = () => {
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background dark">
       <Header />
       <main className="flex-1 pt-16 md:pt-20">
       {/* Hero Section */}
-      <section className="relative gradient-hero overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(160_100%_33%_/_0.1),transparent_50%)]" />
-        <div className="container py-16 md:py-24 lg:py-32 relative">
-          <div className="max-w-3xl mx-auto text-center mb-12 md:mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6 animate-fade-in">
-              <TrendingUp className="w-4 h-4" />
-              Real-time music intelligence
+      <section className="relative overflow-hidden bg-background">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(160_100%_33%_/_0.15),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,hsl(160_100%_33%_/_0.1),transparent_50%)]" />
+        <div className="container py-12 md:py-20 lg:py-24 relative">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+            {/* Left: Text Content */}
+            <div className="text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-6 animate-fade-in">
+                <TrendingUp className="w-4 h-4" />
+                Real-time music intelligence
+              </div>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight animate-fade-in" style={{ animationDelay: "100ms" }}>
+                Unlock{" "}
+                <span className="text-gradient">Global Music</span>
+                {" "}Insights
+              </h1>
+              <p className="text-lg md:text-xl text-muted-foreground mb-8 animate-fade-in" style={{ animationDelay: "200ms" }}>
+                Track streams, revenue, and artist performance across every platform. 
+                Make data-driven decisions with real-time analytics.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-fade-in" style={{ animationDelay: "300ms" }}>
+                <Link to="/auth">
+                  <Button size="lg" className="gradient-primary font-semibold text-base px-8 shadow-hero">
+                    Sign Up Free
+                  </Button>
+                </Link>
+                <Link to="/dashboard">
+                  <Button size="lg" variant="outline" className="font-semibold text-base px-8 border-primary/30 hover:bg-primary/10">
+                    View Demo
+                  </Button>
+                </Link>
+              </div>
             </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight animate-fade-in" style={{ animationDelay: "100ms" }}>
-              Unlock{" "}
-              <span className="text-gradient">Global Music</span>
-              {" "}Insights
-            </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-8 animate-fade-in" style={{ animationDelay: "200ms" }}>
-              Track streams, revenue, and artist performance across every platform. 
-              Make data-driven decisions with real-time analytics.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in" style={{ animationDelay: "300ms" }}>
-              <Button size="lg" className="gradient-primary font-semibold text-base px-8 shadow-hero">
-                Sign Up Free
-              </Button>
-              <Link to="/dashboard">
-                <Button size="lg" variant="outline" className="font-semibold text-base px-8">
-                  View Demo
-                </Button>
-              </Link>
+
+            {/* Right: 3D Globe with Icons and Chart */}
+            <div className="relative flex items-center justify-center animate-fade-in" style={{ animationDelay: "400ms" }}>
+              {/* Festival Icons - Left side */}
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:translate-x-0 z-10 hidden sm:block">
+                <FestivalIcons />
+              </div>
+
+              {/* 3D Globe */}
+              <div className="w-full max-w-[400px] mx-auto">
+                <Suspense fallback={
+                  <div className="w-full h-[300px] md:h-[400px] flex items-center justify-center">
+                    <div className="w-32 h-32 rounded-full border-2 border-primary/30 animate-pulse" />
+                  </div>
+                }>
+                  <Globe3D />
+                </Suspense>
+              </div>
+
+              {/* Mini Revenue Chart - Right side */}
+              <div className="absolute right-0 bottom-8 translate-x-4 md:translate-x-0 z-10 hidden sm:block">
+                <MiniRevenueChart />
+              </div>
             </div>
           </div>
 
-          {/* Demo Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto">
+          {/* Demo Metrics - Below Hero */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto mt-12 md:mt-16">
             <MetricCard
               icon={Music}
               value="11K+"
               label="Daily Streams"
               trend="+12%"
-              delay={400}
+              delay={500}
             />
             <MetricCard
               icon={DollarSign}
               value="$5K"
               label="Monthly Revenue"
               trend="+8%"
-              delay={500}
+              delay={600}
             />
             <MetricCard
               icon={Users}
               value="51"
               label="Active Artists"
               trend="+3"
-              delay={600}
+              delay={700}
             />
           </div>
         </div>

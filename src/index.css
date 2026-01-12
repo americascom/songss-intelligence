@@ -58,42 +58,48 @@
   }
 
   .dark {
-    --background: 0 0% 5%;
-    --foreground: 0 0% 98%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
 
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 4%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 160 100% 40%;
-    --primary-foreground: 0 0% 0%;
+    --primary: 160 100% 33%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 165 100% 35%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 65%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 70%;
 
-    --accent: 165 100% 35%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 160 100% 33%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62% 30%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive-foreground: 0 0% 100%;
 
     --border: 0 0% 15%;
     --input: 0 0% 15%;
-    --ring: 160 100% 40%;
+    --ring: 160 100% 33%;
 
-    --sidebar-background: 0 0% 8%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 160 100% 40%;
-    --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 0 0% 98%;
+    --gradient-primary: linear-gradient(135deg, hsl(160 100% 33%) 0%, hsl(165 100% 42%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(160 100% 33% / 0.1) 0%, hsl(0 0% 0%) 100%);
+    --gradient-card: linear-gradient(135deg, hsl(160 100% 33% / 0.1) 0%, hsl(165 100% 42% / 0.05) 100%);
+    --shadow-card: 0 4px 24px -4px hsl(160 100% 33% / 0.2);
+    --shadow-hero: 0 20px 60px -15px hsl(160 100% 33% / 0.4);
+
+    --sidebar-background: 0 0% 4%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 160 100% 33%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 160 100% 40%;
+    --sidebar-ring: 160 100% 33%;
   }
 }
 
