@@ -18,7 +18,7 @@ const Home = () => {
 
   return (
     <div style={{ backgroundColor: '#0A0A0A', color: 'white', minHeight: '100vh', padding: '40px', fontFamily: 'sans-serif' }}>
-      <h1 style={{ fontSize: '3rem', fontWeight: '900', color: '#39FF14' }}>SONGSS INTELLIGENCE</h1>
+      <h1 style={{ fontSize: '3rem', fontWeight: '900', color: '#39FF14' }}>SONGSS GLOBAL HQ</h1>
       <p style={{ color: '#666', marginBottom: '40px' }}>Live Delaware Feed Active</p>
       
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
