@@ -3,11 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Home = () => {
   const [metrics, setMetrics] = useState<any[]>([]);
-  const [loadingStatus, setLoadingStatus] = useState("Initializing secure data link...");
+  const [loadingStatus, setLoadingStatus] = useState("Establishing secure data link...");
 
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
+        // Fetch all records regardless of starting ID number
         const { data, error } = await supabase
           .from('metrics')
           .select('*')
@@ -19,7 +20,7 @@ const Home = () => {
           setMetrics(data);
           setLoadingStatus("Live Feed Active");
         } else {
-          setLoadingStatus("Link established. No active records found.");
+          setLoadingStatus("Data link established. No records returned from metrics table.");
         }
       } catch (err: any) {
         setLoadingStatus(`System Error: ${err.message}`);
@@ -45,7 +46,7 @@ const Home = () => {
               <h2 style={{ fontSize: '4.5rem', margin: '0', color: item.region.toLowerCase().includes('brazil') ? '#FFD700' : '#39FF14', fontWeight: '900' }}>
                 {item.growth_projection}%
               </h2>
-              <p style={{ fontSize: '13px', color: '#888', marginTop: '20px', fontStyle: 'italic' }}>{item.analysis_label}</p>
+              <p style={{ fontSize: '13px', color: '#888', marginTop: '20px' }}>{item.analysis_label}</p>
             </div>
           ))}
         </div>
