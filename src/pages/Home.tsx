@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Home = () => {
   const [metrics, setMetrics] = useState<any[]>([]);
-  const [status, setStatus] = useState("Initializing secure link...");
+  const [loadingStatus, setLoadingStatus] = useState("Initializing secure data link...");
 
   useEffect(() => {
     const fetchMetrics = async () => {
@@ -17,33 +17,38 @@ const Home = () => {
         
         if (data && data.length > 0) {
           setMetrics(data);
-          setStatus("Feed Active");
+          setLoadingStatus("Live Feed Active");
         } else {
-          setStatus("No data records found in metrics table.");
+          setLoadingStatus("Link established. No active records found.");
         }
       } catch (err: any) {
-        console.error("Connection Error:", err.message);
-        setStatus(`Connection Error: ${err.message}`);
+        setLoadingStatus(`System Error: ${err.message}`);
       }
     };
     fetchMetrics();
   }, []);
 
   return (
-    <div style={{ backgroundColor: '#0A0A0A', color: 'white', minHeight: '100vh', padding: '40px', fontFamily: 'Inter, sans-serif' }}>
-      <h1 style={{ fontSize: '3rem', fontWeight: '900', color: '#39FF14', letterSpacing: '-1px' }}>SONGSS GLOBAL HQ</h1>
-      <p style={{ color: '#666', marginBottom: '40px', fontSize: '14px', textTransform: 'uppercase' }}>{status}</p>
-      
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-        {metrics.map((item) => (
-          <div key={item.id} style={{ border: '1px solid #222', padding: '32px', borderRadius: '16px', background: 'linear-gradient(145deg, #111, #000)' }}>
-            <p style={{ color: '#888', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>{item.region}</p>
-            <h2 style={{ fontSize: '4rem', margin: '16px 0', color: item.region.toLowerCase().includes('brazil') ? '#FFD700' : '#39FF14', fontWeight: '800' }}>
-              {item.growth_projection}%
-            </h2>
-            <p style={{ fontSize: '12px', color: '#555', lineHeight: '1.4' }}>{item.analysis_label}</p>
-          </div>
-        ))}
+    <div style={{ backgroundColor: '#0A0A0A', color: 'white', minHeight: '100vh', padding: '60px', fontFamily: 'sans-serif' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <h1 style={{ fontSize: '3.5rem', fontWeight: '900', color: '#39FF14', letterSpacing: '-2px', marginBottom: '10px' }}>
+          SONGSS GLOBAL HQ
+        </h1>
+        <p style={{ color: '#444', textTransform: 'uppercase', letterSpacing: '2px', fontSize: '12px', fontWeight: 'bold', marginBottom: '60px' }}>
+          {loadingStatus}
+        </p>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
+          {metrics.map((item) => (
+            <div key={item.id} style={{ border: '1px solid #1a1a1a', padding: '40px', borderRadius: '24px', background: '#0f0f0f' }}>
+              <p style={{ color: '#555', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '20px' }}>{item.region}</p>
+              <h2 style={{ fontSize: '4.5rem', margin: '0', color: item.region.toLowerCase().includes('brazil') ? '#FFD700' : '#39FF14', fontWeight: '900' }}>
+                {item.growth_projection}%
+              </h2>
+              <p style={{ fontSize: '13px', color: '#888', marginTop: '20px', fontStyle: 'italic' }}>{item.analysis_label}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
