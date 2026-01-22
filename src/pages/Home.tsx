@@ -8,10 +8,18 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import FestivalIcons from "@/components/FestivalIcons";
 import MiniRevenueChart from "@/components/MiniRevenueChart";
+import { useFormattedMetrics } from "@/hooks/useMetricsData";
 
 const Globe3D = lazy(() => import("@/components/Globe3D"));
 
 const Home = () => {
+  const { totalStreams, totalRevenue, totalArtists } = useFormattedMetrics();
+
+  // Use real data if available, otherwise show demo values
+  const displayStreams = totalStreams !== "0" ? totalStreams : "11K+";
+  const displayRevenue = totalRevenue !== "$0" ? totalRevenue : "$5K";
+  const displayArtists = totalArtists !== "0" ? totalArtists : "51";
+
   return (
     <div className="min-h-screen flex flex-col bg-background dark">
       <Header />
@@ -80,21 +88,21 @@ const Home = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto mt-12 md:mt-16">
             <MetricCard
               icon={Music}
-              value="11K+"
+              value={displayStreams}
               label="Daily Streams"
               trend="+12%"
               delay={500}
             />
             <MetricCard
               icon={DollarSign}
-              value="$5K"
+              value={displayRevenue}
               label="Monthly Revenue"
               trend="+8%"
               delay={600}
             />
             <MetricCard
               icon={Users}
-              value="51"
+              value={displayArtists}
               label="Active Artists"
               trend="+3"
               delay={700}

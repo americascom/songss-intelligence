@@ -2,9 +2,10 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Sphere, Html } from '@react-three/drei';
 import { useRef, useMemo } from 'react';
 import * as THREE from 'three';
+import { useMetricsMarkers, MetricsMarker } from '@/hooks/useMetricsData';
 
-// Festival/venue markers with approximate lat/lng
-const markers = [
+// Fallback markers when no data is available
+const fallbackMarkers: MetricsMarker[] = [
   { name: 'Glastonbury', lat: 51.15, lng: -2.58, streams: '2.1M' },
   { name: 'Coachella', lat: 33.68, lng: -116.24, streams: '1.8M' },
   { name: 'Tomorrowland', lat: 51.09, lng: 4.38, streams: '1.5M' },
@@ -42,7 +43,7 @@ function GlobeMarker({ lat, lng, name, streams }: { lat: number; lng: number; na
   );
 }
 
-function AnimatedGlobe() {
+function AnimatedGlobe({ markers }: { markers: MetricsMarker[] }) {
   const globeRef = useRef<THREE.Group>(null);
   const wireframeRef = useRef<THREE.Mesh>(null);
   
@@ -100,6 +101,11 @@ function AnimatedGlobe() {
 }
 
 export default function Globe3D() {
+  const { data: markers, isLoading } = useMetricsMarkers();
+  
+  // Use real data if available, otherwise fall back to demo markers
+  const displayMarkers = markers && markers.length > 0 ? markers : fallbackMarkers;
+
   return (
     <div className="w-full h-[300px] md:h-[400px] relative">
       <Canvas
@@ -109,7 +115,7 @@ export default function Globe3D() {
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} intensity={1} />
         <pointLight position={[-10, -10, -10]} intensity={0.5} color="#00A676" />
-        <AnimatedGlobe />
+        <AnimatedGlobe markers={displayMarkers} />
         <OrbitControls 
           enableZoom={false} 
           enablePan={false}
