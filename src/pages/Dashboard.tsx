@@ -1,14 +1,35 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Lock, Music, DollarSign, Users, TrendingUp, Globe, Calendar } from "lucide-react";
+import { Lock, Music, DollarSign, Users, TrendingUp, Globe, Calendar, AlertCircle } from "lucide-react";
 import MetricCard from "@/components/MetricCard";
 import DemoChart from "@/components/DemoChart";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/hooks/useAuth";
+import { useFormattedDashboardData } from "@/hooks/useDashboardData";
+
+// Fallback data for demo/empty states
+const fallbackArtists = [
+  { name: "Luna Nova", streams: "2.4M", revenue: "$12,340", growth: "+24%" },
+  { name: "The Vibes", streams: "1.8M", revenue: "$9,120", growth: "+18%" },
+  { name: "DJ Pulse", streams: "1.2M", revenue: "$6,890", growth: "+15%" },
+  { name: "Starlight", streams: "890K", revenue: "$4,560", growth: "+12%" },
+  { name: "Echo Band", streams: "670K", revenue: "$3,210", growth: "+8%" },
+];
 
 const Dashboard = () => {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { 
+    isLoading: dataLoading, 
+    hasData,
+    error,
+    metrics, 
+    countryData, 
+    topArtists, 
+    chartData 
+  } = useFormattedDashboardData();
+
+  const loading = authLoading;
 
   if (loading) {
     return (
@@ -80,6 +101,16 @@ const Dashboard = () => {
     );
   }
 
+  // Use real data or fallback to demo values
+  const displayMetrics = {
+    totalStreams: hasData ? metrics.totalStreams : "11,234",
+    totalRevenue: hasData ? metrics.totalRevenue : "$5,420",
+    artistsCount: hasData ? metrics.artistsCount : "51",
+    churnRate: hasData ? metrics.churnRate : "2.4%",
+  };
+
+  const displayArtists = topArtists.length > 0 ? topArtists : fallbackArtists;
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
@@ -103,32 +134,55 @@ const Dashboard = () => {
             </div>
           </div>
 
+          {/* Error State */}
+          {error && (
+            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 mb-6 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-destructive" />
+              <p className="text-sm text-destructive">Unable to load some data. Showing demo values.</p>
+            </div>
+          )}
+
+          {/* Loading State for Data */}
+          {dataLoading && (
+            <div className="text-center py-4 mb-4">
+              <div className="animate-pulse text-muted-foreground text-sm">Loading your metrics...</div>
+            </div>
+          )}
+
+          {/* No Data State */}
+          {!dataLoading && !hasData && !error && (
+            <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 mb-6 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-primary" />
+              <p className="text-sm text-foreground">No metrics data yet. Showing demo values.</p>
+            </div>
+          )}
+
           {/* Metrics Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <MetricCard
               icon={Music}
-              value="11,234"
+              value={displayMetrics.totalStreams}
               label="Total Streams"
               trend="+12%"
               delay={0}
             />
             <MetricCard
               icon={DollarSign}
-              value="$5,420"
+              value={displayMetrics.totalRevenue}
               label="Monthly Revenue"
               trend="+8%"
               delay={100}
             />
             <MetricCard
               icon={Users}
-              value="51"
+              value={displayMetrics.artistsCount}
               label="Active Artists"
               trend="+3"
               delay={200}
             />
             <MetricCard
               icon={TrendingUp}
-              value="2.4%"
+              value={displayMetrics.churnRate}
               label="Churn Rate"
               trend="-0.5%"
               delay={300}
@@ -142,14 +196,14 @@ const Dashboard = () => {
                 <h3 className="font-semibold text-foreground">Streams & Revenue</h3>
                 <span className="text-xs text-muted-foreground">Last 7 months</span>
               </div>
-              <DemoChart type="area" />
+              <DemoChart type="area" data={chartData.length > 0 ? chartData : undefined} />
             </div>
             <div className="bg-card p-6 rounded-2xl border border-border shadow-card">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-foreground">Streams by Country</h3>
                 <span className="text-xs text-muted-foreground">Top 5</span>
               </div>
-              <DemoChart type="bar" />
+              <DemoChart type="bar" data={countryData.length > 0 ? countryData : undefined} />
             </div>
           </div>
 
@@ -169,13 +223,7 @@ const Dashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {[
-                    { name: "Luna Nova", streams: "2.4M", revenue: "$12,340", growth: "+24%" },
-                    { name: "The Vibes", streams: "1.8M", revenue: "$9,120", growth: "+18%" },
-                    { name: "DJ Pulse", streams: "1.2M", revenue: "$6,890", growth: "+15%" },
-                    { name: "Starlight", streams: "890K", revenue: "$4,560", growth: "+12%" },
-                    { name: "Echo Band", streams: "670K", revenue: "$3,210", growth: "+8%" },
-                  ].map((artist, index) => (
+                  {displayArtists.map((artist, index) => (
                     <tr key={index} className="hover:bg-muted/30 transition-colors">
                       <td className="px-6 py-4 font-medium text-foreground">{artist.name}</td>
                       <td className="px-6 py-4 text-foreground/80">{artist.streams}</td>
