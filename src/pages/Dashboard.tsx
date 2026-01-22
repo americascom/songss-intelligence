@@ -12,10 +12,10 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col bg-black dark">
+      <div className="min-h-screen flex flex-col bg-background">
         <Header />
         <main className="flex-1 pt-16 md:pt-20 flex items-center justify-center">
-          <div className="animate-pulse text-white/60">Loading...</div>
+          <div className="animate-pulse text-muted-foreground">Loading...</div>
         </main>
         <Footer />
       </div>
@@ -24,7 +24,7 @@ const Dashboard = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex flex-col bg-black dark">
+      <div className="min-h-screen flex flex-col bg-background">
         <Header />
         <main className="flex-1 pt-16 md:pt-20 min-h-screen relative">
           {/* Blurred Dashboard Preview */}
@@ -37,10 +37,10 @@ const Dashboard = () => {
                 <MetricCard icon={TrendingUp} value="+12%" label="Growth" />
               </div>
               <div className="grid lg:grid-cols-2 gap-6">
-                <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
+                <div className="bg-card p-6 rounded-2xl border border-border">
                   <DemoChart type="area" />
                 </div>
-                <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
+                <div className="bg-card p-6 rounded-2xl border border-border">
                   <DemoChart type="bar" />
                 </div>
               </div>
@@ -49,25 +49,25 @@ const Dashboard = () => {
 
           {/* Paywall Overlay */}
           <div className="relative z-10 min-h-[80vh] flex items-center justify-center">
-            <div className="bg-black/95 backdrop-blur-sm p-8 md:p-12 rounded-2xl border border-white/10 shadow-hero max-w-lg mx-4 text-center animate-scale-in">
+            <div className="bg-card/95 backdrop-blur-sm p-8 md:p-12 rounded-2xl border border-border shadow-hero max-w-lg mx-4 text-center animate-scale-in">
               <div className="p-4 rounded-full gradient-primary w-fit mx-auto mb-6">
-                <Lock className="w-8 h-8 text-white" />
+                <Lock className="w-8 h-8 text-foreground" />
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white mb-4">
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
                 Premium Analytics Dashboard
               </h1>
-              <p className="text-white/60 mb-8">
+              <p className="text-muted-foreground mb-8">
                 Sign in or subscribe to access real-time streaming data, revenue reports, 
                 and advanced analytics for your music catalog.
               </p>
               <div className="flex flex-col gap-3">
                 <Link to="/pricing">
-                  <Button size="lg" className="w-full gradient-primary font-semibold text-white">
+                  <Button size="lg" className="w-full gradient-primary font-semibold">
                     View Plans & Subscribe
                   </Button>
                 </Link>
                 <Link to="/auth">
-                  <Button size="lg" variant="outline" className="w-full border-white/20 text-white hover:bg-white/10">
+                  <Button size="lg" variant="outline" className="w-full">
                     Sign In
                   </Button>
                 </Link>
@@ -81,22 +81,22 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-black dark">
+    <div className="min-h-screen flex flex-col bg-background">
       <Header />
-      <main className="flex-1 pt-16 md:pt-20">
+      <main className="flex-1 pt-16 md:pt-20 bg-muted/30">
         <div className="container py-8">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white">Dashboard</h1>
-              <p className="text-white/60">Your global music performance at a glance</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">Dashboard</h1>
+              <p className="text-muted-foreground">Your global music performance at a glance</p>
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10">
+              <Button variant="outline" size="sm">
                 <Calendar className="w-4 h-4 mr-2" />
                 Last 30 Days
               </Button>
-              <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10">
+              <Button variant="outline" size="sm">
                 <Globe className="w-4 h-4 mr-2" />
                 All Regions
               </Button>
@@ -137,38 +137,38 @@ const Dashboard = () => {
 
           {/* Charts */}
           <div className="grid lg:grid-cols-2 gap-6 mb-8">
-            <div className="bg-white/5 p-6 rounded-2xl border border-white/10 shadow-card">
+            <div className="bg-card p-6 rounded-2xl border border-border shadow-card">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-white">Streams & Revenue</h3>
-                <span className="text-xs text-white/50">Last 7 months</span>
+                <h3 className="font-semibold text-foreground">Streams & Revenue</h3>
+                <span className="text-xs text-muted-foreground">Last 7 months</span>
               </div>
               <DemoChart type="area" />
             </div>
-            <div className="bg-white/5 p-6 rounded-2xl border border-white/10 shadow-card">
+            <div className="bg-card p-6 rounded-2xl border border-border shadow-card">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-white">Streams by Country</h3>
-                <span className="text-xs text-white/50">Top 5</span>
+                <h3 className="font-semibold text-foreground">Streams by Country</h3>
+                <span className="text-xs text-muted-foreground">Top 5</span>
               </div>
               <DemoChart type="bar" />
             </div>
           </div>
 
           {/* Top Artists Table */}
-          <div className="bg-white/5 rounded-2xl border border-white/10 shadow-card overflow-hidden">
-            <div className="p-6 border-b border-white/10">
-              <h3 className="font-semibold text-white">Top Artists</h3>
+          <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
+            <div className="p-6 border-b border-border">
+              <h3 className="font-semibold text-foreground">Top Artists</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-white/5">
+                <thead className="bg-muted/50">
                   <tr>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-white/50 uppercase">Artist</th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-white/50 uppercase">Streams</th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-white/50 uppercase">Revenue</th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-white/50 uppercase">Growth</th>
+                    <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase">Artist</th>
+                    <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase">Streams</th>
+                    <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase">Revenue</th>
+                    <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase">Growth</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/10">
+                <tbody className="divide-y divide-border">
                   {[
                     { name: "Luna Nova", streams: "2.4M", revenue: "$12,340", growth: "+24%" },
                     { name: "The Vibes", streams: "1.8M", revenue: "$9,120", growth: "+18%" },
@@ -176,10 +176,10 @@ const Dashboard = () => {
                     { name: "Starlight", streams: "890K", revenue: "$4,560", growth: "+12%" },
                     { name: "Echo Band", streams: "670K", revenue: "$3,210", growth: "+8%" },
                   ].map((artist, index) => (
-                    <tr key={index} className="hover:bg-white/5 transition-colors">
-                      <td className="px-6 py-4 font-medium text-white">{artist.name}</td>
-                      <td className="px-6 py-4 text-white/70">{artist.streams}</td>
-                      <td className="px-6 py-4 text-white/70">{artist.revenue}</td>
+                    <tr key={index} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-6 py-4 font-medium text-foreground">{artist.name}</td>
+                      <td className="px-6 py-4 text-foreground/80">{artist.streams}</td>
+                      <td className="px-6 py-4 text-foreground/80">{artist.revenue}</td>
                       <td className="px-6 py-4">
                         <span className="text-primary font-medium">{artist.growth}</span>
                       </td>

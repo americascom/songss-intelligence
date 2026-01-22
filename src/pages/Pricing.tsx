@@ -55,16 +55,16 @@ const plans = [
 
 const Pricing = () => {
   return (
-    <div className="min-h-screen flex flex-col bg-black dark">
+    <div className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1 pt-16 md:pt-20">
       {/* Header */}
-      <section className="py-16 md:py-24 bg-gradient-to-b from-primary/10 to-black">
+      <section className="py-16 md:py-24 gradient-hero">
         <div className="container text-center">
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 animate-fade-in">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4 animate-fade-in">
             Simple, Transparent Pricing
           </h1>
-          <p className="text-lg text-white/60 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: "100ms" }}>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: "100ms" }}>
             Choose the plan that fits your needs. All plans include a 14-day free trial.
           </p>
         </div>
@@ -86,22 +86,22 @@ const Pricing = () => {
       </section>
 
       {/* Features Comparison */}
-      <section className="py-12 md:py-16 bg-white/5">
+      <section className="py-12 md:py-16 bg-muted/30">
         <div className="container">
-          <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-12">
+          <h2 className="text-2xl md:text-3xl font-bold text-foreground text-center mb-12">
             Compare Plans
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full max-w-4xl mx-auto">
               <thead>
-                <tr className="border-b border-white/10">
-                  <th className="text-left py-4 px-4 font-medium text-white">Feature</th>
-                  <th className="text-center py-4 px-4 font-medium text-white">Artist Pro</th>
+                <tr className="border-b border-border">
+                  <th className="text-left py-4 px-4 font-medium text-foreground">Feature</th>
+                  <th className="text-center py-4 px-4 font-medium text-foreground">Artist Pro</th>
                   <th className="text-center py-4 px-4 font-medium text-primary">Max</th>
-                  <th className="text-center py-4 px-4 font-medium text-white">Premium</th>
+                  <th className="text-center py-4 px-4 font-medium text-foreground">Premium</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/10">
+              <tbody className="divide-y divide-border">
                 {[
                   { feature: "Analytics Insights", pro: "70", max: "250+", premium: "Unlimited" },
                   { feature: "Artist Profiles", pro: "1", max: "10", premium: "Unlimited" },
@@ -112,26 +112,26 @@ const Pricing = () => {
                   { feature: "Custom Integrations", pro: false, max: false, premium: true },
                 ].map((row, index) => (
                   <tr key={index}>
-                    <td className="py-4 px-4 text-white/70">{row.feature}</td>
+                    <td className="py-4 px-4 text-foreground/80">{row.feature}</td>
                     <td className="py-4 px-4 text-center">
                       {typeof row.pro === "boolean" ? (
-                        row.pro ? <Check className="w-5 h-5 text-primary mx-auto" /> : <span className="text-white/30">—</span>
+                        row.pro ? <Check className="w-5 h-5 text-primary mx-auto" /> : <span className="text-muted-foreground">—</span>
                       ) : (
-                        <span className="text-white/70">{row.pro}</span>
+                        <span className="text-foreground/80">{row.pro}</span>
                       )}
                     </td>
-                    <td className="py-4 px-4 text-center bg-primary/10">
+                    <td className="py-4 px-4 text-center bg-primary/5">
                       {typeof row.max === "boolean" ? (
-                        row.max ? <Check className="w-5 h-5 text-primary mx-auto" /> : <span className="text-white/30">—</span>
+                        row.max ? <Check className="w-5 h-5 text-primary mx-auto" /> : <span className="text-muted-foreground">—</span>
                       ) : (
-                        <span className="text-white font-medium">{row.max}</span>
+                        <span className="text-foreground font-medium">{row.max}</span>
                       )}
                     </td>
                     <td className="py-4 px-4 text-center">
                       {typeof row.premium === "boolean" ? (
-                        row.premium ? <Check className="w-5 h-5 text-primary mx-auto" /> : <span className="text-white/30">—</span>
+                        row.premium ? <Check className="w-5 h-5 text-primary mx-auto" /> : <span className="text-muted-foreground">—</span>
                       ) : (
-                        <span className="text-white/70">{row.premium}</span>
+                        <span className="text-foreground/80">{row.premium}</span>
                       )}
                     </td>
                   </tr>
@@ -145,25 +145,25 @@ const Pricing = () => {
       {/* Trusted By */}
       <section className="py-12 md:py-16">
         <div className="container text-center">
-          <p className="text-sm text-white/40 mb-8">Trusted data sources</p>
+          <p className="text-sm text-muted-foreground mb-8">Trusted data sources</p>
           <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12 opacity-60">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-[#1DB954] flex items-center justify-center">
                 <span className="text-white font-bold text-sm">S</span>
               </div>
-              <span className="font-semibold text-white">Spotify</span>
+              <span className="font-semibold text-foreground">Spotify</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-[#FF0000] flex items-center justify-center">
                 <span className="text-white font-bold text-sm">▶</span>
               </div>
-              <span className="font-semibold text-white">YouTube</span>
+              <span className="font-semibold text-foreground">YouTube</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-[#FA243C] flex items-center justify-center">
                 <span className="text-white font-bold text-sm">♪</span>
               </div>
-              <span className="font-semibold text-white">Apple Music</span>
+              <span className="font-semibold text-foreground">Apple Music</span>
             </div>
           </div>
         </div>
@@ -172,13 +172,13 @@ const Pricing = () => {
       {/* FAQ or CTA */}
       <section className="py-12 md:py-16 gradient-primary">
         <div className="container text-center">
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
+          <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
             Questions? We're Here to Help
           </h2>
-          <p className="text-white/80 mb-8 max-w-xl mx-auto">
+          <p className="text-foreground/80 mb-8 max-w-xl mx-auto">
             Not sure which plan is right for you? Contact our team for a personalized recommendation.
           </p>
-          <Button size="lg" className="bg-black text-white hover:bg-black/80 font-semibold">
+          <Button size="lg" className="bg-foreground text-background hover:bg-foreground/90 font-semibold">
             Contact Sales
           </Button>
         </div>
