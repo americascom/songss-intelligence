@@ -114,7 +114,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
-      <main className="flex-1 pt-16 md:pt-20 bg-muted/30">
+      <main className="flex-1 pt-16 md:pt-20">
         <div className="container py-8">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">

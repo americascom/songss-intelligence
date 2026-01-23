@@ -59,7 +59,7 @@ const Pricing = () => {
       <Header />
       <main className="flex-1 pt-16 md:pt-20">
       {/* Header */}
-      <section className="py-16 md:py-24 gradient-hero">
+      <section className="py-16 md:py-24">
         <div className="container text-center">
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4 animate-fade-in">
             Simple, Transparent Pricing
@@ -86,7 +86,7 @@ const Pricing = () => {
       </section>
 
       {/* Features Comparison */}
-      <section className="py-12 md:py-16 bg-muted/30">
+      <section className="py-12 md:py-16 bg-card/50 border-y border-border">
         <div className="container">
           <h2 className="text-2xl md:text-3xl font-bold text-foreground text-center mb-12">
             Compare Plans
