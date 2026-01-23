@@ -37,8 +37,7 @@ const Header = () => {
           <img 
             src={songssLogo} 
             alt="SONGSS Intelligence" 
-            className="h-14 md:h-[72px] w-auto"
-            style={{ filter: 'brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(130deg) brightness(92%) contrast(101%)' }}
+            className="h-12 md:h-16 w-auto object-contain"
           />
         </Link>
 
