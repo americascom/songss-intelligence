@@ -64,44 +64,47 @@ export function useMetricsMarkers() {
   return useQuery({
     queryKey: ["metrics-markers"],
     queryFn: async (): Promise<MetricsMarker[]> => {
-      // Fetch aggregated streams by country
-      const { data, error } = await supabase
-        .from("metrics_global")
-        .select("country, streams")
-        .order("streams", { ascending: false })
-        .limit(10);
+      try {
+        // Fetch from external API endpoint
+        const response = await fetch("https://api.songssintelligence.com/metrics");
+        
+        if (!response.ok) {
+          console.error("Error fetching metrics:", response.statusText);
+          return [];
+        }
 
-      if (error) {
+        const data = await response.json();
+
+        if (!data || data.length === 0) {
+          return [];
+        }
+
+        // Group by region and sum growth_projection
+        const regionStreams: Record<string, number> = {};
+        data.forEach((row: { region: string; growth_projection: number }) => {
+          const region = row.region;
+          regionStreams[region] = (regionStreams[region] || 0) + Number(row.growth_projection);
+        });
+
+        // Convert to markers with coordinates
+        const markers: MetricsMarker[] = [];
+        Object.entries(regionStreams).forEach(([region, streams]) => {
+          const coords = countryCoordinates[region];
+          if (coords) {
+            markers.push({
+              name: region,
+              lat: coords.lat,
+              lng: coords.lng,
+              streams: formatStreams(streams),
+            });
+          }
+        });
+
+        return markers.slice(0, 5); // Top 5 regions
+      } catch (error) {
         console.error("Error fetching metrics markers:", error);
         return [];
       }
-
-      if (!data || data.length === 0) {
-        return [];
-      }
-
-      // Group by country and sum streams
-      const countryStreams: Record<string, number> = {};
-      data.forEach((row) => {
-        const country = row.country;
-        countryStreams[country] = (countryStreams[country] || 0) + Number(row.streams);
-      });
-
-      // Convert to markers with coordinates
-      const markers: MetricsMarker[] = [];
-      Object.entries(countryStreams).forEach(([country, streams]) => {
-        const coords = countryCoordinates[country];
-        if (coords) {
-          markers.push({
-            name: country,
-            lat: coords.lat,
-            lng: coords.lng,
-            streams: formatStreams(streams),
-          });
-        }
-      });
-
-      return markers.slice(0, 5); // Top 5 countries
     },
     staleTime: 60000, // 1 minute
   });
