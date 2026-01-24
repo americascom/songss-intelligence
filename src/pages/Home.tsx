@@ -60,14 +60,20 @@ const Home = () => {
             </div>
 
             {/* Right: 3D Globe with Icons and Chart */}
-            <div className="relative flex items-center justify-center animate-fade-in" style={{ animationDelay: "400ms" }}>
+            <div 
+              className="relative flex items-center justify-center animate-fade-in" 
+              style={{ animationDelay: "400ms", overflow: "visible" }}
+            >
               {/* Festival Icons - Left side */}
               <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:translate-x-0 z-10 hidden sm:block">
                 <FestivalIcons />
               </div>
 
               {/* 3D Globe */}
-              <div className="w-full max-w-[450px] mx-auto flex items-center justify-center">
+              <div 
+                className="w-full flex items-center justify-center px-4 md:px-8"
+                style={{ overflow: "visible" }}
+              >
                 <Suspense fallback={
                   <div className="w-full h-[350px] md:h-[450px] flex items-center justify-center">
                     <div className="w-32 h-32 rounded-full border-2 border-primary/30 animate-pulse" />
