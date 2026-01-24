@@ -107,10 +107,17 @@ export default function Globe3D() {
   const displayMarkers = markers && markers.length > 0 ? markers : fallbackMarkers;
 
   return (
-    <div className="w-full h-[350px] md:h-[450px] relative flex items-center justify-center">
+    <div 
+      className="w-full h-[350px] md:h-[450px] relative flex items-center justify-center"
+      style={{ overflow: 'visible' }}
+    >
       <Canvas
-        camera={{ position: [0, 0, 2.8], fov: 40 }}
-        style={{ background: 'transparent' }}
+        camera={{ position: [0, 0, 3.2], fov: 35 }}
+        style={{ 
+          background: 'transparent',
+          overflow: 'visible',
+        }}
+        gl={{ antialias: true, alpha: true }}
       >
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} intensity={1} />
