@@ -26,8 +26,8 @@ const Home = () => {
       <main className="flex-1 pt-16 md:pt-20">
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-background">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(160_100%_33%_/_0.15),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,hsl(160_100%_33%_/_0.1),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(179_43%_47%_/_0.15),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,hsl(179_43%_47%_/_0.1),transparent_50%)]" />
         <div className="container py-12 md:py-20 lg:py-24 relative">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             {/* Left: Text Content */}

@@ -17,44 +17,44 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 0%;
 
-    /* SONGSS Brand Green - Official Logo Color */
-    --primary: 158 100% 32%;
+    /* SONGSS Brand Cyan - Official Logo Color #44aaa9 */
+    --primary: 179 43% 47%;
     --primary-foreground: 0 0% 100%;
 
-    /* Lighter Brand Green */
-    --secondary: 158 80% 40%;
+    /* Darker Brand Cyan #347b7a */
+    --secondary: 179 41% 34%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 158 20% 96%;
-    --muted-foreground: 158 15% 40%;
+    --muted: 179 20% 96%;
+    --muted-foreground: 179 15% 40%;
 
-    --accent: 158 90% 35%;
+    --accent: 179 43% 42%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 158 20% 88%;
-    --input: 158 20% 90%;
-    --ring: 158 100% 32%;
+    --border: 179 20% 88%;
+    --input: 179 20% 90%;
+    --ring: 179 43% 47%;
 
     --radius: 0.75rem;
 
-    /* Custom tokens - Brand Green variations */
-    --gradient-primary: linear-gradient(135deg, hsl(158 100% 32%) 0%, hsl(158 80% 40%) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(158 100% 32% / 0.1) 0%, hsl(0 0% 100%) 100%);
-    --gradient-card: linear-gradient(135deg, hsl(158 100% 32% / 0.05) 0%, hsl(158 80% 40% / 0.1) 100%);
-    --shadow-card: 0 4px 24px -4px hsl(158 100% 32% / 0.15);
-    --shadow-hero: 0 20px 60px -15px hsl(158 100% 32% / 0.3);
+    /* Custom tokens - Brand Cyan variations */
+    --gradient-primary: linear-gradient(135deg, hsl(179 43% 47%) 0%, hsl(179 41% 34%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(179 43% 47% / 0.1) 0%, hsl(0 0% 100%) 100%);
+    --gradient-card: linear-gradient(135deg, hsl(179 43% 47% / 0.05) 0%, hsl(179 41% 34% / 0.1) 100%);
+    --shadow-card: 0 4px 24px -4px hsl(179 43% 47% / 0.15);
+    --shadow-hero: 0 20px 60px -15px hsl(179 43% 47% / 0.3);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 0 0% 0%;
-    --sidebar-primary: 158 100% 32%;
+    --sidebar-primary: 179 43% 47%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 158 80% 40%;
+    --sidebar-accent: 179 41% 34%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 158 20% 88%;
-    --sidebar-ring: 158 100% 32%;
+    --sidebar-border: 179 20% 88%;
+    --sidebar-ring: 179 43% 47%;
   }
 
   .dark {
@@ -67,42 +67,42 @@
     --popover: 0 0% 4%;
     --popover-foreground: 0 0% 100%;
 
-    /* SONGSS Brand Green - Official Logo Color */
-    --primary: 158 100% 32%;
+    /* SONGSS Brand Cyan - Official Logo Color #44aaa9 */
+    --primary: 179 43% 47%;
     --primary-foreground: 0 0% 100%;
 
-    /* Darker Brand Green for dark mode */
-    --secondary: 158 70% 28%;
+    /* Darker Brand Cyan #347b7a for dark mode */
+    --secondary: 179 41% 34%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 0 0% 10%;
     --muted-foreground: 0 0% 70%;
 
-    --accent: 158 90% 30%;
+    --accent: 179 43% 38%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 158 30% 12%;
-    --input: 158 20% 15%;
-    --ring: 158 100% 32%;
+    --border: 179 30% 12%;
+    --input: 179 20% 15%;
+    --ring: 179 43% 47%;
 
-    /* Brand Green gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(158 100% 32%) 0%, hsl(158 80% 40%) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(158 100% 32% / 0.15) 0%, hsl(0 0% 0%) 100%);
-    --gradient-card: linear-gradient(135deg, hsl(158 100% 32% / 0.1) 0%, hsl(158 80% 40% / 0.05) 100%);
-    --shadow-card: 0 4px 24px -4px hsl(158 100% 32% / 0.25);
-    --shadow-hero: 0 20px 60px -15px hsl(158 100% 32% / 0.4);
+    /* Brand Cyan gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(179 43% 47%) 0%, hsl(179 41% 34%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(179 43% 47% / 0.15) 0%, hsl(0 0% 0%) 100%);
+    --gradient-card: linear-gradient(135deg, hsl(179 43% 47% / 0.1) 0%, hsl(179 41% 34% / 0.05) 100%);
+    --shadow-card: 0 4px 24px -4px hsl(179 43% 47% / 0.25);
+    --shadow-hero: 0 20px 60px -15px hsl(179 43% 47% / 0.4);
 
     --sidebar-background: 0 0% 4%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 158 100% 32%;
+    --sidebar-primary: 179 43% 47%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 158 50% 15%;
+    --sidebar-accent: 179 41% 25%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 158 30% 12%;
-    --sidebar-ring: 158 100% 32%;
+    --sidebar-border: 179 30% 12%;
+    --sidebar-ring: 179 43% 47%;
   }
 }
 
