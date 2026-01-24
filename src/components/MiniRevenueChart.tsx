@@ -34,14 +34,14 @@ export default function MiniRevenueChart() {
           <AreaChart data={chartData}>
             <defs>
               <linearGradient id="miniGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#00A676" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#00A676" stopOpacity={0} />
+                <stop offset="5%" stopColor="#44aaa9" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#44aaa9" stopOpacity={0} />
               </linearGradient>
             </defs>
             <Area
               type="monotone"
               dataKey="value"
-              stroke="#00A676"
+              stroke="#44aaa9"
               strokeWidth={2}
               fill="url(#miniGradient)"
             />

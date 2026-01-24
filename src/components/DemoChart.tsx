@@ -84,12 +84,12 @@ const DemoChart = ({ type = "area", data }: DemoChartProps) => {
         <AreaChart data={areaData}>
           <defs>
             <linearGradient id="colorStreams" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(160 100% 33%)" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="hsl(160 100% 33%)" stopOpacity={0} />
+              <stop offset="5%" stopColor="hsl(179 43% 47%)" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="hsl(179 43% 47%)" stopOpacity={0} />
             </linearGradient>
             <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(165 100% 42%)" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="hsl(165 100% 42%)" stopOpacity={0} />
+              <stop offset="5%" stopColor="hsl(179 41% 34%)" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="hsl(179 41% 34%)" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -116,7 +116,7 @@ const DemoChart = ({ type = "area", data }: DemoChartProps) => {
           <Area
             type="monotone"
             dataKey="streams"
-            stroke="hsl(160 100% 33%)"
+            stroke="hsl(179 43% 47%)"
             strokeWidth={2}
             fillOpacity={1}
             fill="url(#colorStreams)"
@@ -124,7 +124,7 @@ const DemoChart = ({ type = "area", data }: DemoChartProps) => {
           <Area
             type="monotone"
             dataKey="revenue"
-            stroke="hsl(165 100% 42%)"
+            stroke="hsl(179 41% 34%)"
             strokeWidth={2}
             fillOpacity={1}
             fill="url(#colorRevenue)"

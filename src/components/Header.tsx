@@ -37,7 +37,7 @@ const Header = () => {
           <img 
             src={songssLogo} 
             alt="SONGSS Intelligence" 
-            className="h-12 md:h-16 w-auto object-contain"
+            className="h-12 md:h-[48px] w-auto object-contain"
           />
         </Link>
 

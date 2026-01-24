@@ -31,7 +31,7 @@ function GlobeMarker({ lat, lng, name, streams }: { lat: number; lng: number; na
     <group position={position}>
       <mesh>
         <sphereGeometry args={[0.03, 16, 16]} />
-        <meshBasicMaterial color="#00A676" />
+        <meshBasicMaterial color="#44aaa9" />
       </mesh>
       <Html distanceFactor={3} style={{ pointerEvents: 'none' }}>
         <div className="bg-card/90 backdrop-blur-sm border border-primary/30 rounded-lg px-2 py-1 text-xs whitespace-nowrap shadow-lg">
@@ -55,7 +55,7 @@ function AnimatedGlobe({ markers }: { markers: MetricsMarker[] }) {
 
   const wireframeMaterial = useMemo(() => 
     new THREE.MeshBasicMaterial({
-      color: '#00A676',
+      color: '#44aaa9',
       wireframe: true,
       transparent: true,
       opacity: 0.3,
@@ -90,7 +90,7 @@ function AnimatedGlobe({ markers }: { markers: MetricsMarker[] }) {
       {/* Glow effect */}
       <Sphere args={[1.1, 32, 32]}>
         <meshBasicMaterial 
-          color="#00A676" 
+          color="#44aaa9" 
           transparent 
           opacity={0.05} 
           side={THREE.BackSide}
@@ -114,7 +114,7 @@ export default function Globe3D() {
       >
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} intensity={1} />
-        <pointLight position={[-10, -10, -10]} intensity={0.5} color="#00A676" />
+        <pointLight position={[-10, -10, -10]} intensity={0.5} color="#44aaa9" />
         <AnimatedGlobe markers={displayMarkers} />
         <OrbitControls 
           enableZoom={false} 
