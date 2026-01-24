@@ -107,9 +107,9 @@ export default function Globe3D() {
   const displayMarkers = markers && markers.length > 0 ? markers : fallbackMarkers;
 
   return (
-    <div className="w-full h-[300px] md:h-[400px] relative">
+    <div className="w-full h-[350px] md:h-[450px] relative flex items-center justify-center">
       <Canvas
-        camera={{ position: [0, 0, 2.5], fov: 45 }}
+        camera={{ position: [0, 0, 2.8], fov: 40 }}
         style={{ background: 'transparent' }}
       >
         <ambientLight intensity={0.5} />
