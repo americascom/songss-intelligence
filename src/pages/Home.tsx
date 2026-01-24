@@ -67,9 +67,9 @@ const Home = () => {
               </div>
 
               {/* 3D Globe */}
-              <div className="w-full max-w-[400px] mx-auto">
+              <div className="w-full max-w-[450px] mx-auto flex items-center justify-center">
                 <Suspense fallback={
-                  <div className="w-full h-[300px] md:h-[400px] flex items-center justify-center">
+                  <div className="w-full h-[350px] md:h-[450px] flex items-center justify-center">
                     <div className="w-32 h-32 rounded-full border-2 border-primary/30 animate-pulse" />
                   </div>
                 }>
