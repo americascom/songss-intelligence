@@ -32,12 +32,12 @@ const Header = () => {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-      <div className="container flex items-center justify-between h-16 md:h-20">
-        <Link to="/" className="flex items-center gap-2">
+      <div className="container flex items-center justify-between h-20 md:h-24 py-2">
+        <Link to="/" className="flex items-center">
           <img 
             src={songssLogo} 
             alt="SONGSS Intelligence" 
-            className="h-12 md:h-[48px] w-auto object-contain"
+            className="h-14 md:h-[65px] w-auto object-contain"
           />
         </Link>
 
