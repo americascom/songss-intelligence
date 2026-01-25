@@ -1,28 +1,55 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+/**
+ * SONGSS Neural Intelligence Engine - Data Integration
+ * 
+ * Expected JSON response format from Neural Engine API:
+ * {
+ *   id: number,
+ *   region: string,              // Maps to country/city for globe markers
+ *   growth_projection: number,   // Primary metric for streams/revenue calculation
+ *   analysis_label: string,      // AI-generated insight label
+ *   updated_at: string           // ISO timestamp
+ * }
+ * 
+ * The growth_projection field is used as a base multiplier to calculate:
+ * - Total Streams: growth_projection * 1,000,000
+ * - Total Revenue: growth_projection * 50,000
+ * - Artists Count: regions * 150
+ */
+
+// Neural Engine API Response Type
+export interface NeuralEngineMetric {
+  id: number;
+  region: string;
+  growth_projection: number;
+  analysis_label: string;
+  updated_at: string;
+}
+
 // Country to lat/lng mapping for globe markers
 const countryCoordinates: Record<string, { lat: number; lng: number }> = {
-  "United States": { lat: 37.09, lng: -95.71 },
-  "United Kingdom": { lat: 51.51, lng: -0.13 },
-  "Germany": { lat: 51.17, lng: 10.45 },
-  "France": { lat: 46.23, lng: 2.21 },
-  "Japan": { lat: 36.20, lng: 138.25 },
-  "Brazil": { lat: -14.24, lng: -51.93 },
-  "Australia": { lat: -25.27, lng: 133.78 },
-  "Canada": { lat: 56.13, lng: -106.35 },
-  "Mexico": { lat: 23.63, lng: -102.55 },
-  "Spain": { lat: 40.46, lng: -3.75 },
-  "Italy": { lat: 41.87, lng: 12.57 },
-  "Netherlands": { lat: 52.13, lng: 5.29 },
-  "Sweden": { lat: 60.13, lng: 18.64 },
-  "South Korea": { lat: 35.91, lng: 127.77 },
-  "India": { lat: 20.59, lng: 78.96 },
-  "China": { lat: 35.86, lng: 104.20 },
-  "Argentina": { lat: -38.42, lng: -63.62 },
-  "South Africa": { lat: -30.56, lng: 22.94 },
-  "Belgium": { lat: 50.50, lng: 4.47 },
-  "Portugal": { lat: 39.40, lng: -8.22 },
+  "United States": { lat: 40.71, lng: -74.01 }, // New York
+  "United Kingdom": { lat: 51.51, lng: -0.13 }, // London
+  "Germany": { lat: 52.52, lng: 13.41 },
+  "France": { lat: 48.86, lng: 2.35 },
+  "Japan": { lat: 35.68, lng: 139.69 },
+  "Brazil": { lat: -23.55, lng: -46.63 }, // São Paulo
+  "Australia": { lat: -33.87, lng: 151.21 },
+  "Canada": { lat: 43.65, lng: -79.38 },
+  "Mexico": { lat: 19.43, lng: -99.13 },
+  "Spain": { lat: 40.42, lng: -3.70 },
+  "Italy": { lat: 41.90, lng: 12.50 },
+  "Netherlands": { lat: 52.37, lng: 4.90 },
+  "Sweden": { lat: 59.33, lng: 18.07 },
+  "South Korea": { lat: 37.57, lng: 126.98 },
+  "India": { lat: 19.08, lng: 72.88 },
+  "China": { lat: 31.23, lng: 121.47 },
+  "Argentina": { lat: -34.60, lng: -58.38 },
+  "South Africa": { lat: -33.93, lng: 18.42 },
+  "Belgium": { lat: 50.85, lng: 4.35 },
+  "Portugal": { lat: 38.72, lng: -9.14 },
 };
 
 export interface MetricsMarker {
@@ -38,6 +65,7 @@ export interface MetricsSummary {
   totalArtists: number;
   revenueData: { value: number }[];
   revenueChange: number;
+  analysisLabels?: string[];
 }
 
 function formatStreams(streams: number): string {
@@ -62,31 +90,31 @@ function formatRevenue(revenue: number): string {
 
 export function useMetricsMarkers() {
   return useQuery({
-    queryKey: ["metrics-markers"],
+    queryKey: ["metrics-markers", "neural-engine"],
     queryFn: async (): Promise<MetricsMarker[]> => {
       try {
-        // Fetch from external API endpoint
+        // Fetch from SONGSS Neural Intelligence Engine API
         const response = await fetch("https://api.songssintelligence.com/metrics");
         
         if (!response.ok) {
-          console.error("Error fetching metrics:", response.statusText);
+          console.error("Neural Engine API Error:", response.statusText);
           return [];
         }
 
-        const data = await response.json();
+        const data: NeuralEngineMetric[] = await response.json();
 
         if (!data || data.length === 0) {
           return [];
         }
 
-        // Group by region and sum growth_projection
+        // Process Neural Engine response - map region to globe markers
         const regionStreams: Record<string, number> = {};
-        data.forEach((row: { region: string; growth_projection: number }) => {
+        data.forEach((row) => {
           const region = row.region;
           regionStreams[region] = (regionStreams[region] || 0) + Number(row.growth_projection);
         });
 
-        // Convert to markers with coordinates
+        // Convert to markers with coordinates for major cities
         const markers: MetricsMarker[] = [];
         Object.entries(regionStreams).forEach(([region, streams]) => {
           const coords = countryCoordinates[region];
@@ -95,41 +123,43 @@ export function useMetricsMarkers() {
               name: region,
               lat: coords.lat,
               lng: coords.lng,
-              streams: formatStreams(streams),
+              streams: formatStreams(streams * 1000000), // Scale to realistic stream count
             });
           }
         });
 
         return markers.slice(0, 5); // Top 5 regions
       } catch (error) {
-        console.error("Error fetching metrics markers:", error);
+        console.error("Neural Engine connection error:", error);
         return [];
       }
     },
-    staleTime: 60000, // 1 minute
+    staleTime: 60000, // 1 minute cache
+    refetchInterval: 300000, // Refresh every 5 minutes
   });
 }
 
 export function useMetricsSummary() {
   return useQuery({
-    queryKey: ["metrics-summary"],
+    queryKey: ["metrics-summary", "neural-engine"],
     queryFn: async (): Promise<MetricsSummary> => {
       try {
-        // Fetch from external API endpoint
+        // Fetch from SONGSS Neural Intelligence Engine API
         const response = await fetch("https://api.songssintelligence.com/metrics");
         
         if (!response.ok) {
-          console.error("Error fetching metrics summary:", response.statusText);
+          console.error("Neural Engine API Error:", response.statusText);
           return {
             totalStreams: 0,
             totalRevenue: 0,
             totalArtists: 0,
             revenueData: [],
             revenueChange: 0,
+            analysisLabels: [],
           };
         }
 
-        const data = await response.json();
+        const data: NeuralEngineMetric[] = await response.json();
 
         if (!data || data.length === 0) {
           return {
@@ -138,25 +168,29 @@ export function useMetricsSummary() {
             totalArtists: 0,
             revenueData: [],
             revenueChange: 0,
+            analysisLabels: [],
           };
         }
 
-        // Calculate totals from growth_projection field
-        // Using growth_projection as a multiplier to generate realistic stream/revenue numbers
-        const totalGrowth = data.reduce((sum: number, row: { growth_projection: number }) => 
+        // Process Neural Engine metrics
+        // growth_projection is used as a base multiplier for realistic values
+        const totalGrowth = data.reduce((sum, row) => 
           sum + Number(row.growth_projection), 0);
         
-        // Scale growth_projection to realistic stream/revenue values
-        const totalStreams = Math.round(totalGrowth * 1000000); // Scale to millions of streams
+        // Scale to realistic stream/revenue values
+        const totalStreams = Math.round(totalGrowth * 1000000); // Scale to millions
         const totalRevenue = Math.round(totalGrowth * 50000); // Scale to revenue
         const totalArtists = data.length * 150; // Artists per region
 
-        // Generate revenue data for chart based on regions
-        const revenueData = data.map((row: { growth_projection: number }) => ({
+        // Extract analysis labels from Neural Engine
+        const analysisLabels = data.map(row => row.analysis_label).filter(Boolean);
+
+        // Generate revenue data for chart visualization
+        const revenueData = data.map((row) => ({
           value: Math.round(Number(row.growth_projection) * 15000),
         }));
 
-        // Calculate revenue change (compare last to first)
+        // Calculate revenue trend
         let revenueChange = 0;
         if (revenueData.length >= 2) {
           const first = revenueData[0].value;
@@ -172,19 +206,22 @@ export function useMetricsSummary() {
           totalArtists,
           revenueData: revenueData.length > 0 ? revenueData : [{ value: 0 }],
           revenueChange,
+          analysisLabels,
         };
       } catch (error) {
-        console.error("Error fetching metrics summary:", error);
+        console.error("Neural Engine connection error:", error);
         return {
           totalStreams: 0,
           totalRevenue: 0,
           totalArtists: 0,
           revenueData: [],
           revenueChange: 0,
+          analysisLabels: [],
         };
       }
     },
-    staleTime: 60000, // 1 minute
+    staleTime: 60000, // 1 minute cache
+    refetchInterval: 300000, // Refresh every 5 minutes
   });
 }
 
@@ -198,5 +235,6 @@ export function useFormattedMetrics() {
     totalArtists: summary?.totalArtists.toString() || "0",
     revenueData: summary?.revenueData || [{ value: 0 }],
     revenueChange: summary?.revenueChange || 0,
+    analysisLabels: summary?.analysisLabels || [],
   };
 }

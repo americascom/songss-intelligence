@@ -117,7 +117,7 @@ const Dashboard = () => {
       <main className="flex-1 pt-16 md:pt-20">
         <div className="container py-8">
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-foreground">Dashboard</h1>
               <p className="text-muted-foreground">Your global music performance at a glance</p>
@@ -131,6 +131,25 @@ const Dashboard = () => {
                 <Globe className="w-4 h-4 mr-2" />
                 All Regions
               </Button>
+            </div>
+          </div>
+
+          {/* Neural Intelligence Engine Banner */}
+          <div className="mb-8 p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-foreground" />
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.12em] text-primary font-semibold" style={{ fontVariant: 'small-caps' }}>
+                  Powered by SONGSS Neural Intelligence Engine
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">Real-time analytics • AI predictions • Global insights</p>
+              </div>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 text-xs text-primary">
+              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              Live
             </div>
           </div>
 
