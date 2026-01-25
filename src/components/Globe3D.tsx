@@ -4,13 +4,13 @@ import { useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import { useMetricsMarkers, MetricsMarker } from '@/hooks/useMetricsData';
 
-// Fallback markers when no data is available
+// Fallback markers positioned for optimal visibility on load (London, New York, Brazil)
 const fallbackMarkers: MetricsMarker[] = [
-  { name: 'Glastonbury', lat: 51.15, lng: -2.58, streams: '2.1M' },
-  { name: 'Coachella', lat: 33.68, lng: -116.24, streams: '1.8M' },
-  { name: 'Tomorrowland', lat: 51.09, lng: 4.38, streams: '1.5M' },
-  { name: 'Rock in Rio', lat: -22.97, lng: -43.40, streams: '1.2M' },
-  { name: 'Fuji Rock', lat: 36.93, lng: 138.86, streams: '890K' },
+  { name: 'London', lat: 51.51, lng: -0.13, streams: '2.4M' },
+  { name: 'New York', lat: 40.71, lng: -74.01, streams: '3.1M' },
+  { name: 'São Paulo', lat: -23.55, lng: -46.63, streams: '1.8M' },
+  { name: 'Los Angeles', lat: 34.05, lng: -118.24, streams: '2.2M' },
+  { name: 'Tokyo', lat: 35.68, lng: 139.69, streams: '1.5M' },
 ];
 
 function latLngToVector3(lat: number, lng: number, radius: number) {
@@ -108,11 +108,14 @@ export default function Globe3D() {
 
   return (
     <div 
-      className="w-full h-[350px] md:h-[450px] relative flex items-center justify-center"
-      style={{ overflow: 'visible' }}
+      className="w-full h-[320px] sm:h-[380px] md:h-[420px] lg:h-[450px] relative flex items-center justify-center mx-auto"
+      style={{ overflow: 'visible', maxWidth: '100%' }}
     >
       <Canvas
-        camera={{ position: [0, 0, 3.2], fov: 35 }}
+        camera={{ 
+          position: [-1.5, 0.8, 2.8], 
+          fov: 38 
+        }}
         style={{ 
           background: 'transparent',
           overflow: 'visible',

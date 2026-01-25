@@ -69,13 +69,13 @@ const Home = () => {
                 <FestivalIcons />
               </div>
 
-              {/* 3D Globe */}
+              {/* 3D Globe - Fully responsive container */}
               <div 
-                className="w-full flex items-center justify-center px-4 md:px-8"
-                style={{ overflow: "visible" }}
+                className="w-full flex items-center justify-center"
+                style={{ overflow: 'visible', minHeight: '320px' }}
               >
                 <Suspense fallback={
-                  <div className="w-full h-[350px] md:h-[450px] flex items-center justify-center">
+                  <div className="w-full h-[320px] sm:h-[380px] md:h-[420px] flex items-center justify-center">
                     <div className="w-32 h-32 rounded-full border-2 border-primary/30 animate-pulse" />
                   </div>
                 }>

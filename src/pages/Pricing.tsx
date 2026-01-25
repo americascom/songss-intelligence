@@ -148,74 +148,60 @@ const Pricing = () => {
           <p className="text-sm text-muted-foreground mb-8">Trusted data sources & platform integrations</p>
           <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10">
             {/* Spotify */}
-            <div className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
               <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
                 <span className="text-foreground font-bold text-sm">S</span>
               </div>
-              <span className="font-semibold text-foreground text-sm">Spotify</span>
-            </div>
-            {/* YouTube */}
-            <div className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity">
-              <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
-                <span className="text-foreground font-bold text-sm">▶</span>
-              </div>
-              <span className="font-semibold text-foreground text-sm">YouTube</span>
+              <span className="font-medium text-foreground/80 text-sm">Spotify</span>
             </div>
             {/* Apple Music */}
-            <div className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
               <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
                 <span className="text-foreground font-bold text-sm">♪</span>
               </div>
-              <span className="font-semibold text-foreground text-sm">Apple Music</span>
+              <span className="font-medium text-foreground/80 text-sm">Apple Music</span>
+            </div>
+            {/* YouTube Music */}
+            <div className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
+              <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
+                <span className="text-foreground font-bold text-sm">▶</span>
+              </div>
+              <span className="font-medium text-foreground/80 text-sm">YouTube Music</span>
             </div>
             {/* TikTok */}
-            <div className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
               <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
                 <span className="text-foreground font-bold text-sm">♫</span>
               </div>
-              <span className="font-semibold text-foreground text-sm">TikTok</span>
+              <span className="font-medium text-foreground/80 text-sm">TikTok</span>
             </div>
             {/* Deezer */}
-            <div className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
               <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
                 <span className="text-foreground font-bold text-sm">D</span>
               </div>
-              <span className="font-semibold text-foreground text-sm">Deezer</span>
-            </div>
-            {/* YouTube Music */}
-            <div className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity">
-              <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
-                <span className="text-foreground font-bold text-sm">YM</span>
-              </div>
-              <span className="font-semibold text-foreground text-sm">YouTube Music</span>
+              <span className="font-medium text-foreground/80 text-sm">Deezer</span>
             </div>
             {/* SoundCloud */}
-            <div className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
               <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
-                <span className="text-foreground font-bold text-sm">SC</span>
+                <span className="text-foreground font-bold text-sm">☁</span>
               </div>
-              <span className="font-semibold text-foreground text-sm">SoundCloud</span>
+              <span className="font-medium text-foreground/80 text-sm">SoundCloud</span>
             </div>
             {/* Tidal */}
-            <div className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
               <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
                 <span className="text-foreground font-bold text-sm">T</span>
               </div>
-              <span className="font-semibold text-foreground text-sm">Tidal</span>
+              <span className="font-medium text-foreground/80 text-sm">Tidal</span>
             </div>
-            {/* Discogs */}
-            <div className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity">
+            {/* Amazon Music */}
+            <div className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
               <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
-                <span className="text-foreground font-bold text-sm">DC</span>
+                <span className="text-foreground font-bold text-sm">A</span>
               </div>
-              <span className="font-semibold text-foreground text-sm">Discogs</span>
-            </div>
-            {/* Napster */}
-            <div className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity">
-              <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
-                <span className="text-foreground font-bold text-sm">N</span>
-              </div>
-              <span className="font-semibold text-foreground text-sm">Napster</span>
+              <span className="font-medium text-foreground/80 text-sm">Amazon Music</span>
             </div>
           </div>
         </div>

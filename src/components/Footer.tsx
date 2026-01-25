@@ -45,12 +45,10 @@ const Footer = () => {
           <p className="text-sm text-muted-foreground">
             © 2026 SONGSS Intelligence. All rights reserved.
           </p>
-          <div className="flex items-center gap-4">
-            <span className="text-xs text-muted-foreground">Powered by</span>
-            <div className="flex items-center gap-3 text-muted-foreground">
-              <span className="text-xs font-medium">Spotify</span>
-              <span className="text-xs font-medium">YouTube</span>
-            </div>
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] uppercase tracking-[0.15em] text-primary font-medium" style={{ fontVariant: 'small-caps' }}>
+              Powered by SONGSS Neural Intelligence Engine
+            </span>
           </div>
         </div>
       </div>
