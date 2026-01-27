@@ -8,6 +8,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import FestivalIcons from "@/components/FestivalIcons";
 import MiniRevenueChart from "@/components/MiniRevenueChart";
+import ArtistSearch from "@/components/ArtistSearch";
 import { useFormattedMetrics } from "@/hooks/useMetricsData";
 
 const Globe3D = lazy(() => import("@/components/Globe3D"));
@@ -56,6 +57,11 @@ const Home = () => {
                     View Demo
                   </Button>
                 </Link>
+              </div>
+
+              {/* Artist Search Bar */}
+              <div className="mt-10 animate-fade-in" style={{ animationDelay: "400ms" }}>
+                <ArtistSearch />
               </div>
             </div>
 
