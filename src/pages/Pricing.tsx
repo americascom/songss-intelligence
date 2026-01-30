@@ -56,8 +56,8 @@ const plans = [
   {
     name: "Tier 4",
     displayName: "Taylor Made",
-    price: "$499",
-    period: "month",
+    price: "Custom",
+    period: "",
     description: "Bespoke intelligence suite with ROI projections & advisory.",
     features: [
       "Songss Neural Engine™: Proprietary deep-learning for global market prediction",
@@ -69,7 +69,9 @@ const plans = [
       "Quarterly Business Reviews",
     ],
     isPopular: true,
-    ctaText: "Request Consultation",
+    ctaText: "Talk to our AI Consultant",
+    ctaLink: "/chat",
+    subtext: "Tailored solutions for labels, investors, and global artist management.",
   },
 ];
 
@@ -104,6 +106,8 @@ const Pricing = () => {
                 features={plan.features}
                 isPopular={plan.isPopular}
                 ctaText={plan.ctaText}
+                ctaLink={plan.ctaLink}
+                subtext={plan.subtext}
                 delay={index * 100}
               />
             ))}
