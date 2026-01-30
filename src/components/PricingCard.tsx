@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface PricingCardProps {
   name: string;
@@ -9,6 +10,8 @@ interface PricingCardProps {
   features: string[];
   isPopular?: boolean;
   ctaText: string;
+  ctaLink?: string;
+  subtext?: string;
   delay?: number;
 }
 
@@ -20,8 +23,23 @@ const PricingCard = ({
   features,
   isPopular = false,
   ctaText,
+  ctaLink,
+  subtext,
   delay = 0,
 }: PricingCardProps) => {
+  const ButtonContent = (
+    <Button
+      className={`w-full font-semibold ${
+        isPopular
+          ? "gradient-primary hover:opacity-90"
+          : "bg-foreground text-background hover:bg-foreground/90"
+      }`}
+      size="lg"
+    >
+      {ctaText}
+    </Button>
+  );
+
   return (
     <div
       className={`relative bg-card rounded-2xl p-6 md:p-8 border transition-all duration-300 animate-fade-in ${
@@ -44,7 +62,7 @@ const PricingCard = ({
 
       <div className="mb-6">
         <span className="text-4xl md:text-5xl font-bold text-foreground">{price}</span>
-        <span className="text-muted-foreground">/{period}</span>
+        {period && <span className="text-muted-foreground">/{period}</span>}
       </div>
 
       <ul className="space-y-3 mb-8">
@@ -58,16 +76,17 @@ const PricingCard = ({
         ))}
       </ul>
 
-      <Button
-        className={`w-full font-semibold ${
-          isPopular
-            ? "gradient-primary hover:opacity-90"
-            : "bg-foreground text-background hover:bg-foreground/90"
-        }`}
-        size="lg"
-      >
-        {ctaText}
-      </Button>
+      {ctaLink ? (
+        <Link to={ctaLink}>{ButtonContent}</Link>
+      ) : (
+        ButtonContent
+      )}
+
+      {subtext && (
+        <p className="mt-4 text-xs text-muted-foreground text-center leading-relaxed">
+          {subtext}
+        </p>
+      )}
     </div>
   );
 };
