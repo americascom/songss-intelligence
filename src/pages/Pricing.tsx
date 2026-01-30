@@ -18,6 +18,7 @@ const plans = [
       "Weekly email digests",
       "1 artist profile",
     ],
+    isPopular: true,
     ctaText: "Start Free Trial",
   },
   {
@@ -68,10 +69,9 @@ const plans = [
       "Dedicated Strategic Advisor",
       "Quarterly Business Reviews",
     ],
-    isPopular: true,
     ctaText: "Talk to our AI Consultant",
     ctaLink: "/chat",
-    subtext: "Tailored solutions for labels, investors, and global artist management.",
+    subtext: "Tailored for labels, investors, and global management.",
   },
 ];
 
