@@ -17,6 +17,7 @@ const plans = [
       "Global Hotspots preview (top countries and cities)",
       "Email support",
     ],
+    isPopular: true,
     ctaText: "Get Started",
   },
   {
@@ -32,7 +33,6 @@ const plans = [
       "30-day growth trends across major DSPs",
       "Practical suggestions for organic audience growth",
     ],
-    isPopular: true,
     ctaText: "Get Started",
   },
   {
