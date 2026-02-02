@@ -105,8 +105,9 @@ const Pricing = () => {
       {/* Pricing Cards */}
       <section className="py-12 md:py-16 -mt-8">
         <div className="container">
-          <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4 max-w-[1400px] mx-auto">
-            {plans.map((plan, index) => (
+          {/* First row: 4 plans */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-[1200px] mx-auto">
+            {plans.slice(0, 4).map((plan, index) => (
               <PricingCard
                 key={index}
                 name={plan.displayName}
@@ -121,6 +122,22 @@ const Pricing = () => {
                 delay={index * 100}
               />
             ))}
+          </div>
+          
+          {/* Second row: Taylor Made */}
+          <div className="mt-6 max-w-2xl mx-auto">
+            <PricingCard
+              name={plans[4].displayName}
+              price={plans[4].price}
+              period={plans[4].period}
+              description={plans[4].description}
+              features={plans[4].features}
+              isPopular={plans[4].isPopular}
+              ctaText={plans[4].ctaText}
+              ctaLink={plans[4].ctaLink}
+              subtext={plans[4].subtext}
+              delay={400}
+            />
           </div>
         </div>
       </section>
