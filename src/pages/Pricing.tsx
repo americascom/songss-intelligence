@@ -7,67 +7,73 @@ import Footer from "@/components/Footer";
 const plans = [
   {
     name: "Tier 1",
-    displayName: "Artist Pro",
-    price: "$29",
+    displayName: "Artist Indie",
+    price: "$9.90",
     period: "month",
-    description: "Essential market intelligence for independent artists.",
+    description: "Starter analytics for independent artists.",
     features: [
-      "Up to 70 analytics insights",
-      "Stream tracking across platforms",
-      "Basic revenue reports",
-      "Weekly email digests",
-      "1 artist profile",
-    ],
-    isPopular: true,
-    ctaText: "Start Free Trial",
-  },
-  {
-    name: "Tier 2",
-    displayName: "Max",
-    price: "$99",
-    period: "month",
-    description: "Advanced business intelligence with AI-powered analysis.",
-    features: [
-      "250+ deep analytics insights",
-      "AI-powered trend predictions",
-      "Advanced revenue forecasting",
-      "Real-time notifications",
-      "Up to 10 artist profiles",
-      "Priority support",
+      "Performance overview across Spotify, YouTube and SoundCloud",
+      "3 Deep Scan credits per month",
+      "Global Hotspots preview (top countries and cities)",
+      "Email support",
     ],
     ctaText: "Get Started",
   },
   {
-    name: "Tier 3",
-    displayName: "Premium B2B",
-    price: "$199",
+    name: "Tier 2",
+    displayName: "Artist Indie Growth",
+    price: "$29",
     period: "month",
-    description: "Enterprise-grade global market analysis for labels.",
+    description: "For artists starting to grow across multiple territories.",
     features: [
-      "Unlimited analytics insights",
-      "Custom API access",
-      "White-label reports",
-      "Dedicated account manager",
-      "Unlimited artist profiles",
-      "SLA guarantee",
-      "Custom integrations",
+      "Everything in Artist Indie",
+      "5 Deep Scan credits per month",
+      "Extended Hotspots (countries and regions)",
+      "30-day growth trends across major DSPs",
+      "Practical suggestions for organic audience growth",
     ],
-    ctaText: "Contact Sales",
+    isPopular: true,
+    ctaText: "Get Started",
+  },
+  {
+    name: "Tier 3",
+    displayName: "Pro / Team",
+    price: "$99",
+    period: "month",
+    description: "For teams, labels and agencies managing several artists.",
+    features: [
+      "Everything in Artist Indie Growth",
+      "25 Deep Scan credits per month",
+      "Multi-artist and multi-user access",
+      "Advanced strategy reports and campaign recommendations",
+    ],
+    ctaText: "Get Started",
   },
   {
     name: "Tier 4",
+    displayName: "Enterprise",
+    price: "$199",
+    period: "month",
+    description: "For larger catalogs and operations.",
+    features: [
+      "Everything in Pro / Team",
+      "100 Deep Scan credits per month",
+      "Unlimited team members",
+      "Custom dashboards by country and continent",
+      "Priority support and onboarding",
+    ],
+    ctaText: "Get Started",
+  },
+  {
+    name: "Tier 5",
     displayName: "Taylor Made",
     price: "Custom",
     period: "",
-    description: "Bespoke intelligence suite with ROI projections & advisory.",
+    description: "For majors, large labels and investors.",
     features: [
-      "Songss Neural Engine™: Proprietary deep-learning for global market prediction",
-      "Territorial Performance Matrix: Granular insights by continent, country & state",
-      "Predictive Growth Modeling: Data-backed artist scalability projections",
-      "Investment & Ad ROI Strategy: Strategic marketing budget allocation",
-      "Fan Persona & Behavioral Analytics: Advanced demographic mapping",
-      "Dedicated Strategic Advisor",
-      "Quarterly Business Reviews",
+      "Tailored Deep Scan models for catalogs and rosters",
+      "Global market intelligence by country, region and platform",
+      "Custom reporting, alerts and private briefings",
     ],
     ctaText: "Talk to our AI Consultant",
     ctaLink: "/chat",
@@ -95,7 +101,7 @@ const Pricing = () => {
       {/* Pricing Cards */}
       <section className="py-12 md:py-16 -mt-8">
         <div className="container">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4 max-w-[1400px] mx-auto">
             {plans.map((plan, index) => (
               <PricingCard
                 key={index}
@@ -125,55 +131,62 @@ const Pricing = () => {
             <table className="w-full max-w-6xl mx-auto">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-4 px-3 font-medium text-foreground">Capability</th>
-                  <th className="text-center py-4 px-3 font-medium text-foreground text-sm">Tier 1</th>
-                  <th className="text-center py-4 px-3 font-medium text-foreground text-sm">Tier 2</th>
-                  <th className="text-center py-4 px-3 font-medium text-foreground text-sm">Tier 3</th>
-                  <th className="text-center py-4 px-3 font-medium text-primary text-sm">Tier 4</th>
+                  <th className="text-left py-4 px-2 font-medium text-foreground text-xs">Capability</th>
+                  <th className="text-center py-4 px-2 font-medium text-foreground text-xs">Indie</th>
+                  <th className="text-center py-4 px-2 font-medium text-foreground text-xs">Growth</th>
+                  <th className="text-center py-4 px-2 font-medium text-foreground text-xs">Pro</th>
+                  <th className="text-center py-4 px-2 font-medium text-foreground text-xs">Enterprise</th>
+                  <th className="text-center py-4 px-2 font-medium text-primary text-xs">Taylor Made</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {[
-                  { feature: "Analytics Insights", t1: "70", t2: "250+", t3: "Unlimited", t4: "Unlimited+" },
-                  { feature: "Artist Profiles", t1: "1", t2: "10", t3: "Unlimited", t4: "Unlimited" },
-                  { feature: "AI Predictions", t1: false, t2: true, t3: true, t4: true },
-                  { feature: "Neural Engine™", t1: false, t2: false, t3: false, t4: true },
-                  { feature: "Territorial Matrix", t1: false, t2: false, t3: false, t4: true },
-                  { feature: "Predictive Growth Modeling", t1: false, t2: false, t3: true, t4: true },
-                  { feature: "ROI Strategy Advisory", t1: false, t2: false, t3: false, t4: true },
-                  { feature: "Fan Persona Analytics", t1: false, t2: false, t3: true, t4: true },
-                  { feature: "API Access", t1: false, t2: false, t3: true, t4: true },
-                  { feature: "White-label Reports", t1: false, t2: false, t3: true, t4: true },
-                  { feature: "Dedicated Advisor", t1: false, t2: false, t3: false, t4: true },
+                  { feature: "Deep Scan Credits", t1: "3", t2: "5", t3: "25", t4: "100", t5: "Custom" },
+                  { feature: "DSP Coverage", t1: "3", t2: "Major", t3: "Major", t4: "All", t5: "All+" },
+                  { feature: "Global Hotspots", t1: "Preview", t2: "Extended", t3: "Full", t4: "Custom", t5: "Custom" },
+                  { feature: "Growth Trends", t1: false, t2: true, t3: true, t4: true, t5: true },
+                  { feature: "Multi-Artist Access", t1: false, t2: false, t3: true, t4: true, t5: true },
+                  { feature: "Strategy Reports", t1: false, t2: false, t3: true, t4: true, t5: true },
+                  { feature: "Custom Dashboards", t1: false, t2: false, t3: false, t4: true, t5: true },
+                  { feature: "Priority Support", t1: false, t2: false, t3: false, t4: true, t5: true },
+                  { feature: "Private Briefings", t1: false, t2: false, t3: false, t4: false, t5: true },
+                  { feature: "Tailored Models", t1: false, t2: false, t3: false, t4: false, t5: true },
                 ].map((row, index) => (
                   <tr key={index}>
-                    <td className="py-4 px-3 text-foreground/80 text-sm">{row.feature}</td>
-                    <td className="py-4 px-3 text-center">
+                    <td className="py-3 px-2 text-foreground/80 text-xs">{row.feature}</td>
+                    <td className="py-3 px-2 text-center">
                       {typeof row.t1 === "boolean" ? (
-                        row.t1 ? <Check className="w-5 h-5 text-primary mx-auto" /> : <span className="text-muted-foreground">—</span>
+                        row.t1 ? <Check className="w-4 h-4 text-primary mx-auto" /> : <span className="text-muted-foreground">—</span>
                       ) : (
-                        <span className="text-foreground/80 text-sm">{row.t1}</span>
+                        <span className="text-foreground/80 text-xs">{row.t1}</span>
                       )}
                     </td>
-                    <td className="py-4 px-3 text-center">
+                    <td className="py-3 px-2 text-center">
                       {typeof row.t2 === "boolean" ? (
-                        row.t2 ? <Check className="w-5 h-5 text-primary mx-auto" /> : <span className="text-muted-foreground">—</span>
+                        row.t2 ? <Check className="w-4 h-4 text-primary mx-auto" /> : <span className="text-muted-foreground">—</span>
                       ) : (
-                        <span className="text-foreground/80 text-sm">{row.t2}</span>
+                        <span className="text-foreground/80 text-xs">{row.t2}</span>
                       )}
                     </td>
-                    <td className="py-4 px-3 text-center">
+                    <td className="py-3 px-2 text-center">
                       {typeof row.t3 === "boolean" ? (
-                        row.t3 ? <Check className="w-5 h-5 text-primary mx-auto" /> : <span className="text-muted-foreground">—</span>
+                        row.t3 ? <Check className="w-4 h-4 text-primary mx-auto" /> : <span className="text-muted-foreground">—</span>
                       ) : (
-                        <span className="text-foreground/80 text-sm">{row.t3}</span>
+                        <span className="text-foreground/80 text-xs">{row.t3}</span>
                       )}
                     </td>
-                    <td className="py-4 px-3 text-center bg-primary/5">
+                    <td className="py-3 px-2 text-center">
                       {typeof row.t4 === "boolean" ? (
-                        row.t4 ? <Check className="w-5 h-5 text-primary mx-auto" /> : <span className="text-muted-foreground">—</span>
+                        row.t4 ? <Check className="w-4 h-4 text-primary mx-auto" /> : <span className="text-muted-foreground">—</span>
                       ) : (
-                        <span className="text-foreground font-medium text-sm">{row.t4}</span>
+                        <span className="text-foreground/80 text-xs">{row.t4}</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-2 text-center bg-primary/5">
+                      {typeof row.t5 === "boolean" ? (
+                        row.t5 ? <Check className="w-4 h-4 text-primary mx-auto" /> : <span className="text-muted-foreground">—</span>
+                      ) : (
+                        <span className="text-foreground font-medium text-xs">{row.t5}</span>
                       )}
                     </td>
                   </tr>
