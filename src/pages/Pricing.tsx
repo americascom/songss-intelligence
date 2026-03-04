@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import PricingCard from "@/components/PricingCard";
-import { Check } from "lucide-react";
+import { Check, Shield } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
@@ -138,6 +138,27 @@ const Pricing = () => {
               subtext={plans[4].subtext}
               delay={400}
             />
+          </div>
+        </div>
+      </section>
+
+      {/* Payment Trust Section */}
+      <section className="py-10 md:py-14">
+        <div className="container">
+          <div className="max-w-2xl mx-auto text-center bg-card/80 backdrop-blur-sm border border-primary/20 rounded-2xl p-8 md:p-10 shadow-lg">
+            <div className="p-3 rounded-full bg-primary/10 w-fit mx-auto mb-5">
+              <Shield className="w-7 h-7 text-primary" />
+            </div>
+            <p className="text-foreground/90 text-sm md:text-base leading-relaxed mb-3">
+              All payments processed securely by <span className="font-semibold text-foreground">AmericasPay</span> —
+              <br className="hidden sm:block" />
+              Americascom's payment infrastructure, powered by Stripe.
+              <br />
+              Credit cards, debit cards, and international payments accepted worldwide.
+            </p>
+            <p className="text-muted-foreground text-xs md:text-sm">
+              Americascom, Inc. is a C Corporation (C Corp). Delaware, USA.
+            </p>
           </div>
         </div>
       </section>
