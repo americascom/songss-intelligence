@@ -166,6 +166,25 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Trust Bar Section */}
+      <section className="py-10 md:py-14 bg-background border-t border-border/30">
+        <div className="container">
+          <p className="text-center text-xs uppercase tracking-[0.2em] font-medium text-primary/60 mb-8">
+            Enterprise Infrastructure You Can Trust
+          </p>
+          <div className="flex flex-wrap justify-center items-center gap-8 md:gap-14">
+            {["ASCAP Member", "Powered by Cloudflare", "WWTV Play Infrastructure"].map((badge) => (
+              <span
+                key={badge}
+                className="text-sm md:text-base font-medium text-muted-foreground/50 tracking-wide"
+              >
+                {badge}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
       <section className="py-16 md:py-24 bg-muted/30">
         <div className="container">
