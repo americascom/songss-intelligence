@@ -8,8 +8,13 @@ const Footer = () => {
           <div className="col-span-2 md:col-span-1">
             <h3 className="text-2xl font-bold text-foreground mb-2">SONGSS</h3>
             <p className="text-xs text-primary mb-4">Intelligence</p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground mb-3">
               Global music analytics for artists, labels, and industry professionals.
+            </p>
+            <p className="text-xs text-muted-foreground/70 leading-relaxed">
+              A product of Americascom, Inc. — Registered in Delaware, USA.
+              <br />
+              Payments processed by AmericasPay, by Stripe Technology.
             </p>
           </div>
 
@@ -43,11 +48,11 @@ const Footer = () => {
 
         <div className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © 2026 SONGSS Intelligence. All rights reserved.
+            © 2026 Americascom, Inc. All rights reserved. SONGSS Intelligence is a trademark of Americascom, Inc.
           </p>
           <div className="flex items-center gap-3">
-            <span className="text-[11px] uppercase tracking-[0.15em] text-primary font-medium" style={{ fontVariant: 'small-caps' }}>
-              Powered by SONGSS Neural Intelligence Engine
+            <span className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60 font-medium" style={{ fontVariant: 'small-caps' }}>
+              Powered by Americascom Neural Intelligence · Opus Maximus - Powered by Claude · Anthropic
             </span>
           </div>
         </div>
