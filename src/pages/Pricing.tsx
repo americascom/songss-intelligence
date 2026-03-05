@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import PricingCard from "@/components/PricingCard";
-import { Check, Shield } from "lucide-react";
+import { Check, Shield, BarChart3 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
@@ -143,14 +143,15 @@ const Pricing = () => {
       </section>
 
       {/* Payment Trust Section */}
-      <section className="py-10 md:py-14">
+      <section className="py-12 md:py-16">
         <div className="container">
-          <div className="max-w-2xl mx-auto text-center bg-card/80 backdrop-blur-sm border border-primary/20 rounded-2xl p-8 md:p-10 shadow-lg">
-            <div className="p-3 rounded-full bg-primary/10 w-fit mx-auto mb-5">
-              <Shield className="w-7 h-7 text-primary" />
+          <div className="max-w-3xl mx-auto text-center bg-card/90 backdrop-blur-md border-2 border-primary/30 rounded-2xl p-10 md:p-14 shadow-xl shadow-primary/5">
+            <div className="p-4 rounded-full bg-primary/15 w-fit mx-auto mb-6">
+              <Shield className="w-8 h-8 text-primary" />
             </div>
-            <p className="text-foreground/90 text-sm md:text-base leading-relaxed mb-3">
-              All payments processed securely by <span className="font-semibold text-foreground">AmericasPay</span> —
+            <h3 className="text-lg md:text-xl font-semibold text-foreground mb-4">Secure Payments</h3>
+            <p className="text-foreground/90 text-sm md:text-base leading-relaxed mb-4">
+              All payments processed securely by <span className="font-bold text-foreground">AmericasPay</span> —
               <br className="hidden sm:block" />
               Americascom's payment infrastructure, powered by Stripe.
               <br />
@@ -159,6 +160,33 @@ const Pricing = () => {
             <p className="text-muted-foreground text-xs md:text-sm">
               Americascom, Inc. is a C Corporation (C Corp). Delaware, USA.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Royalty Intelligence Add-on */}
+      <section className="py-12 md:py-16">
+        <div className="container">
+          <div className="max-w-3xl mx-auto bg-card/80 backdrop-blur-sm border border-primary/20 rounded-2xl p-10 md:p-14">
+            <div className="flex items-start gap-4 md:gap-6">
+              <div className="p-3 rounded-xl bg-primary/10 shrink-0 mt-1">
+                <BarChart3 className="w-7 h-7 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-lg md:text-xl font-semibold text-foreground mb-1">
+                  Royalty Intelligence <span className="text-xs font-normal text-primary bg-primary/10 px-2 py-0.5 rounded-full ml-2">Add-on</span>
+                </h3>
+                <p className="text-foreground/80 text-sm md:text-base leading-relaxed mt-3">
+                  Connect your SONGSS analytics directly to your royalty
+                  collection pipeline. Identify unclaimed streams,
+                  track performance-to-royalty correlation, and
+                  optimize collection across territories.
+                </p>
+                <p className="text-muted-foreground text-xs md:text-sm mt-4 italic">
+                  — Powered by ASCAP + Americas Music Publishing integration
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
