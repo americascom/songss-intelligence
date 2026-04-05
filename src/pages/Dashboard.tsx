@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { Lock, Music, DollarSign, Users, TrendingUp, Globe, Calendar, AlertCircle } from "lucide-react";
 import MetricCard from "@/components/MetricCard";
 import DemoChart from "@/components/DemoChart";
+import AudienceGrowthChart from "@/components/AudienceGrowthChart";
+import CuratorPitchInsight from "@/components/CuratorPitchInsight";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/hooks/useAuth";
@@ -226,7 +228,20 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Top Artists Table */}
+          {/* Audience Growth & Curator Pitch */}
+          <div className="grid lg:grid-cols-2 gap-6 mb-8">
+            <div className="bg-card p-6 rounded-2xl border border-border shadow-card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-foreground">Audience Growth</h3>
+                <span className="text-xs text-muted-foreground">Last 30 days</span>
+              </div>
+              <AudienceGrowthChart />
+            </div>
+            <div className="bg-card p-6 rounded-2xl border border-border shadow-card flex flex-col justify-center">
+              <CuratorPitchInsight />
+            </div>
+          </div>
+
           <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
             <div className="p-6 border-b border-border">
               <h3 className="font-semibold text-foreground">Top Artists</h3>
