@@ -120,7 +120,7 @@ const Pricing = () => {
           </div>
           
           {/* Second row: Opus Maximus */}
-          <div className="mt-6 max-w-2xl mx-auto">
+          <div className="mt-8 max-w-[1200px] mx-auto">
             <PricingCard
               name={plans[4].displayName}
               price={plans[4].price}
@@ -132,6 +132,7 @@ const Pricing = () => {
               ctaLink={plans[4].ctaLink}
               subtext={plans[4].subtext}
               delay={400}
+              isVIP
             />
           </div>
         </div>
