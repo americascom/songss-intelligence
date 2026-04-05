@@ -9,6 +9,7 @@ interface PricingCardProps {
   description: string;
   features: string[];
   isPopular?: boolean;
+  isVIP?: boolean;
   ctaText: string;
   ctaLink?: string;
   subtext?: string;
