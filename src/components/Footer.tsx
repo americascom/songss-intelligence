@@ -52,7 +52,7 @@ const Footer = () => {
           </p>
           <div className="flex items-center gap-3">
             <span className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60 font-medium" style={{ fontVariant: 'small-caps' }}>
-              Powered by Americascom Neural Intelligence · Opus Maximus - Powered by Claude · Anthropic
+              Powered by Americascom Neural Intelligence
             </span>
           </div>
         </div>
