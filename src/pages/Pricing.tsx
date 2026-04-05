@@ -12,10 +12,10 @@ const plans = [
     period: "month",
     description: "Starter analytics for independent artists.",
     features: [
-      "Performance overview across Spotify, YouTube and SoundCloud",
-      "3 Deep Scan credits per month",
-      "Global Hotspots preview (top countries and cities)",
-      "Email support",
+      "Core performance overview across major digital audio streaming providers (DSPs)",
+      "Engagement tracking on primary global video networks",
+      "Baseline audience retention metrics",
+      "Automated 'Curator Pitch': AI-generated smart PR text based on your metrics, ready to pitch to curators and venues",
     ],
     isPopular: true,
     ctaText: "Get Started",
@@ -25,27 +25,26 @@ const plans = [
     displayName: "Artist Indie Growth",
     price: "$29",
     period: "month",
-    description: "For artists starting to grow across multiple territories.",
+    description: "Accelerate your reach with viral trend tracking.",
     features: [
-      "Everything in Artist Indie",
-      "5 Deep Scan credits per month",
-      "Extended Hotspots (countries and regions)",
-      "30-day growth trends across major DSPs",
-      "Practical suggestions for organic audience growth",
+      "Everything in Artist Indie, plus:",
+      "Real-time metrics from short-form viral video networks",
+      "Audience growth tracking and basic trend indicators",
+      "Weekly automated performance insights",
     ],
     ctaText: "Get Started",
   },
   {
     name: "Tier 3",
-    displayName: "Pro / Team",
+    displayName: "Pro Team",
     price: "$99",
     period: "month",
-    description: "For teams, labels and agencies managing several artists.",
+    description: "Advanced cross-platform analytics for professional management.",
     features: [
-      "Everything in Artist Indie Growth",
-      "25 Deep Scan credits per month",
-      "Multi-artist and multi-user access",
-      "Advanced strategy reports and campaign recommendations",
+      "Everything in Growth, plus:",
+      "Integration with global audio recognition and discovery engines",
+      "Early predictive insights for audience conversion",
+      "Custom date-range analysis and priority BI reporting",
     ],
     ctaText: "Get Started",
   },
@@ -54,34 +53,30 @@ const plans = [
     displayName: "Enterprise",
     price: "$199",
     period: "month",
-    description: "For larger catalogs and operations.",
+    description: "Institutional-grade market analysis and ROI projections.",
     features: [
-      "Everything in Pro / Team",
-      "100 Deep Scan credits per month",
-      "Unlimited team members",
-      "Custom dashboards by country and continent",
-      "Priority support and onboarding",
+      "Full access to all standard data pipelines, plus:",
+      "Deep integration with global metadata registries",
+      "Global hotspots mapping and regional demographic tracking",
+      "Financial ROI projections and campaign conversion rates",
     ],
     ctaText: "Get Started",
   },
   {
     name: "Tier 5",
-    displayName: "Taylor Made",
+    displayName: "Opus Maximus",
     price: "Custom",
     period: "",
-    description: "Bespoke intelligence suite with ROI projections and strategic advisory for catalogs and rosters.",
+    description: "Bespoke C-level intelligence and autonomous prediction.",
     features: [
-      "Neural insight engine for global market prediction (Songss proprietary models)",
-      "Territorial Performance Matrix: granular insights by continent, country and state",
-      "Predictive Growth Modeling: data-backed scalability projections for artists and catalogs",
-      "Investment and Ad ROI Strategy: guidance for smarter marketing budget allocation",
-      "Fan Persona & Behavioral Analytics: advanced demographic and engagement mapping",
-      "Dedicated strategic advisor and quarterly business reviews",
-      "Tailored for labels, investors and global management teams",
+      "Unrestricted access to the Songss Intelligence ecosystem",
+      "Autonomous Deep Scans: Advanced web sentiment and niche tracking",
+      "Multi-layered predictive data crossing",
+      "Direct strategic advisory from our proprietary AI architecture",
     ],
     ctaText: "Talk to our AI Consultant",
     ctaLink: "/chat",
-    subtext: "Tailored for labels, investors, and global management.",
+    subtext: "Taylor Made VIP — Custom pricing for labels, investors, and global management.",
   },
 ];
 
@@ -124,7 +119,7 @@ const Pricing = () => {
             ))}
           </div>
           
-          {/* Second row: Taylor Made */}
+          {/* Second row: Opus Maximus */}
           <div className="mt-6 max-w-2xl mx-auto">
             <PricingCard
               name={plans[4].displayName}
@@ -206,21 +201,22 @@ const Pricing = () => {
                   <th className="text-center py-4 px-2 font-medium text-foreground text-xs">Growth</th>
                   <th className="text-center py-4 px-2 font-medium text-foreground text-xs">Pro</th>
                   <th className="text-center py-4 px-2 font-medium text-foreground text-xs">Enterprise</th>
-                  <th className="text-center py-4 px-2 font-medium text-primary text-xs">Taylor Made</th>
+                  <th className="text-center py-4 px-2 font-medium text-primary text-xs">Opus Maximus</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {[
-                  { feature: "Deep Scan Credits", t1: "3", t2: "5", t3: "25", t4: "100", t5: "Custom" },
-                  { feature: "DSP Coverage", t1: "3", t2: "Major", t3: "Major", t4: "All", t5: "All+" },
-                  { feature: "Global Hotspots", t1: "Preview", t2: "Extended", t3: "Full", t4: "Custom", t5: "Custom" },
-                  { feature: "Growth Trends", t1: false, t2: true, t3: true, t4: true, t5: true },
-                  { feature: "Multi-Artist Access", t1: false, t2: false, t3: true, t4: true, t5: true },
-                  { feature: "Strategy Reports", t1: false, t2: false, t3: true, t4: true, t5: true },
-                  { feature: "Custom Dashboards", t1: false, t2: false, t3: false, t4: true, t5: true },
-                  { feature: "Priority Support", t1: false, t2: false, t3: false, t4: true, t5: true },
-                  { feature: "Private Briefings", t1: false, t2: false, t3: false, t4: false, t5: true },
-                  { feature: "Tailored Models", t1: false, t2: false, t3: false, t4: false, t5: true },
+                  { feature: "DSP Coverage", t1: "Core", t2: "Core+", t3: "Advanced", t4: "Full", t5: "Unrestricted" },
+                  { feature: "Video Networks", t1: "Primary", t2: "Short-form", t3: "All", t4: "All", t5: "All+" },
+                  { feature: "Audience Retention", t1: "Baseline", t2: "Growth", t3: "Full", t4: "Custom", t5: "Custom" },
+                  { feature: "Curator Pitch (AI)", t1: true, t2: true, t3: true, t4: true, t5: true },
+                  { feature: "Trend Indicators", t1: false, t2: true, t3: true, t4: true, t5: true },
+                  { feature: "Predictive Insights", t1: false, t2: false, t3: true, t4: true, t5: true },
+                  { feature: "BI Reporting", t1: false, t2: false, t3: true, t4: true, t5: true },
+                  { feature: "Metadata Registries", t1: false, t2: false, t3: false, t4: true, t5: true },
+                  { feature: "ROI Projections", t1: false, t2: false, t3: false, t4: true, t5: true },
+                  { feature: "Autonomous Deep Scans", t1: false, t2: false, t3: false, t4: false, t5: true },
+                  { feature: "Strategic Advisory", t1: false, t2: false, t3: false, t4: false, t5: true },
                 ].map((row, index) => (
                   <tr key={index}>
                     <td className="py-3 px-2 text-foreground/80 text-xs">{row.feature}</td>
@@ -263,71 +259,6 @@ const Pricing = () => {
                 ))}
               </tbody>
             </table>
-          </div>
-        </div>
-      </section>
-
-      {/* Trusted By / Platform Integrations */}
-      <section className="py-12 md:py-16">
-        <div className="container text-center">
-          <p className="text-sm text-muted-foreground mb-8">Trusted data sources & platform integrations</p>
-          <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10">
-            {/* Spotify */}
-            <div className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
-              <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
-                <span className="text-foreground font-bold text-sm">S</span>
-              </div>
-              <span className="font-medium text-foreground/80 text-sm">Spotify</span>
-            </div>
-            {/* Apple Music */}
-            <div className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
-              <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
-                <span className="text-foreground font-bold text-sm">♪</span>
-              </div>
-              <span className="font-medium text-foreground/80 text-sm">Apple Music</span>
-            </div>
-            {/* YouTube Music */}
-            <div className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
-              <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
-                <span className="text-foreground font-bold text-sm">▶</span>
-              </div>
-              <span className="font-medium text-foreground/80 text-sm">YouTube Music</span>
-            </div>
-            {/* TikTok */}
-            <div className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
-              <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
-                <span className="text-foreground font-bold text-sm">♫</span>
-              </div>
-              <span className="font-medium text-foreground/80 text-sm">TikTok</span>
-            </div>
-            {/* Deezer */}
-            <div className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
-              <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
-                <span className="text-foreground font-bold text-sm">D</span>
-              </div>
-              <span className="font-medium text-foreground/80 text-sm">Deezer</span>
-            </div>
-            {/* SoundCloud */}
-            <div className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
-              <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
-                <span className="text-foreground font-bold text-sm">☁</span>
-              </div>
-              <span className="font-medium text-foreground/80 text-sm">SoundCloud</span>
-            </div>
-            {/* Tidal */}
-            <div className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
-              <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
-                <span className="text-foreground font-bold text-sm">T</span>
-              </div>
-              <span className="font-medium text-foreground/80 text-sm">Tidal</span>
-            </div>
-            {/* Amazon Music */}
-            <div className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
-              <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
-                <span className="text-foreground font-bold text-sm">A</span>
-              </div>
-              <span className="font-medium text-foreground/80 text-sm">Amazon Music</span>
-            </div>
           </div>
         </div>
       </section>
