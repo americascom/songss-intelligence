@@ -1,0 +1,130 @@
+version: "3.8"
+
+services:
+
+  # ─────────────────────────────────────────
+  # KONG — API Gateway (porta pública 8000)
+  # ─────────────────────────────────────────
+  kong:
+    image: kong:2.8.1
+    container_name: supabase_kong
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+      - "8443:8443"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl
+    volumes:
+      - ./kong.yml:/var/lib/kong/kong.yml:ro
+    depends_on:
+      - rest
+      - auth
+
+  # ─────────────────────────────────────────
+  # GOTRUE — Auth Service (porta 9999)
+  # ─────────────────────────────────────────
+  auth:
+    image: supabase/gotrue:v2.132.3
+    container_name: supabase_auth
+    restart: unless-stopped
+    environment:
+      GOTRUE_API_HOST: "0.0.0.0"
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: https://api.songssintelligence.com
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:OaJ1o54eXscD74XrwI9lmMR5JJvXZYV@db:5432/postgres
+      GOTRUE_SITE_URL: https://songssintelligence.com
+      GOTRUE_URI_ALLOW_LIST: "https://songssintelligence.com,https://app.songssintelligence.com"
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_SECRET: "NPHAx0GKRQ1MoByFDcP7MKFpckrVEOw9hh88qto0APAVNVEWc9985akd7d1Aj5"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_SMTP_HOST: smtp.gmail.com
+      GOTRUE_SMTP_PORT: 587
+      GOTRUE_SMTP_USER: admin@songssintelligence.com
+      GOTRUE_SMTP_PASS: ""
+      GOTRUE_SMTP_ADMIN_EMAIL: admin@songssintelligence.com
+      GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+    depends_on:
+      - db
+
+  # ─────────────────────────────────────────
+  # POSTGREST — REST API (porta 8080)
+  # ─────────────────────────────────────────
+  rest:
+    image: postgrest/postgrest:v11.2.2
+    container_name: supabase_rest
+    restart: unless-stopped
+    environment:
+      PGRST_DB_URI: postgres://authenticator:OaJ1o54eXscD74XrwI9lmMR5JJvXZYV@db:5432/postgres
+      PGRST_DB_SCHEMA: public,storage
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: "NPHAx0GKRQ1MoByFDcP7MKFpckrVEOw9hh88qto0APAVNVEWc9985akd7d1Aj5"
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+    depends_on:
+      - db
+
+  # ─────────────────────────────────────────
+  # POSTGRES — Banco de dados (porta 5432)
+  # ─────────────────────────────────────────
+  db:
+    image: supabase/postgres:15.1.1.78
+    container_name: supabase_db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: OaJ1o54eXscD74XrwI9lmMR5JJvXZYV
+      POSTGRES_DB: postgres
+    volumes:
+      - supabase_db_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  # ─────────────────────────────────────────
+  # STUDIO — Dashboard Web (porta 3000)
+  # ─────────────────────────────────────────
+  studio:
+    image: supabase/studio:20250107-3a5937a
+    container_name: supabase_studio
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      STUDIO_PG_META_URL: http://meta:8080
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_REST_URL: https://api.songssintelligence.com/rest/v1/
+      SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlhdCI6MTc0NDA0MDAwMCwiZXhwIjo0ODk3NjQwMDAwfQ.ayhHelD4CmKfXrCe-Ytk6UhL7saBVLJqYIapgEkDkDs"
+      SUPABASE_SERVICE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNzQ0MDQwMDAwLCJleHAiOjQ4OTc2NDAwMDB9.GG-ObVznIC47BkA6vNzPM5n10D69SuppgxsA71L8m_w"
+    depends_on:
+      - db
+      - kong
+
+  # ─────────────────────────────────────────
+  # META — Postgres Meta API (porta 8080 interna)
+  # ─────────────────────────────────────────
+  meta:
+    image: supabase/postgres-meta:v0.68.0
+    container_name: supabase_meta
+    restart: unless-stopped
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: db
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: postgres
+      PG_META_DB_USER: postgres
+      PG_META_DB_PASSWORD: OaJ1o54eXscD74XrwI9lmMR5JJvXZYV
+    depends_on:
+      - db
+
+volumes:
+  supabase_db_data:
