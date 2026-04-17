@@ -35,7 +35,7 @@ services:
       GOTRUE_API_PORT: 9999
       API_EXTERNAL_URL: https://api.songssintelligence.com
       GOTRUE_DB_DRIVER: postgres
-      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:OaJ1o54eXscD74XrwI9lmMR5JJvXZYV@db:5432/postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres
       GOTRUE_SITE_URL: https://songssintelligence.com
       GOTRUE_URI_ALLOW_LIST: "https://songssintelligence.com,https://app.songssintelligence.com"
       GOTRUE_DISABLE_SIGNUP: "false"
@@ -43,7 +43,7 @@ services:
       GOTRUE_JWT_AUD: authenticated
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
       GOTRUE_JWT_EXP: 3600
-      GOTRUE_JWT_SECRET: "NPHAx0GKRQ1MoByFDcP7MKFpckrVEOw9hh88qto0APAVNVEWc9985akd7d1Aj5"
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
       GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
       GOTRUE_MAILER_AUTOCONFIRM: "true"
       GOTRUE_SMTP_HOST: smtp.gmail.com
@@ -66,10 +66,10 @@ services:
     container_name: supabase_rest
     restart: unless-stopped
     environment:
-      PGRST_DB_URI: postgres://authenticator:OaJ1o54eXscD74XrwI9lmMR5JJvXZYV@db:5432/postgres
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/postgres
       PGRST_DB_SCHEMA: public,storage
       PGRST_DB_ANON_ROLE: anon
-      PGRST_JWT_SECRET: "NPHAx0GKRQ1MoByFDcP7MKFpckrVEOw9hh88qto0APAVNVEWc9985akd7d1Aj5"
+      PGRST_JWT_SECRET: ${JWT_SECRET}
       PGRST_DB_USE_LEGACY_GUCS: "false"
     depends_on:
       - db
@@ -84,7 +84,7 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_PASSWORD: OaJ1o54eXscD74XrwI9lmMR5JJvXZYV
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: postgres
     volumes:
       - supabase_db_data:/var/lib/postgresql/data
@@ -103,8 +103,8 @@ services:
       STUDIO_PG_META_URL: http://meta:8080
       SUPABASE_URL: http://kong:8000
       SUPABASE_REST_URL: https://api.songssintelligence.com/rest/v1/
-      SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlhdCI6MTc0NDA0MDAwMCwiZXhwIjo0ODk3NjQwMDAwfQ.ayhHelD4CmKfXrCe-Ytk6UhL7saBVLJqYIapgEkDkDs"
-      SUPABASE_SERVICE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNzQ0MDQwMDAwLCJleHAiOjQ4OTc2NDAwMDB9.GG-ObVznIC47BkA6vNzPM5n10D69SuppgxsA71L8m_w"
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
     depends_on:
       - db
       - kong
@@ -122,7 +122,7 @@ services:
       PG_META_DB_PORT: 5432
       PG_META_DB_NAME: postgres
       PG_META_DB_USER: postgres
-      PG_META_DB_PASSWORD: OaJ1o54eXscD74XrwI9lmMR5JJvXZYV
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
     depends_on:
       - db
 
