@@ -51,7 +51,7 @@ const plans = [
   {
     name: "Tier 4",
     displayName: "Enterprise",
-    price: "$199",
+    price: "$299",
     period: "month",
     description: "Institutional-grade market analysis and ROI projections.",
     features: [
@@ -65,9 +65,9 @@ const plans = [
   {
     name: "Tier 5",
     displayName: "Opus Maximus",
-    price: "Custom",
+    price: "By Consultation",
     period: "",
-    description: "Bespoke C-level intelligence and autonomous prediction.",
+    description: "White-glove intelligence for labels, investors, and global management. Dedicated AI advisor available 24/7, with human strategic oversight for high-stakes decisions. Trilingual support: EN, PT, ES. 85% AI-powered response. 15% human oversight via email or chat.",
     features: [
       "Unrestricted access to the Songss Intelligence ecosystem",
       "Autonomous Deep Scans: Advanced web sentiment and niche tracking",
@@ -76,7 +76,7 @@ const plans = [
     ],
     ctaText: "Talk to our AI Consultant",
     ctaLink: "/chat",
-    subtext: "Taylor Made VIP — Custom pricing for labels, investors, and global management.",
+    subtext: "Taylor Made VIP — White-glove intelligence for labels, investors, and global management.",
   },
 ];
 
