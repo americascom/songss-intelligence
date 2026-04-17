@@ -37,11 +37,19 @@ const Home = () => {
                 <TrendingUp className="w-4 h-4" />
                 Real-time music intelligence
               </div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight animate-fade-in" style={{ animationDelay: "100ms" }}>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-4 leading-tight animate-fade-in" style={{ animationDelay: "100ms" }}>
                 Unlock{" "}
                 <span className="text-gradient">Global Music</span>
                 {" "}Insights
               </h1>
+              <div className="mb-6 animate-fade-in" style={{ animationDelay: "150ms" }}>
+                <p className="text-xl md:text-2xl font-light text-foreground/80 italic tracking-tight">
+                  Thinking First.
+                </p>
+                <p className="text-xs uppercase tracking-[0.2em] text-primary/60 mt-1">
+                  by Americascom, Inc.
+                </p>
+              </div>
               <p className="text-lg md:text-xl text-muted-foreground mb-8 animate-fade-in" style={{ animationDelay: "200ms" }}>
                 Track streams, revenue, and artist performance across every platform. 
                 Make data-driven decisions with real-time analytics.
@@ -59,9 +67,19 @@ const Home = () => {
                 </Link>
               </div>
 
-              {/* Artist Search Bar */}
+              {/* CTA: Get My Artist Report */}
               <div className="mt-10 animate-fade-in" style={{ animationDelay: "400ms" }}>
-                <ArtistSearch />
+                <Link to="/auth">
+                  <Button
+                    size="lg"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-base px-10 py-6 shadow-[0_0_30px_-5px_hsl(var(--primary)/0.5)] hover:shadow-[0_0_40px_-5px_hsl(var(--primary)/0.7)] transition-all"
+                  >
+                    Get My Artist Report
+                  </Button>
+                </Link>
+                <p className="text-xs text-muted-foreground/70 mt-4">
+                  AI-powered customer support · 24/7 · EN · PT · ES
+                </p>
               </div>
             </div>
 

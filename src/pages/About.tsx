@@ -83,6 +83,18 @@ const About = () => {
         </div>
       </section>
 
+      {/* AI-Powered Customer Support */}
+      <section className="py-16 border-t border-border">
+        <div className="container max-w-3xl">
+          <div className="bg-card/60 border border-primary/20 rounded-2xl p-8 md:p-10 text-center">
+            <h2 className="text-xs uppercase tracking-[0.2em] text-primary/60 mb-4 font-semibold">Customer Support</h2>
+            <p className="text-foreground/90 text-lg md:text-xl leading-relaxed font-light">
+              All customer support is <span className="font-semibold text-primary">powered by AI</span>, available <span className="font-semibold text-foreground">24/7</span> in <span className="font-semibold text-foreground">English</span>, <span className="font-semibold text-foreground">Portuguese</span>, and <span className="font-semibold text-foreground">Spanish</span>.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-20 border-t border-border">
         <div className="container max-w-3xl text-center">
