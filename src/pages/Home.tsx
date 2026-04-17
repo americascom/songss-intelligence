@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Music, DollarSign, Users, TrendingUp, BarChart3, Globe } from "lucide-react";
+import { Music, DollarSign, Users, TrendingUp, BarChart3, Globe, Mail } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Suspense, lazy } from "react";
 import MetricCard from "@/components/MetricCard";
 import DemoChart from "@/components/DemoChart";
