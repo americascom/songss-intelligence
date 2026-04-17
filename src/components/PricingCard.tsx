@@ -73,7 +73,7 @@ const PricingCard = ({
           </div>
 
           <div className="mb-6">
-            <span className={`font-bold text-foreground ${isVIP ? "text-5xl md:text-6xl" : "text-4xl md:text-5xl"}`}>{price}</span>
+            <span className={`font-bold text-foreground ${isVIP ? (period ? "text-5xl md:text-6xl" : "text-3xl md:text-4xl") : "text-4xl md:text-5xl"}`}>{price}</span>
             {period && <span className="text-muted-foreground">/{period}</span>}
           </div>
         </div>
