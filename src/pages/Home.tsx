@@ -61,7 +61,7 @@ const Home = () => {
                   </Button>
                 </Link>
                 <Link to="/dashboard">
-                  <Button size="lg" variant="outline" className="font-semibold text-base px-8 border-primary/30 hover:bg-primary/10">
+                  <Button size="lg" variant="outline" className="font-semibold text-base px-8 bg-transparent border-2 border-primary text-foreground hover:bg-primary/10 hover:text-foreground">
                     View Demo
                   </Button>
                 </Link>
