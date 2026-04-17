@@ -145,7 +145,7 @@ const Header = () => {
               ) : (
                 <>
                   <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
-                    <Button variant="ghost" className="w-full justify-start">
+                    <Button variant="outline" className="w-full justify-start bg-transparent border-2 border-primary text-foreground hover:bg-primary/10 hover:text-foreground">
                       Log In
                     </Button>
                   </Link>
