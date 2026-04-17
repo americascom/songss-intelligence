@@ -37,11 +37,19 @@ const Home = () => {
                 <TrendingUp className="w-4 h-4" />
                 Real-time music intelligence
               </div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight animate-fade-in" style={{ animationDelay: "100ms" }}>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-4 leading-tight animate-fade-in" style={{ animationDelay: "100ms" }}>
                 Unlock{" "}
                 <span className="text-gradient">Global Music</span>
                 {" "}Insights
               </h1>
+              <div className="mb-6 animate-fade-in" style={{ animationDelay: "150ms" }}>
+                <p className="text-xl md:text-2xl font-light text-foreground/80 italic tracking-tight">
+                  Thinking First.
+                </p>
+                <p className="text-xs uppercase tracking-[0.2em] text-primary/60 mt-1">
+                  by Americascom, Inc.
+                </p>
+              </div>
               <p className="text-lg md:text-xl text-muted-foreground mb-8 animate-fade-in" style={{ animationDelay: "200ms" }}>
                 Track streams, revenue, and artist performance across every platform. 
                 Make data-driven decisions with real-time analytics.
