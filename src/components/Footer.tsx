@@ -11,6 +11,12 @@ const Footer = () => {
             <p className="text-sm text-muted-foreground mb-3">
               Global music analytics for artists, labels, and industry professionals.
             </p>
+            <p className="text-xs text-muted-foreground mb-3">
+              Contact:{" "}
+              <a href="mailto:hello@songssintelligence.com" className="text-primary hover:underline">
+                hello@songssintelligence.com
+              </a>
+            </p>
             <p className="text-xs text-muted-foreground/70 leading-relaxed">
               A product of Americascom, Inc. — Registered in Delaware, USA.
               <br />

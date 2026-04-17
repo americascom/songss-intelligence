@@ -52,6 +52,15 @@ const About = () => {
           <p className="text-muted-foreground leading-relaxed">
             Americascom, Inc. is a Delaware-incorporated technology company operating at the intersection of music intelligence, royalty management, and media infrastructure. We are an IBM PartnerWorld Plus partner and Stripe.
           </p>
+          <p className="text-muted-foreground leading-relaxed mt-4">
+            Get in touch:{" "}
+            <a
+              href="mailto:hello@songssintelligence.com"
+              className="text-primary font-semibold hover:underline"
+            >
+              hello@songssintelligence.com
+            </a>
+          </p>
         </div>
       </section>
 

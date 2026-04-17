@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Music, DollarSign, Users, TrendingUp, BarChart3, Globe } from "lucide-react";
+import { Music, DollarSign, Users, TrendingUp, BarChart3, Globe, Mail } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Suspense, lazy } from "react";
 import MetricCard from "@/components/MetricCard";
 import DemoChart from "@/components/DemoChart";
@@ -310,6 +311,63 @@ const Home = () => {
                 View Pricing
               </Button>
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="py-16 md:py-24 bg-background border-t border-border/50">
+        <div className="container max-w-3xl">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
+              Frequently Asked <span className="text-gradient">Questions</span>
+            </h2>
+            <p className="text-muted-foreground">Everything you need to know about SONGSS Intelligence.</p>
+          </div>
+
+          <Accordion type="single" collapsible className="w-full space-y-3">
+            {[
+              { q: "What is SONGSS Intelligence?", a: "SONGSS Intelligence is an AI-powered music analytics platform that tracks artist performance across major streaming platforms — including Spotify, YouTube, TikTok, Deezer, and more — delivering actionable insights via detailed reports." },
+              { q: "How does the analysis work?", a: "After subscribing, you submit your artist name and key platforms. Our AI agents collect data from multiple sources, cross-reference performance metrics, and deliver a comprehensive intelligence report directly to your email." },
+              { q: "Which platforms do you track?", a: "We track Spotify, YouTube, TikTok, Deezer, SoundCloud, Last.fm, MusicBrainz, Shazam, Genius, and Jamendo — with more platforms being added continuously." },
+              { q: "How long does it take to receive my report?", a: "Most reports are delivered within minutes of your request being processed." },
+              { q: "What is the difference between the plans?", a: "Plans range from Artist Indie ($9.90/month) for independent artists to Opus Maximus (by consultation) for labels and investors. Each tier unlocks deeper data sources, AI models, and strategic insights. See our Pricing page for a full comparison." },
+              { q: "Can I upgrade or downgrade my plan?", a: "Yes. You can change your plan at any time through your account dashboard. Changes take effect on your next billing cycle." },
+              { q: "Is there a free trial?", a: "We offer a free tier with limited access so you can experience the platform before subscribing to a paid plan." },
+              { q: "What payment methods do you accept?", a: "All major credit and debit cards, plus international payment methods. Payments are processed securely by AmericasPay, powered by Stripe." },
+              { q: "Is my payment secure?", a: "Yes. All transactions are encrypted and processed by AmericasPay — Americascom's payment infrastructure, built on Stripe technology." },
+              { q: "How does AI-powered support work?", a: "Our AI support agent is available 24/7 in English, Portuguese, and Spanish. For Opus Maximus clients, human strategic oversight is also available via email or chat." },
+              { q: "Do you offer support in Portuguese and Spanish?", a: "Yes. Our AI support system is fully trilingual — English, Portuguese, and Spanish." },
+              { q: "How recent is the data?", a: "Data is collected in near real-time from our integrated sources, ensuring your reports reflect the most current available metrics." },
+              { q: "Is my artist data private?", a: "Absolutely. Your data is never shared with third parties. All reports are generated exclusively for your account and delivered privately to your email." },
+            ].map((item, i) => (
+              <AccordionItem
+                key={i}
+                value={`item-${i}`}
+                className="border border-border/60 rounded-lg bg-card/40 px-5 hover:border-primary/40 transition-colors data-[state=open]:border-primary/60 data-[state=open]:bg-card/70"
+              >
+                <AccordionTrigger className="text-left text-foreground font-medium hover:text-primary hover:no-underline py-5">
+                  {item.q}
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground text-base leading-relaxed pb-5">
+                  {item.a}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+
+          <div className="mt-12 text-center p-6 rounded-xl border border-primary/20 bg-primary/5">
+            <p className="text-muted-foreground leading-relaxed">
+              Still have questions? Contact us at{" "}
+              <a
+                href="mailto:hello@songssintelligence.com"
+                className="inline-flex items-center gap-1.5 text-primary font-semibold hover:underline"
+              >
+                <Mail className="w-4 h-4" />
+                hello@songssintelligence.com
+              </a>
+              {" "}— our AI support team responds 24/7 in English, Portuguese, and Spanish.
+            </p>
           </div>
         </div>
       </section>
