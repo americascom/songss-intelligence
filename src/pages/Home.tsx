@@ -67,9 +67,19 @@ const Home = () => {
                 </Link>
               </div>
 
-              {/* Artist Search Bar */}
+              {/* CTA: Get My Artist Report */}
               <div className="mt-10 animate-fade-in" style={{ animationDelay: "400ms" }}>
-                <ArtistSearch />
+                <Link to="/auth">
+                  <Button
+                    size="lg"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-base px-10 py-6 shadow-[0_0_30px_-5px_hsl(var(--primary)/0.5)] hover:shadow-[0_0_40px_-5px_hsl(var(--primary)/0.7)] transition-all"
+                  >
+                    Get My Artist Report
+                  </Button>
+                </Link>
+                <p className="text-xs text-muted-foreground/70 mt-4">
+                  AI-powered customer support · 24/7 · EN · PT · ES
+                </p>
               </div>
             </div>
 
