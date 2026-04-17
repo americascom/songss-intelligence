@@ -19,7 +19,7 @@ const ArtistSearch = () => {
 
     try {
       const res = await fetch(
-        "http://n8n.songssintelligence.com:5678/webhook-test/analise-artista",
+        "https://n8n.songssintelligence.com/webhook/analise-artista",
         {
           method: "POST",
           headers: {
