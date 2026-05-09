@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      intelligence_reports: {
+        Row: {
+          artist_name: string | null
+          charts_data: Json
+          created_at: string
+          email: string
+          id: string
+          report_markdown: string
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          artist_name?: string | null
+          charts_data?: Json
+          created_at?: string
+          email: string
+          id?: string
+          report_markdown?: string
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          artist_name?: string | null
+          charts_data?: Json
+          created_at?: string
+          email?: string
+          id?: string
+          report_markdown?: string
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       metrics_global: {
         Row: {
           artists_count: number
