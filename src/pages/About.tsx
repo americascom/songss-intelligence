@@ -50,7 +50,7 @@ const About = () => {
         <div className="container max-w-3xl">
           <h2 className="text-xs uppercase tracking-[0.2em] text-primary/60 mb-4 font-semibold">The Company</h2>
           <p className="text-muted-foreground leading-relaxed">
-            Americascom, Inc. is a Delaware-incorporated technology company operating at the intersection of music intelligence, royalty management, and media infrastructure. We are an IBM PartnerWorld Plus partner and Stripe.
+            Americascom, Inc. is a Delaware-incorporated technology company operating at the intersection of music intelligence, royalty management, and media infrastructure. We are an IBM PartnerWorld Plus partner and a Stripe Atlas member.
           </p>
           <p className="text-muted-foreground leading-relaxed mt-4">
             Get in touch:{" "}
