@@ -87,9 +87,9 @@ const Header = () => {
                   Log In
                 </Button>
               </Link>
-              <Link to="/auth">
+              <Link to="/pricing">
                 <Button size="sm" className="gradient-primary font-semibold">
-                  Sign Up Free
+                  Get Started
                 </Button>
               </Link>
             </>
@@ -149,9 +149,9 @@ const Header = () => {
                       Log In
                     </Button>
                   </Link>
-                  <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
+                  <Link to="/pricing" onClick={() => setIsMenuOpen(false)}>
                     <Button className="w-full gradient-primary font-semibold">
-                      Sign Up Free
+                      Get Started
                     </Button>
                   </Link>
                 </>
