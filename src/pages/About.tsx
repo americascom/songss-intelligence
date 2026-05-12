@@ -110,7 +110,7 @@ const About = () => {
           <h2 className="text-2xl md:text-3xl font-bold mb-6">Ready to make smarter music decisions?</h2>
           <Link to="/pricing">
             <Button size="lg" className="gradient-primary font-semibold">
-              Start Free Trial
+              Get Started →
             </Button>
           </Link>
         </div>
