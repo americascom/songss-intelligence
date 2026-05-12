@@ -56,9 +56,9 @@ const Home = () => {
                 Make data-driven decisions with real-time analytics.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-fade-in" style={{ animationDelay: "300ms" }}>
-                <Link to="/auth">
+                <Link to="/pricing">
                   <Button size="lg" className="gradient-primary font-semibold text-base px-8 shadow-hero">
-                    Sign Up Free
+                    Get Started
                   </Button>
                 </Link>
                 <Link to="/dashboard">
@@ -264,7 +264,7 @@ const Home = () => {
               </p>
               <Link to="/pricing">
                 <Button className="gradient-primary font-semibold">
-                  Start Free Trial
+                  Get Started
                 </Button>
               </Link>
             </div>

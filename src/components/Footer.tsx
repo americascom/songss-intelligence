@@ -54,7 +54,7 @@ const Footer = () => {
 
         <div className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © 2026 Americascom, Inc. All rights reserved. SONGSS Intelligence is a trademark of Americascom, Inc.
+            Americascom, Inc | Established 2017 in the USA. Nearly a decade of corporate excellence in technology and strategic analysis. © 2017–2026 Americascom, Inc. All rights reserved. Songss Neural Intelligence Engine™ (NIE) is a proprietary technology.
           </p>
           <div className="flex items-center gap-3">
             <span className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60 font-medium" style={{ fontVariant: 'small-caps' }}>
