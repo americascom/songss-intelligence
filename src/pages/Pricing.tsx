@@ -214,6 +214,8 @@ const Pricing = () => {
               </thead>
               <tbody className="divide-y divide-border">
                 {[
+                  { feature: "Seats", t1: "1", t2: "4", t3: "10", t4: "50", t5: "Unlimited" },
+                  { feature: "Monthly Queries", t1: "4/mo", t2: "12/mo", t3: "50/mo", t4: "150/mo", t5: "Unlimited" },
                   { feature: "DSP Coverage", t1: "Core", t2: "Core+", t3: "Advanced", t4: "Full", t5: "Unrestricted" },
                   { feature: "Video Networks", t1: "Primary", t2: "Short-form", t3: "All", t4: "All", t5: "All+" },
                   { feature: "Audience Retention", t1: "Baseline", t2: "Growth", t3: "Full", t4: "Custom", t5: "Custom" },
