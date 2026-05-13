@@ -101,6 +101,39 @@ const About = () => {
         </div>
       </section>
 
+      {/* Intelligence Infrastructure */}
+      <section className="py-10 md:py-14 bg-background border-t border-border/30">
+        <div className="container">
+          <p className="text-center text-xs uppercase tracking-[0.2em] font-medium text-primary/60 mb-8">
+            Intelligence Infrastructure You Can Trust
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            {[
+              {
+                title: "Secured by Cloudflare",
+                description: "Enterprise-grade edge security and DDoS protection.",
+              },
+              {
+                title: "Payments by Stripe",
+                description: "Secure subscription management via AmericasPay.",
+              },
+              {
+                title: "Built on Supabase",
+                description: "Real-time data infrastructure with full audit trail.",
+              },
+            ].map((item) => (
+              <div
+                key={item.title}
+                className="flex flex-col items-center text-center p-6 rounded-xl border border-border bg-card/60"
+              >
+                <h3 className="font-semibold text-sm text-foreground mb-2">{item.title}</h3>
+                <p className="text-xs text-muted-foreground">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-20 border-t border-border">
         <div className="container max-w-3xl text-center">
