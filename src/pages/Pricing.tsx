@@ -170,7 +170,7 @@ const Pricing = () => {
         </div>
       </section>
 
-      {/* Royalty Intelligence Add-on */}
+      {/* SNIE Deep Scan Add-on */}
       <section className="py-12 md:py-16">
         <div className="container">
           <div className="max-w-3xl mx-auto bg-card/80 backdrop-blur-sm border border-primary/20 rounded-2xl p-10 md:p-14">
@@ -180,16 +180,13 @@ const Pricing = () => {
               </div>
               <div>
                 <h3 className="text-lg md:text-xl font-semibold text-foreground mb-1">
-                  Royalty Intelligence <span className="text-xs font-normal text-primary bg-primary/10 px-2 py-0.5 rounded-full ml-2">Add-on</span>
+                  SNIE™ Deep Scan <span className="text-xs font-normal text-primary bg-primary/10 px-2 py-0.5 rounded-full ml-2">Add-on</span>
                 </h3>
                 <p className="text-foreground/80 text-sm md:text-base leading-relaxed mt-3">
-                  Connect your SONGSS analytics directly to your royalty
-                  collection pipeline. Identify unclaimed streams,
-                  track performance-to-royalty correlation, and
-                  optimize collection across territories.
+                  Run an extended neural analysis on any artist or catalog. Cross-reference data across 60+ global DSPs and rights databases, generate a full Executive Intelligence Dossier and receive actionable acquisition or retention signals.
                 </p>
                 <p className="text-muted-foreground text-xs md:text-sm mt-4 italic">
-                  — Powered by ASCAP + Americas Music Publishing integration
+                  — Powered by Songss Neural Intelligence Engine™
                 </p>
               </div>
             </div>
