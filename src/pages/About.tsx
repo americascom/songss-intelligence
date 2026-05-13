@@ -3,28 +3,28 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { BarChart3, Shield, CreditCard, Tv } from "lucide-react";
+import { BarChart3, Shield, CreditCard, Database } from "lucide-react";
 
 const ecosystemCards = [
   {
     icon: BarChart3,
     title: "Music Intelligence",
-    description: "SONGSS Intelligence platform",
+    description: "Neural A&R analysis and artist trajectory modeling across 60+ global DSPs",
   },
   {
     icon: Shield,
     title: "Rights & Royalties",
-    description: "Publishing administration, ASCAP member",
+    description: "Catalog valuation, rights mapping and royalty waterfall modeling for investors and labels",
   },
   {
     icon: CreditCard,
     title: "Payment Infrastructure",
-    description: "AmericasPay, by Stripe Technology",
+    description: "Secure subscription management powered by AmericasPay, by Stripe Technology",
   },
   {
-    icon: Tv,
-    title: "Video Distribution",
-    description: "Global cloud streaming via WWTV Play",
+    icon: Database,
+    title: "Data & Analytics",
+    description: "Real-time market signals, consumption data and executive dossiers powered by SNIE™",
   },
 ];
 
@@ -37,10 +37,10 @@ const About = () => {
       <section className="pt-32 pb-16 md:pt-40 md:pb-24">
         <div className="container max-w-3xl text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-6">
-            Built by an <span className="text-gradient">Industry Insider</span>
+            <span className="text-gradient">Created by an Industry Expert</span>
           </h1>
           <p className="text-muted-foreground text-lg leading-relaxed">
-            SONGSS Intelligence was created by a media professional with over 40 years of experience in broadcasting, journalism, executive production, artistic direction, and music industry operations—not by a tech startup trying to guess what artists need.
+            SONGSS Intelligence was created by Mr. George, a media professional with over 40 years of experience in broadcasting, television news, magazines, executive production, artistic direction, and music industry operations — not by a tech startup trying to guess what artists need.
           </p>
         </div>
       </section>
@@ -50,10 +50,7 @@ const About = () => {
         <div className="container max-w-3xl">
           <h2 className="text-xs uppercase tracking-[0.2em] text-primary/60 mb-4 font-semibold">The Company</h2>
           <p className="text-muted-foreground leading-relaxed">
-            Americascom, Inc. is a Delaware-incorporated technology company operating at the intersection of music intelligence, royalty management, and media infrastructure. We are an IBM PartnerWorld Plus partner and a Stripe Atlas member.
-          </p>
-          <p className="text-muted-foreground leading-relaxed mt-4">
-            Get in touch:{" "}
+            Americascom, Inc. is a technology, media, and digital marketing company incorporated in Delaware that operates at the intersection of music intelligence. We partner with market leaders in internet technology. Contact us:{" "}
             <a
               href="mailto:hello@songssintelligence.com"
               className="text-primary font-semibold hover:underline"
@@ -98,7 +95,7 @@ const About = () => {
           <div className="bg-card/60 border border-primary/20 rounded-2xl p-8 md:p-10 text-center">
             <h2 className="text-xs uppercase tracking-[0.2em] text-primary/60 mb-4 font-semibold">Customer Support</h2>
             <p className="text-foreground/90 text-lg md:text-xl leading-relaxed font-light">
-              All customer support is available <span className="font-semibold text-foreground">24/7</span> in <span className="font-semibold text-foreground">English</span>.
+              Full customer support is available <span className="font-semibold text-foreground">24/7</span> in <span className="font-semibold text-foreground">English</span>.
             </p>
           </div>
         </div>
