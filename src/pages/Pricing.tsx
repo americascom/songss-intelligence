@@ -29,7 +29,7 @@ const plans = [
     period: "month",
     description: "Accelerate your reach with viral trend tracking.",
     features: [
-      "4 seats",
+      "3 seats",
       "12 queries/mo",
       "Everything in Artist Indie, plus:",
       "Real-time metrics from short-form viral video networks",
@@ -45,7 +45,7 @@ const plans = [
     period: "month",
     description: "Advanced cross-platform analytics for professional management.",
     features: [
-      "10 seats",
+      "5 seats",
       "50 queries/mo",
       "Everything in Growth, plus:",
       "Integration with global audio recognition and discovery engines",
@@ -61,7 +61,7 @@ const plans = [
     period: "month",
     description: "Institutional-grade market analysis and ROI projections.",
     features: [
-      "50 seats",
+      "10 seats",
       "150 queries/mo",
       "Full access to all standard data pipelines, plus:",
       "Deep integration with global metadata registries",
@@ -75,10 +75,10 @@ const plans = [
     displayName: "Opus Maximus",
     price: "Custom Pricing",
     period: "",
-    description: "White-glove intelligence for labels, investors, and global management. Dedicated AI advisor available 24/7 in English. Unlimited queries with soft cap of 1,500/mo.",
+    description: "White-glove intelligence for labels, investors, and global management. Dedicated AI advisor available 24/7 in English. 1,500 queries/mo — expandable on demand.",
     features: [
       "Unlimited seats",
-      "Unlimited queries (soft cap 1,500/mo)",
+      "1,500 queries/mo — expandable on demand",
       "Unrestricted access to the Songss Intelligence ecosystem",
       "Autonomous Deep Scans: Advanced web sentiment and niche tracking",
       "Multi-layered predictive data crossing",
@@ -214,8 +214,8 @@ const Pricing = () => {
               </thead>
               <tbody className="divide-y divide-border">
                 {[
-                  { feature: "Seats", t1: "1", t2: "4", t3: "10", t4: "50", t5: "Unlimited" },
-                  { feature: "Monthly Queries", t1: "4/mo", t2: "12/mo", t3: "50/mo", t4: "150/mo", t5: "Unlimited" },
+                  { feature: "Seats", t1: "1", t2: "3", t3: "5", t4: "10", t5: "Unlimited" },
+                  { feature: "Monthly Queries", t1: "4/mo", t2: "12/mo", t3: "50/mo", t4: "150/mo", t5: "1,500/mo — expandable on demand" },
                   { feature: "DSP Coverage", t1: "Core", t2: "Core+", t3: "Advanced", t4: "Full", t5: "Unrestricted" },
                   { feature: "Video Networks", t1: "Primary", t2: "Short-form", t3: "All", t4: "All", t5: "All+" },
                   { feature: "Audience Retention", t1: "Baseline", t2: "Growth", t3: "Full", t4: "Custom", t5: "Custom" },
