@@ -79,7 +79,7 @@ const Home = () => {
                   </Button>
                 </Link>
                 <p className="text-xs text-muted-foreground/70 mt-4">
-                  AI-powered customer support · 24/7 · EN · PT · ES
+                  AI-powered support · 24/7 · English
                 </p>
               </div>
             </div>
