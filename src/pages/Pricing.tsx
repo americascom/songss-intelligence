@@ -12,6 +12,8 @@ const plans = [
     period: "month",
     description: "Starter analytics for independent artists.",
     features: [
+      "1 seat",
+      "4 queries/mo",
       "Core performance overview across major digital audio streaming providers (DSPs)",
       "Engagement tracking on primary global video networks",
       "Baseline audience retention metrics",
@@ -22,11 +24,13 @@ const plans = [
   },
   {
     name: "Tier 2",
-    displayName: "Artist Indie Growth",
+    displayName: "Growth",
     price: "$29",
     period: "month",
     description: "Accelerate your reach with viral trend tracking.",
     features: [
+      "4 seats",
+      "12 queries/mo",
       "Everything in Artist Indie, plus:",
       "Real-time metrics from short-form viral video networks",
       "Audience growth tracking and basic trend indicators",
@@ -41,6 +45,8 @@ const plans = [
     period: "month",
     description: "Advanced cross-platform analytics for professional management.",
     features: [
+      "10 seats",
+      "50 queries/mo",
       "Everything in Growth, plus:",
       "Integration with global audio recognition and discovery engines",
       "Early predictive insights for audience conversion",
@@ -55,6 +61,8 @@ const plans = [
     period: "month",
     description: "Institutional-grade market analysis and ROI projections.",
     features: [
+      "50 seats",
+      "150 queries/mo",
       "Full access to all standard data pipelines, plus:",
       "Deep integration with global metadata registries",
       "Global hotspots mapping and regional demographic tracking",
@@ -65,16 +73,18 @@ const plans = [
   {
     name: "Tier 5",
     displayName: "Opus Maximus",
-    price: "By Consultation",
+    price: "Custom Pricing",
     period: "",
-    description: "White-glove intelligence for labels, investors, and global management. Dedicated AI advisor available 24/7, with human strategic oversight for high-stakes decisions. Trilingual support: EN, PT, ES. 85% AI-powered response. 15% human oversight via email or chat.",
+    description: "White-glove intelligence for labels, investors, and global management. Dedicated AI advisor available 24/7 in English. Unlimited queries with soft cap of 1,500/mo.",
     features: [
+      "Unlimited seats",
+      "Unlimited queries (soft cap 1,500/mo)",
       "Unrestricted access to the Songss Intelligence ecosystem",
       "Autonomous Deep Scans: Advanced web sentiment and niche tracking",
       "Multi-layered predictive data crossing",
       "Direct strategic advisory from our proprietary AI architecture",
     ],
-    ctaText: "Talk to our AI Consultant",
+    ctaText: "Request Access",
     ctaLink: "/chat",
     subtext: "Taylor Made VIP — White-glove intelligence for labels, investors, and global management.",
   },
