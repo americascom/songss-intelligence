@@ -70,14 +70,17 @@ function Reveal({ children, delay = 0, className = "" }: { children: React.React
 }
 
 // ---------- Count up ----------
-function CountUp({ to, decimals = 0, duration = 1.6 }: { to: number; decimals?: number; duration?: number }) {
+function CountUp({
+  to, decimals = 0, duration = 1.8, format,
+}: { to: number; decimals?: number; duration?: number; format?: (n: number) => string }) {
   const mv = useMotionValue(0);
-  const rounded = useTransform(mv, (v) => v.toFixed(decimals));
-  const [val, setVal] = useState("0");
+  const [val, setVal] = useState(format ? format(0) : (0).toFixed(decimals));
   useEffect(() => {
-    const controls = animate(mv, to, { duration, ease: [0.22, 1, 0.36, 1] });
-    const unsub = rounded.on("change", (v) => setVal(v));
-    return () => { controls.stop(); unsub(); };
+    const controls = animate(mv, to, {
+      duration, ease: [0.22, 1, 0.36, 1],
+      onUpdate: (v) => setVal(format ? format(v) : v.toFixed(decimals)),
+    });
+    return () => controls.stop();
   }, [to, duration]);
   return <span className={mono}>{val}</span>;
 }
