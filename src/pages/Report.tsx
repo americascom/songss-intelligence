@@ -110,7 +110,7 @@ function ScoreRing({ score }: { score: number }) {
           stroke={C.cyan} strokeWidth={stroke} fill="none"
           strokeDasharray={c} strokeDashoffset={offset}
           strokeLinecap="round"
-          style={{ filter: `drop-shadow(0 0 8px ${C.cyan}66)` }}
+          style={{ filter: `drop-shadow(0 0 12px ${C.cyan}AA) drop-shadow(0 0 4px ${C.cyan})` }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
