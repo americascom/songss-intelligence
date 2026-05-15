@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { Lock, Loader2, Activity, Mail, Calendar, ShieldCheck, Zap, TrendingUp, Users, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import NeuralWorldMap, { normalizeHotspots } from "@/components/NeuralWorldMap";
 
 // --- Executive Obsidian Theme ---
 const C = {
