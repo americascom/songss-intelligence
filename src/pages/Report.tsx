@@ -1,77 +1,68 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, useMotionValue, useTransform, animate } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   LineChart, Line,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-  AreaChart, Area, ReferenceLine,
+  AreaChart, Area,
 } from "recharts";
-import { Download, Lock, Loader2, ShieldCheck } from "lucide-react";
+import { Lock, Loader2, Activity, Mail, Calendar, ShieldCheck, Zap, TrendingUp, Users, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 
-// --- Theme constants ---
+// --- Executive Obsidian Theme ---
 const C = {
-  bg: "#0A0A0A",
-  card: "#1A1A2E",
+  bg: "#050505",
+  surface: "#0B0B0B",
+  card: "#0D0D0D",
+  border: "#1A1A1A",
   cyan: "#00C4B5",
-  cyan2: "#00E0CF",
-  cyan3: "#0099A0",
-  white: "#FFFFFF",
-  gray: "#A0AEC0",
+  cyanDim: "#0E847B",
+  white: "#F5F5F5",
+  gray: "#7A7A7A",
+  grayDim: "#3A3A3A",
 };
 
-// --- Dummy chart data ---
-const sourceData = [
-  { name: "Organic", value: 60 },
-  { name: "Algorithmic", value: 25 },
-  { name: "Editorial", value: 15 },
-];
-const sourceColors = [C.cyan, C.cyan3, "#4A5568"];
+const mono = "font-mono tabular-nums";
 
-const funnelData = [
-  { stage: "Streams", value: 1240000 },
-  { stage: "Unique", value: 480000 },
-  { stage: "Saves", value: 96000 },
-  { stage: "Adds", value: 21500 },
-];
+// ---------- helpers ----------
+const isUUID = (v?: string) =>
+  !!v && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 
-const viralData = Array.from({ length: 12 }, (_, i) => ({
-  week: `W${i + 1}`,
-  tiktok: Math.round(2000 + Math.random() * 8000 + i * 600),
-  spotify: Math.round(40000 + Math.random() * 20000 + i * 4500),
-}));
+function fmtNum(n: number, opts: Intl.NumberFormatOptions = {}) {
+  return new Intl.NumberFormat("en-US", opts).format(n);
+}
+function fmtCompact(n: number) {
+  return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n);
+}
+function fmtUSD(n: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+}
 
-const radarData = [
-  { city: "São Paulo", velocity: 92 },
-  { city: "Mexico City", velocity: 78 },
-  { city: "Los Angeles", velocity: 84 },
-  { city: "London", velocity: 67 },
-  { city: "Lisbon", velocity: 73 },
-];
+function planTier(plan?: string | null): "indie" | "growth" | "pro" | "enterprise" | "opus" {
+  const p = (plan || "").toLowerCase();
+  if (p.includes("opus")) return "opus";
+  if (p.includes("enterprise")) return "enterprise";
+  if (p.includes("pro")) return "pro";
+  if (p.includes("growth")) return "growth";
+  return "indie";
+}
+const tierRank = { indie: 0, growth: 1, pro: 2, enterprise: 3, opus: 4 } as const;
+const has = (t: ReturnType<typeof planTier>, min: keyof typeof tierRank) => tierRank[t] >= tierRank[min];
 
-const royaltyData = Array.from({ length: 12 }, (_, i) => {
-  const cumulative = Math.round(1200 * (i + 1) * (1 + i * 0.08));
-  return { month: `M${i + 1}`, revenue: cumulative };
-});
-const breakEven = 18000;
-
-// --- Reveal wrapper ---
+// ---------- Reveal ----------
 function Reveal({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-50px" });
+  const inView = useInView(ref, { once: true, margin: "-60px" });
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 24 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ type: "spring", stiffness: 80, damping: 18, delay }}
+      transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}
       className={className}
     >
       {children}
@@ -79,192 +70,145 @@ function Reveal({ children, delay = 0, className = "" }: { children: React.React
   );
 }
 
-// --- Chart Card ---
-function ChartCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+// ---------- Count up ----------
+function CountUp({ to, decimals = 0, duration = 1.6 }: { to: number; decimals?: number; duration?: number }) {
+  const mv = useMotionValue(0);
+  const rounded = useTransform(mv, (v) => v.toFixed(decimals));
+  const [val, setVal] = useState("0");
+  useEffect(() => {
+    const controls = animate(mv, to, { duration, ease: [0.22, 1, 0.36, 1] });
+    const unsub = rounded.on("change", (v) => setVal(v));
+    return () => { controls.stop(); unsub(); };
+  }, [to, duration]);
+  return <span className={mono}>{val}</span>;
+}
+
+// ---------- Score Ring ----------
+function ScoreRing({ score }: { score: number }) {
+  const size = 180;
+  const stroke = 8;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const target = Math.max(0, Math.min(100, score));
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    const ctrl = animate(0, target, {
+      duration: 1.8, ease: [0.22, 1, 0.36, 1],
+      onUpdate: (v) => setProgress(v),
+    });
+    return () => ctrl.stop();
+  }, [target]);
+  const offset = c - (progress / 100) * c;
   return (
-    <Reveal className="group">
-      <div
-        className="rounded-2xl border p-5 h-full transition-all duration-300 hover:[filter:drop-shadow(0_0_15px_rgba(0,196,181,0.3))]"
-        style={{ background: C.card, borderColor: "rgba(0,196,181,0.15)" }}
-      >
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} stroke={C.border} strokeWidth={stroke} fill="none" />
+        <circle
+          cx={size / 2} cy={size / 2} r={r}
+          stroke={C.cyan} strokeWidth={stroke} fill="none"
+          strokeDasharray={c} strokeDashoffset={offset}
+          strokeLinecap="round"
+          style={{ filter: `drop-shadow(0 0 8px ${C.cyan}66)` }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <div className={`${mono} text-5xl font-bold`} style={{ color: C.white }}>
+          <CountUp to={target} />
+        </div>
+        <div className="text-[10px] uppercase tracking-[0.3em] mt-1" style={{ color: C.cyan }}>SNIE™ Score</div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Card chrome ----------
+function Panel({ title, subtitle, children, className = "" }: { title?: string; subtitle?: string; children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={`rounded-xl border p-5 h-full ${className}`}
+      style={{ background: C.card, borderColor: C.border }}
+    >
+      {title && (
         <div className="mb-4">
-          <h3 className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: C.cyan }}>{title}</h3>
+          <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>{title}</h3>
           {subtitle && <p className="text-xs mt-1" style={{ color: C.gray }}>{subtitle}</p>}
         </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function ChartPanel({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+  return (
+    <Reveal>
+      <Panel title={title} subtitle={subtitle}>
         <div className="h-64">{children}</div>
-      </div>
+      </Panel>
     </Reveal>
   );
 }
 
-// --- Typewriter ---
-function Typewriter({ text, speed = 18 }: { text: string; speed?: number }) {
-  const [shown, setShown] = useState("");
-  useEffect(() => {
-    let i = 0;
-    setShown("");
-    const id = setInterval(() => {
-      i++;
-      setShown(text.slice(0, i));
-      if (i >= text.length) clearInterval(id);
-    }, speed);
-    return () => clearInterval(id);
-  }, [text, speed]);
-  return <span>{shown}<span className="inline-block w-[2px] h-4 ml-0.5 animate-pulse" style={{ background: C.cyan }} /></span>;
-}
+// ---------- Tooltip styling ----------
+const tooltipStyle = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, color: C.white, fontSize: 12 };
 
-// --- Vault Gate ---
-function VaultGate({ expectedEmail, onUnlock }: { expectedEmail?: string; onUnlock: () => void }) {
-  const { signIn } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    const { error } = await signIn(email, password);
-    setLoading(false);
-    if (error) { setError(error.message); return; }
-    if (expectedEmail && email.toLowerCase() !== expectedEmail.toLowerCase()) {
-      setError("This account does not match the report's authorized email.");
-      return;
-    }
-    onUnlock();
-  }
-
+// ---------- 401 ----------
+function Classified({ message }: { message?: string }) {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: C.bg }}>
+    <div className="min-h-screen flex items-center justify-center px-6" style={{ background: C.bg }}>
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 80, damping: 18 }}
-        className="w-full max-w-md rounded-2xl border p-8"
-        style={{ background: C.card, borderColor: "rgba(0,196,181,0.25)" }}
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
+        className="text-center max-w-md"
       >
-        <div className="flex items-center gap-3 mb-6">
-          <Lock className="w-5 h-5" style={{ color: C.cyan }} />
-          <span className="text-xs font-bold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>Vault Access</span>
-        </div>
-        <h1 className="text-2xl font-bold mb-2" style={{ color: C.white }}>SONGSS Intelligence Deep Dive</h1>
-        <p className="text-sm mb-6" style={{ color: C.gray }}>Confirm your credentials to decrypt the report.</p>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <input
-            type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email"
-            className="w-full rounded-lg px-4 py-3 text-sm outline-none focus:ring-2"
-            style={{ background: "#0F0F1F", border: "1px solid rgba(0,196,181,0.2)", color: C.white }}
-          />
-          <input
-            type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password"
-            className="w-full rounded-lg px-4 py-3 text-sm outline-none focus:ring-2"
-            style={{ background: "#0F0F1F", border: "1px solid rgba(0,196,181,0.2)", color: C.white }}
-          />
-          {error && <p className="text-xs" style={{ color: "#FF6B6B" }}>{error}</p>}
-          <button
-            type="submit" disabled={loading}
-            className="w-full rounded-lg py-3 text-sm font-bold uppercase tracking-wider transition-all hover:scale-[1.01] disabled:opacity-50"
-            style={{ background: C.cyan, color: C.bg }}
-          >
-            {loading ? "Decrypting…" : "Decrypt Report"}
-          </button>
-        </form>
-        <div className="flex items-center gap-2 mt-6 text-xs" style={{ color: C.gray }}>
-          <ShieldCheck className="w-3.5 h-3.5" /> End-to-end secured · Americascom Neural Intelligence
-        </div>
+        <Lock className="w-8 h-8 mx-auto mb-6" style={{ color: C.cyan }} />
+        <div className={`${mono} text-xs uppercase tracking-[0.4em] mb-3`} style={{ color: C.cyan }}>401 — Classified</div>
+        <h1 className="text-2xl font-semibold mb-3" style={{ color: C.white }}>This dossier does not exist.</h1>
+        <p className="text-sm" style={{ color: C.gray }}>{message || "The session ID is invalid or has been revoked. Contact your strategy lead for access."}</p>
       </motion.div>
     </div>
   );
 }
 
+// ---------- types ----------
 interface ReportRow {
   id: string;
   session_id: string;
-  email: string;
+  email: string | null;
+  customer_email: string | null;
   artist_name: string | null;
-  report_markdown: string;
+  plan_name: string | null;
+  digital_score: number | null;
+  geo_hotspots: any;
+  revenue_economics: any;
+  engagement_metrics: any;
+  report_markdown: string | null;
+  report_html: string | null;
+  created_at: string;
 }
 
+// ---------- main ----------
 export default function Report() {
   const { session_id } = useParams<{ session_id: string }>();
-  const { user, loading: authLoading } = useAuth();
   const [report, setReport] = useState<ReportRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expectedEmail, setExpectedEmail] = useState<string | undefined>(undefined);
-  const reportContentRef = useRef<HTMLDivElement>(null);
-  const [exporting, setExporting] = useState(false);
-
-  async function loadReport() {
-    if (!session_id) return;
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("intelligence_reports")
-      .select("*")
-      .eq("session_id", session_id)
-      .maybeSingle();
-    setLoading(false);
-    if (error) { setError(error.message); return; }
-    if (!data) { setError("Report not found or access denied."); return; }
-    setReport(data as ReportRow);
-    setExpectedEmail(data.email);
-  }
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
+    if (!isUUID(session_id)) { setLoading(false); setError("invalid"); return; }
+    (async () => {
+      const { data, error } = await supabase
+        .from("intelligence_reports")
+        .select("*")
+        .eq("session_id", session_id!)
+        .maybeSingle();
       setLoading(false);
-      return;
-    }
-    loadReport();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, authLoading, session_id]);
+      if (error) { setError(error.message); return; }
+      if (!data) { setError("notfound"); return; }
+      setReport(data as unknown as ReportRow);
+    })();
+  }, [session_id]);
 
-  const markdown = report?.report_markdown?.trim() || `# Executive Summary\n\nAwaiting neural ingestion. The deep-dive report for this session is being assembled by Americascom Neural Intelligence.\n\n## Performance Overview\n\nMomentum is accelerating across viral and DSP surfaces. Editorial pickup remains the highest-leverage opportunity over the next 30 days.\n\n## Strategic Recommendations\n\n- Double down on TikTok seeding in LATAM\n- Pitch curators in the Indie Pop and Bedroom genres\n- Launch a regional micro-tour around the top 5 velocity cities`;
-
-  const { firstParagraph, restMarkdown } = useMemo(() => {
-    const lines = markdown.split("\n");
-    let firstParaIdx = -1;
-    for (let i = 0; i < lines.length; i++) {
-      const l = lines[i].trim();
-      if (l && !l.startsWith("#") && !l.startsWith("-") && !l.startsWith(">")) { firstParaIdx = i; break; }
-    }
-    if (firstParaIdx === -1) return { firstParagraph: "", restMarkdown: markdown };
-    const before = lines.slice(0, firstParaIdx).join("\n");
-    const para = lines[firstParaIdx];
-    const after = lines.slice(firstParaIdx + 1).join("\n");
-    return { firstParagraph: para, restMarkdown: `${before}\n\n${after}` };
-  }, [markdown]);
-
-  async function downloadPDF() {
-    if (!reportContentRef.current) return;
-    setExporting(true);
-    try {
-      const canvas = await html2canvas(reportContentRef.current, { backgroundColor: C.bg, scale: 2, useCORS: true });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-      pdf.save(`songss-neural-dossier-${session_id}.pdf`);
-    } finally {
-      setExporting(false);
-    }
-  }
-
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: C.bg }}>
         <Loader2 className="w-6 h-6 animate-spin" style={{ color: C.cyan }} />
@@ -272,178 +216,362 @@ export default function Report() {
     );
   }
 
-  if (!user) return <VaultGate expectedEmail={expectedEmail} onUnlock={loadReport} />;
-  if (error || !report) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: C.bg }}>
-        <div className="max-w-md text-center">
-          <Lock className="w-8 h-8 mx-auto mb-4" style={{ color: C.cyan }} />
-          <h1 className="text-xl font-bold mb-2" style={{ color: C.white }}>Access Denied</h1>
-          <p className="text-sm" style={{ color: C.gray }}>{error || "This report is not authorized for your account."}</p>
-        </div>
-      </div>
-    );
-  }
+  if (error || !report) return <Classified />;
+
+  const tier = planTier(report.plan_name);
+  const em = report.engagement_metrics || {};
+  const re = report.revenue_economics || {};
+  const geo = report.geo_hotspots || {};
+
+  // ---- engagement KPIs
+  const engagementScore = Number(em.engagement_score ?? em.engagementScore ?? 0);
+  const retentionRate = Number(em.retention_rate ?? em.retentionRate ?? 0);
+  const monthlyStreams = Number(em.monthly_streams ?? em.monthlyStreams ?? 0);
+  const ltv = Number(re.ltv ?? re.ltv_projection ?? em.ltv ?? 0);
+
+  // ---- monthly growth (bar)
+  const monthlyGrowth: { month: string; value: number }[] =
+    em.monthly_growth ?? em.monthlyGrowth ??
+    Array.from({ length: 6 }, (_, i) => ({ month: `M${i + 1}`, value: Math.round(monthlyStreams * (0.6 + i * 0.1)) || (i + 1) * 1000 }));
+
+  // ---- consumption sources (doughnut)
+  const sourcesObj = em.consumption_sources ?? em.sources ?? { organic: 60, algorithmic: 25, editorial: 15 };
+  const sourceData = Object.entries(sourcesObj).map(([k, v]) => ({ name: k.charAt(0).toUpperCase() + k.slice(1), value: Number(v) }));
+  const sourceColors = [C.cyan, C.cyanDim, "#2A2A2A", "#444", "#666"];
+
+  // ---- revenue projection (area)
+  const revProjection: { month: string; revenue: number }[] =
+    re.projection ?? re.revenue_projection ??
+    Array.from({ length: 12 }, (_, i) => ({ month: `M${i + 1}`, revenue: Math.round((ltv || 5000) * 0.08 * (i + 1) * (1 + i * 0.05)) }));
+
+  // ---- conversion funnel
+  const funnel = em.funnel ?? em.conversion_funnel ?? {
+    streams: monthlyStreams || 1000000,
+    listeners: Math.round((monthlyStreams || 1000000) * 0.38),
+    saves: Math.round((monthlyStreams || 1000000) * 0.08),
+    playlist_adds: Math.round((monthlyStreams || 1000000) * 0.018),
+  };
+  const funnelData = [
+    { stage: "Streams", value: Number(funnel.streams) },
+    { stage: "Listeners", value: Number(funnel.listeners ?? funnel.unique_listeners ?? 0) },
+    { stage: "Saves", value: Number(funnel.saves ?? 0) },
+    { stage: "Playlist Adds", value: Number(funnel.playlist_adds ?? funnel.adds ?? 0) },
+  ];
+
+  // ---- regional radar
+  const regionsRaw: any[] = geo.top_cities ?? geo.cities ?? geo.top ?? geo.hotspots ?? [];
+  const radarData = (Array.isArray(regionsRaw) ? regionsRaw : []).slice(0, 5).map((r: any) => ({
+    region: r.name ?? r.city ?? r.country ?? "—",
+    velocity: Number(r.velocity ?? r.score ?? r.value ?? 0),
+  }));
+
+  // ---- TikTok vs DSP correlation
+  const correlation: { week: string; tiktok: number; dsp: number }[] =
+    em.tiktok_dsp ?? em.viral_correlation ??
+    Array.from({ length: 12 }, (_, i) => ({
+      week: `W${i + 1}`,
+      tiktok: Math.round(2000 + i * 800 + Math.random() * 1500),
+      dsp: Math.round(20000 + i * 4500 + Math.random() * 3000),
+    }));
+
+  // ---- revenue streams table
+  const revStreams: { source: string; revenue: number; growth: number }[] =
+    re.streams ?? re.revenue_streams ?? [
+      { source: "Streaming Royalties", revenue: 48200, growth: 18.4 },
+      { source: "Sync & Licensing", revenue: 12400, growth: 32.1 },
+      { source: "Merch & D2C", revenue: 8800, growth: 11.7 },
+      { source: "Live & Touring", revenue: 31500, growth: 24.6 },
+    ];
+
+  // ---- NPV model
+  const npv: { year: string; cashflow: number; discounted: number; cumulative: number }[] =
+    re.npv ?? re.npv_model ?? (() => {
+      const r = 0.1;
+      let cum = 0;
+      return Array.from({ length: 5 }, (_, i) => {
+        const cf = Math.round((ltv || 25000) * (1 + i * 0.15));
+        const disc = Math.round(cf / Math.pow(1 + r, i + 1));
+        cum += disc;
+        return { year: `Y${i + 1}`, cashflow: cf, discounted: disc, cumulative: cum };
+      });
+    })();
+
+  const reportDate = new Date(report.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
   return (
     <div className="min-h-screen" style={{ background: C.bg, color: C.white }}>
-      {/* Sticky Action Bar */}
-      <div
-        className="sticky top-0 z-40 backdrop-blur-md border-b"
-        style={{ background: "rgba(10,10,10,0.85)", borderColor: "rgba(0,196,181,0.15)" }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: C.cyan }} />
-            <div className="min-w-0">
-              <div className="text-[10px] uppercase tracking-[0.25em]" style={{ color: C.gray }}>Neural Dossier</div>
-              <div className="text-sm font-semibold truncate" style={{ color: C.white }}>
-                {report.artist_name || "Pro Analytics Report"} · <span style={{ color: C.cyan }}>{session_id}</span>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+        {/* ---------- Header / Reveal ---------- */}
+        <Reveal>
+          <header className="flex items-start justify-between gap-6 mb-12 pb-8 border-b" style={{ borderColor: C.border }}>
+            <div className="min-w-0 flex-1">
+              <div className={`${mono} text-[10px] uppercase tracking-[0.35em] mb-4 flex items-center gap-2`} style={{ color: C.cyan }}>
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.cyan }} />
+                SONGSS Intelligence
+              </div>
+              <h1 className="text-4xl sm:text-6xl font-semibold tracking-tight leading-[1.05] mb-5" style={{ color: C.white }}>
+                {report.artist_name || "Untitled Artist"}
+              </h1>
+              <div className="flex flex-wrap items-center gap-2.5">
+                {report.plan_name && (
+                  <span className={`${mono} text-[10px] uppercase tracking-[0.2em] px-3 py-1.5 rounded-full border`}
+                    style={{ borderColor: C.cyan, color: C.cyan }}>
+                    {report.plan_name}
+                  </span>
+                )}
+                <span className={`${mono} text-[10px] uppercase tracking-[0.2em] px-3 py-1.5 rounded-full border flex items-center gap-2`}
+                  style={{ borderColor: C.border, color: C.gray }}>
+                  <span className="relative flex w-2 h-2">
+                    <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ background: C.cyan }} />
+                    <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: C.cyan }} />
+                  </span>
+                  Neural Engine Active
+                </span>
+                <span className={`${mono} text-[10px] uppercase tracking-[0.2em] px-3 py-1.5 rounded-full border flex items-center gap-1.5`}
+                  style={{ borderColor: C.border, color: C.gray }}>
+                  <Calendar className="w-3 h-3" /> {reportDate}
+                </span>
               </div>
             </div>
-          </div>
-          <button
-            onClick={downloadPDF}
-            disabled={exporting}
-            className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all hover:scale-[1.02] disabled:opacity-50"
-            style={{ background: C.cyan, color: C.bg }}
-          >
-            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            {exporting ? "Rendering…" : "Download Neural Dossier (PDF)"}
-          </button>
-        </div>
-      </div>
-
-      <div ref={reportContentRef} className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
-        {/* Header */}
-        <Reveal>
-          <div className="mb-10">
-            <div className="text-[10px] uppercase tracking-[0.3em] mb-3" style={{ color: C.cyan }}>
-              Pro Analytics · Deep Dive · Session {session_id}
+            <div className="hidden sm:block shrink-0">
+              <ScoreRing score={Number(report.digital_score ?? 0)} />
             </div>
-            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight" style={{ color: C.white }}>
-              {report.artist_name || "Artist"} <span style={{ color: C.cyan }}>// Intelligence Report</span>
-            </h1>
+          </header>
+          <div className="sm:hidden mb-10 flex justify-center">
+            <ScoreRing score={Number(report.digital_score ?? 0)} />
           </div>
         </Reveal>
 
-        {/* Charts Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mb-12">
-          <ChartCard title="Source of Streams" subtitle="Traffic origin distribution">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={sourceData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={2} stroke="none">
-                  {sourceData.map((_, i) => <Cell key={i} fill={sourceColors[i]} />)}
-                </Pie>
-                <Tooltip contentStyle={{ background: C.card, border: `1px solid ${C.cyan}40`, borderRadius: 8, color: C.white }} />
-                <Legend wrapperStyle={{ color: C.gray, fontSize: 11 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </ChartCard>
+        {/* ---------- KPI Cards ---------- */}
+        <Reveal delay={0.05}>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
+            {[
+              { label: "Engagement Score", value: engagementScore, suffix: "", icon: Activity, decimals: 1 },
+              { label: "Retention Rate", value: retentionRate, suffix: "%", icon: Users, decimals: 1 },
+              { label: "Monthly Streams", value: monthlyStreams, suffix: "", icon: TrendingUp, decimals: 0, compact: true },
+              { label: "LTV Projection", value: ltv, suffix: "", icon: DollarSign, decimals: 0, currency: true },
+            ].map((k, i) => (
+              <motion.div
+                key={k.label}
+                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + i * 0.08, duration: 0.6 }}
+                className="rounded-xl border p-5"
+                style={{ background: C.card, borderColor: C.border }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: C.gray }}>{k.label}</span>
+                  <k.icon className="w-3.5 h-3.5" style={{ color: C.cyan }} />
+                </div>
+                <div className={`${mono} text-3xl font-semibold`} style={{ color: C.white }}>
+                  {k.currency ? fmtUSD(k.value)
+                    : k.compact ? fmtCompact(k.value)
+                    : <><CountUp to={k.value} decimals={k.decimals} />{k.suffix}</>}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </Reveal>
 
-          <ChartCard title="Fan Conversion" subtitle="Streams → Adds funnel">
+        {/* ---------- Charts ---------- */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-12">
+          {/* Always: Monthly Growth */}
+          <ChartPanel title="Monthly Growth" subtitle="Stream trajectory over reporting period">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={funnelData} layout="vertical" margin={{ left: 20 }}>
-                <CartesianGrid stroke="#2A2A3E" strokeDasharray="3 3" />
-                <XAxis type="number" stroke={C.gray} fontSize={11} />
-                <YAxis type="category" dataKey="stage" stroke={C.gray} fontSize={11} />
-                <Tooltip contentStyle={{ background: C.card, border: `1px solid ${C.cyan}40`, borderRadius: 8, color: C.white }} />
-                <Bar dataKey="value" fill={C.cyan} radius={[0, 6, 6, 0]} />
+              <BarChart data={monthlyGrowth}>
+                <CartesianGrid stroke={C.border} strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="month" stroke={C.gray} fontSize={11} tickLine={false} axisLine={{ stroke: C.border }} />
+                <YAxis stroke={C.gray} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => fmtCompact(v)} />
+                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: `${C.cyan}10` }} formatter={(v: any) => fmtNum(Number(v))} />
+                <Bar dataKey="value" fill={C.cyan} radius={[4, 4, 0, 0]} animationDuration={1200} />
               </BarChart>
             </ResponsiveContainer>
-          </ChartCard>
+          </ChartPanel>
 
-          <ChartCard title="Viral vs DSP" subtitle="TikTok creations vs Spotify streams (12w)">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={viralData}>
-                <CartesianGrid stroke="#2A2A3E" strokeDasharray="3 3" />
-                <XAxis dataKey="week" stroke={C.gray} fontSize={11} />
-                <YAxis yAxisId="left" stroke={C.cyan} fontSize={11} />
-                <YAxis yAxisId="right" orientation="right" stroke={C.cyan3} fontSize={11} />
-                <Tooltip contentStyle={{ background: C.card, border: `1px solid ${C.cyan}40`, borderRadius: 8, color: C.white }} />
-                <Legend wrapperStyle={{ color: C.gray, fontSize: 11 }} />
-                <Line yAxisId="left" type="monotone" dataKey="tiktok" stroke={C.cyan} strokeWidth={2} dot={false} name="TikTok" />
-                <Line yAxisId="right" type="monotone" dataKey="spotify" stroke={C.cyan3} strokeWidth={2} dot={false} name="Spotify" />
-              </LineChart>
-            </ResponsiveContainer>
-          </ChartCard>
+          {/* Growth+: Consumption Sources */}
+          {has(tier, "growth") && (
+            <ChartPanel title="Consumption Sources" subtitle="Organic vs algorithmic vs editorial">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={sourceData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={92} paddingAngle={3} stroke="none" animationDuration={1200}>
+                    {sourceData.map((_, i) => <Cell key={i} fill={sourceColors[i % sourceColors.length]} />)}
+                  </Pie>
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => `${v}%`} />
+                  <Legend wrapperStyle={{ color: C.gray, fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </ChartPanel>
+          )}
 
-          <ChartCard title="Regional Velocity" subtitle="Top 5 cities · growth index">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart data={radarData}>
-                <PolarGrid stroke="#2A2A3E" />
-                <PolarAngleAxis dataKey="city" stroke={C.gray} fontSize={11} />
-                <PolarRadiusAxis stroke="#2A2A3E" tick={{ fill: C.gray, fontSize: 10 }} />
-                <Radar dataKey="velocity" stroke={C.cyan} fill={C.cyan} fillOpacity={0.35} />
-                <Tooltip contentStyle={{ background: C.card, border: `1px solid ${C.cyan}40`, borderRadius: 8, color: C.white }} />
-              </RadarChart>
-            </ResponsiveContainer>
-          </ChartCard>
+          {/* Growth+: Revenue Projection */}
+          {has(tier, "growth") && (
+            <ChartPanel title="Revenue Projection" subtitle="12-month modeled cashflow">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revProjection}>
+                  <defs>
+                    <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={C.cyan} stopOpacity={0.5} />
+                      <stop offset="100%" stopColor={C.cyan} stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke={C.border} strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="month" stroke={C.gray} fontSize={11} tickLine={false} axisLine={{ stroke: C.border }} />
+                  <YAxis stroke={C.gray} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${fmtCompact(v)}`} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => fmtUSD(Number(v))} />
+                  <Area type="monotone" dataKey="revenue" stroke={C.cyan} strokeWidth={2} fill="url(#revGrad)" animationDuration={1400} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </ChartPanel>
+          )}
 
-          <ChartCard title="Royalty ROI Projection" subtitle="Cumulative revenue vs break-even">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={royaltyData}>
-                <defs>
-                  <linearGradient id="roi" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={C.cyan} stopOpacity={0.6} />
-                    <stop offset="100%" stopColor={C.cyan} stopOpacity={0.05} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="#2A2A3E" strokeDasharray="3 3" />
-                <XAxis dataKey="month" stroke={C.gray} fontSize={11} />
-                <YAxis stroke={C.gray} fontSize={11} />
-                <Tooltip contentStyle={{ background: C.card, border: `1px solid ${C.cyan}40`, borderRadius: 8, color: C.white }} />
-                <ReferenceLine y={breakEven} stroke="#FF6B6B" strokeDasharray="4 4" label={{ value: "Break-even", fill: "#FF6B6B", fontSize: 10, position: "insideTopRight" }} />
-                <Area type="monotone" dataKey="revenue" stroke={C.cyan} strokeWidth={2} fill="url(#roi)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </ChartCard>
+          {/* Pro+: Conversion Funnel */}
+          {has(tier, "pro") && (
+            <ChartPanel title="Conversion Funnel" subtitle="Streams → Listeners → Saves → Playlist Adds">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={funnelData} layout="vertical" margin={{ left: 24 }}>
+                  <CartesianGrid stroke={C.border} strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" stroke={C.gray} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => fmtCompact(v)} />
+                  <YAxis type="category" dataKey="stage" stroke={C.gray} fontSize={11} tickLine={false} axisLine={false} width={90} />
+                  <Tooltip contentStyle={tooltipStyle} cursor={{ fill: `${C.cyan}10` }} formatter={(v: any) => fmtNum(Number(v))} />
+                  <Bar dataKey="value" fill={C.cyan} radius={[0, 4, 4, 0]} animationDuration={1200} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartPanel>
+          )}
 
-          <ChartCard title="Neural Confidence" subtitle="Model conviction score">
-            <div className="h-full flex flex-col items-center justify-center">
-              <div className="text-6xl font-extrabold tracking-tight" style={{ color: C.cyan, filter: "drop-shadow(0 0 20px rgba(0,196,181,0.4))" }}>92<span className="text-2xl" style={{ color: C.gray }}>/100</span></div>
-              <div className="text-xs uppercase tracking-[0.25em] mt-3" style={{ color: C.gray }}>High Conviction Signal</div>
-            </div>
-          </ChartCard>
+          {/* Pro+: Regional Velocity */}
+          {has(tier, "pro") && radarData.length > 0 && (
+            <ChartPanel title="Regional Velocity" subtitle="Top 5 markets · momentum index">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart data={radarData}>
+                  <PolarGrid stroke={C.border} />
+                  <PolarAngleAxis dataKey="region" stroke={C.gray} tick={{ fill: C.gray, fontSize: 11 }} />
+                  <PolarRadiusAxis stroke={C.border} tick={{ fill: C.gray, fontSize: 10 }} />
+                  <Radar dataKey="velocity" stroke={C.cyan} fill={C.cyan} fillOpacity={0.3} animationDuration={1400} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </ChartPanel>
+          )}
+
+          {/* Enterprise+: TikTok vs DSP */}
+          {has(tier, "enterprise") && (
+            <ChartPanel title="TikTok × DSP Correlation" subtitle="Viral signal vs streaming response">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={correlation}>
+                  <CartesianGrid stroke={C.border} strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="week" stroke={C.gray} fontSize={11} tickLine={false} axisLine={{ stroke: C.border }} />
+                  <YAxis yAxisId="left" stroke={C.cyan} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => fmtCompact(v)} />
+                  <YAxis yAxisId="right" orientation="right" stroke={C.cyanDim} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => fmtCompact(v)} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => fmtNum(Number(v))} />
+                  <Legend wrapperStyle={{ color: C.gray, fontSize: 11 }} />
+                  <Line yAxisId="left" type="monotone" dataKey="tiktok" stroke={C.cyan} strokeWidth={2} dot={false} name="TikTok" animationDuration={1400} />
+                  <Line yAxisId="right" type="monotone" dataKey="dsp" stroke={C.cyanDim} strokeWidth={2} dot={false} name="DSP Streams" animationDuration={1400} />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartPanel>
+          )}
         </div>
 
-        {/* Neural Report Renderer */}
+        {/* Enterprise+: Revenue Streams Table */}
+        {has(tier, "enterprise") && (
+          <Reveal>
+            <Panel title="Revenue Streams" subtitle="Source contribution and YoY growth" className="mb-5">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left" style={{ color: C.gray }}>
+                      <th className="py-3 text-[10px] uppercase tracking-[0.2em] font-medium">Source</th>
+                      <th className="py-3 text-[10px] uppercase tracking-[0.2em] font-medium text-right">Revenue</th>
+                      <th className="py-3 text-[10px] uppercase tracking-[0.2em] font-medium text-right">Growth</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {revStreams.map((r, i) => (
+                      <tr key={i} className="border-t" style={{ borderColor: C.border }}>
+                        <td className="py-3.5" style={{ color: C.white }}>{r.source}</td>
+                        <td className={`py-3.5 text-right ${mono}`} style={{ color: C.white }}>{fmtUSD(Number(r.revenue))}</td>
+                        <td className={`py-3.5 text-right ${mono}`} style={{ color: Number(r.growth) >= 0 ? C.cyan : "#FF6B6B" }}>
+                          {Number(r.growth) >= 0 ? "+" : ""}{Number(r.growth).toFixed(1)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Panel>
+          </Reveal>
+        )}
+
+        {/* Enterprise+: NPV Model Table */}
+        {has(tier, "enterprise") && (
+          <Reveal>
+            <Panel title="NPV Financial Model" subtitle="5-year discounted cashflow @ 10%" className="mb-12">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left" style={{ color: C.gray }}>
+                      <th className="py-3 text-[10px] uppercase tracking-[0.2em] font-medium">Year</th>
+                      <th className="py-3 text-[10px] uppercase tracking-[0.2em] font-medium text-right">Cashflow</th>
+                      <th className="py-3 text-[10px] uppercase tracking-[0.2em] font-medium text-right">Discounted</th>
+                      <th className="py-3 text-[10px] uppercase tracking-[0.2em] font-medium text-right">Cumulative NPV</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {npv.map((r, i) => (
+                      <tr key={i} className="border-t" style={{ borderColor: C.border }}>
+                        <td className={`py-3.5 ${mono}`} style={{ color: C.white }}>{r.year}</td>
+                        <td className={`py-3.5 text-right ${mono}`} style={{ color: C.white }}>{fmtUSD(Number(r.cashflow))}</td>
+                        <td className={`py-3.5 text-right ${mono}`} style={{ color: C.white }}>{fmtUSD(Number(r.discounted))}</td>
+                        <td className={`py-3.5 text-right ${mono}`} style={{ color: C.cyan }}>{fmtUSD(Number(r.cumulative))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Panel>
+          </Reveal>
+        )}
+
+        {/* ---------- Markdown Analysis ---------- */}
+        {report.report_markdown && (
+          <Reveal>
+            <Panel title="Executive Analysis" subtitle="Powered by Songss Neural Intelligence Engine™" className="mb-12">
+              <div className="prose prose-invert max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-3xl prose-h2:text-2xl prose-h2:mt-10 prose-h3:text-xl prose-p:leading-[1.9] prose-p:text-[15px] prose-li:leading-[1.8] prose-strong:text-white prose-a:text-[#00C4B5] prose-a:no-underline hover:prose-a:underline prose-blockquote:border-l-4 prose-blockquote:border-[#00C4B5] prose-blockquote:bg-[#0B0B0B] prose-blockquote:py-1 prose-blockquote:px-5 prose-blockquote:rounded-r-md prose-blockquote:not-italic prose-code:font-mono prose-code:text-[#00C4B5] prose-code:bg-[#0B0B0B] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-hr:border-[#1A1A1A] prose-th:text-[#00C4B5] prose-th:uppercase prose-th:tracking-wider prose-th:text-xs prose-td:font-mono"
+                style={{ color: "#D4D4D4" }}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {report.report_markdown}
+                </ReactMarkdown>
+              </div>
+            </Panel>
+          </Reveal>
+        )}
+
+        {/* ---------- Footer CTA ---------- */}
         <Reveal>
-          <div
-            className="rounded-2xl border p-6 sm:p-10"
-            style={{ background: C.card, borderColor: "rgba(0,196,181,0.15)" }}
-          >
-            <div className="text-[10px] uppercase tracking-[0.3em] mb-6" style={{ color: C.cyan }}>
-              Neural Report · Decrypted Output
+          <div className="rounded-xl border p-8 sm:p-10 text-center" style={{ background: C.card, borderColor: C.border }}>
+            <div className="inline-flex items-center gap-2 mb-5">
+              <span className="relative flex w-2 h-2">
+                <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ background: C.cyan }} />
+                <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: C.cyan }} />
+              </span>
+              <span className={`${mono} text-[10px] uppercase tracking-[0.3em]`} style={{ color: C.cyan }}>Neural Engine Active</span>
             </div>
-
-            {firstParagraph && (
-              <p className="text-base sm:text-lg leading-relaxed mb-6" style={{ color: C.white }}>
-                <Typewriter text={firstParagraph} />
-              </p>
-            )}
-
-            <article
-              className="prose prose-invert max-w-none
-                prose-headings:uppercase prose-headings:tracking-wider
-                prose-h1:text-[--cyan] prose-h2:text-[--cyan] prose-h3:text-[--cyan]
-                prose-p:text-[color:#A0AEC0]
-                prose-strong:text-white
-                prose-a:text-[--cyan] prose-a:no-underline hover:prose-a:underline
-                prose-li:text-[color:#A0AEC0]
-                prose-blockquote:border-l-[--cyan] prose-blockquote:text-[color:#A0AEC0]
-                prose-code:text-[--cyan] prose-code:bg-black/40 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
-                prose-hr:border-[color:rgba(0,196,181,0.2)]"
-              style={{ ["--cyan" as string]: C.cyan } as React.CSSProperties}
+            <h2 className="text-2xl sm:text-3xl font-semibold mb-3" style={{ color: C.white }}>Ready to operationalize this intelligence?</h2>
+            <p className="text-sm mb-7 max-w-md mx-auto" style={{ color: C.gray }}>
+              Book a private session with our strategy team to translate this dossier into a 90-day execution plan.
+            </p>
+            <a
+              href="mailto:hello@songssintelligence.com"
+              className="inline-flex items-center gap-2 rounded-lg px-6 py-3.5 text-xs font-bold uppercase tracking-[0.2em] transition-all hover:scale-[1.02]"
+              style={{ background: C.cyan, color: C.bg }}
             >
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{restMarkdown}</ReactMarkdown>
-            </article>
-          </div>
-        </Reveal>
-
-        <Reveal>
-          <div className="mt-10 text-center text-xs" style={{ color: C.gray }}>
-            Generated by Americascom Neural Intelligence · Session {session_id} · Confidential
+              <Mail className="w-4 h-4" />
+              Schedule Strategy Session
+            </a>
+            <div className={`${mono} mt-8 text-[10px] uppercase tracking-[0.3em] flex items-center justify-center gap-2`} style={{ color: C.grayDim }}>
+              <ShieldCheck className="w-3 h-3" /> Confidential · Session {report.session_id.slice(0, 8)}
+            </div>
           </div>
         </Reveal>
       </div>
