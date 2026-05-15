@@ -453,6 +453,7 @@ export default function Report() {
                 <span className={`${mono} text-[10px] uppercase tracking-[0.2em] px-3 py-1.5 rounded-full border flex items-center gap-2`}
                   style={{ borderColor: "rgba(0,196,181,0.20)", color: C.gray }}>
                   <span className="relative flex w-2 h-2">
+                    <span className="absolute inline-flex h-full w-full rounded-full obs-sonar" style={{ background: C.cyan }} />
                     <span className="absolute inline-flex h-full w-full rounded-full obs-breathe" style={{ background: C.cyan }} />
                     <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: C.cyan }} />
                   </span>
