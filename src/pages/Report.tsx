@@ -163,7 +163,7 @@ function ScoreRing({ score }: { score: number }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <div className={`${mono} text-5xl font-bold`} style={{ color: C.white }}>
-          <CountUp to={target} />
+          <Scramble value={String(target)} duration={800} />
         </div>
         <div className="text-[10px] uppercase tracking-[0.3em] mt-1" style={{ color: C.cyan }}>SNIE™ Score</div>
       </div>
