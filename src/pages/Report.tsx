@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { Lock, Loader2, Activity, Mail, Calendar, ShieldCheck, Zap, TrendingUp, Users, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import NeuralWorldMap, { normalizeHotspots } from "@/components/NeuralWorldMap";
 
 // --- Executive Obsidian Theme ---
 const C = {
@@ -729,6 +730,23 @@ export default function Report() {
             </ChartPanel>
           )}
         </motion.div>
+
+        {/* Active Glocalization Strategy — Neural World Map */}
+        <Reveal>
+          <Panel
+            title="Active Glocalization Strategy"
+            subtitle="Neural world map · live geo-hotspot intelligence"
+            className="mb-5"
+          >
+            <NeuralWorldMap hotspots={normalizeHotspots(report.geo_hotspots)} />
+            <div className="mt-4 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em]" style={{ color: C.gray }}>
+              <span className="inline-block w-2 h-2 rounded-full" style={{ background: C.cyan, boxShadow: `0 0 10px ${C.cyan}` }} />
+              <span style={{ color: C.cyan }}>{(normalizeHotspots(report.geo_hotspots).length || 3)} active markets</span>
+              <span style={{ color: C.grayDim }}>·</span>
+              <span>Hover any pulse for tactical opportunity</span>
+            </div>
+          </Panel>
+        </Reveal>
 
         {/* Enterprise+: Revenue Streams Table */}
         {has(tier, "enterprise") && (
