@@ -193,7 +193,7 @@ export default function Report() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isUUID(session_id)) { setLoading(false); setError("invalid"); return; }
+    if (!isValidSessionId(session_id)) { setLoading(false); setError("invalid"); return; }
     (async () => {
       const { data, error } = await supabase
         .from("intelligence_reports")
