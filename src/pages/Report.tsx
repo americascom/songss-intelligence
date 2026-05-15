@@ -29,8 +29,7 @@ const C = {
 const mono = "font-mono tabular-nums";
 
 // ---------- helpers ----------
-const isUUID = (v?: string) =>
-  !!v && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+const isValidSessionId = (v?: string) => !!v && v.trim().length > 0;
 
 function fmtNum(n: number, opts: Intl.NumberFormatOptions = {}) {
   return new Intl.NumberFormat("en-US", opts).format(n);
