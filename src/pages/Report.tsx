@@ -434,7 +434,11 @@ export default function Report() {
         </motion.div>
 
         {/* ---------- Charts ---------- */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-12">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.30, ease: [0.22, 1, 0.36, 1] }}
+          className="obs-chart-glow grid grid-cols-1 lg:grid-cols-2 gap-5 mb-12"
+        >
           {/* Always: Monthly Growth */}
           <ChartPanel title="Monthly Growth" subtitle="Stream trajectory over reporting period">
             <ResponsiveContainer width="100%" height="100%">
