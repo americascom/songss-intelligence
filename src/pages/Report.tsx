@@ -401,6 +401,14 @@ export default function Report() {
           animation: obsidianBreathe 2.6s ease-in-out infinite;
           box-shadow: 0 0 12px ${C.cyan}, 0 0 28px ${C.cyan}80;
         }
+        @keyframes obsidianSonar {
+          0%   { transform: scale(1);   opacity: 0.7; }
+          100% { transform: scale(3.6); opacity: 0; }
+        }
+        .obs-sonar {
+          animation: obsidianSonar 2s cubic-bezier(0.22,1,0.36,1) infinite;
+          box-shadow: 0 0 0 1px ${C.cyan}80;
+        }
         .obs-chart-glow .recharts-line .recharts-curve,
         .obs-chart-glow .recharts-area-area,
         .obs-chart-glow .recharts-radar-polygon {
