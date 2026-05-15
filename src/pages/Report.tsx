@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { motion, useInView, useMotionValue, useTransform, animate } from "framer-motion";
+import { motion, useInView, useMotionValue, animate } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -70,14 +70,17 @@ function Reveal({ children, delay = 0, className = "" }: { children: React.React
 }
 
 // ---------- Count up ----------
-function CountUp({ to, decimals = 0, duration = 1.6 }: { to: number; decimals?: number; duration?: number }) {
+function CountUp({
+  to, decimals = 0, duration = 1.8, format,
+}: { to: number; decimals?: number; duration?: number; format?: (n: number) => string }) {
   const mv = useMotionValue(0);
-  const rounded = useTransform(mv, (v) => v.toFixed(decimals));
-  const [val, setVal] = useState("0");
+  const [val, setVal] = useState(format ? format(0) : (0).toFixed(decimals));
   useEffect(() => {
-    const controls = animate(mv, to, { duration, ease: [0.22, 1, 0.36, 1] });
-    const unsub = rounded.on("change", (v) => setVal(v));
-    return () => { controls.stop(); unsub(); };
+    const controls = animate(mv, to, {
+      duration, ease: [0.22, 1, 0.36, 1],
+      onUpdate: (v) => setVal(format ? format(v) : v.toFixed(decimals)),
+    });
+    return () => controls.stop();
   }, [to, duration]);
   return <span className={mono}>{val}</span>;
 }
@@ -92,7 +95,7 @@ function ScoreRing({ score }: { score: number }) {
   const [progress, setProgress] = useState(0);
   useEffect(() => {
     const ctrl = animate(0, target, {
-      duration: 1.8, ease: [0.22, 1, 0.36, 1],
+      duration: 2.0, ease: [0.22, 1, 0.36, 1],
       onUpdate: (v) => setProgress(v),
     });
     return () => ctrl.stop();
@@ -107,7 +110,7 @@ function ScoreRing({ score }: { score: number }) {
           stroke={C.cyan} strokeWidth={stroke} fill="none"
           strokeDasharray={c} strokeDashoffset={offset}
           strokeLinecap="round"
-          style={{ filter: `drop-shadow(0 0 8px ${C.cyan}66)` }}
+          style={{ filter: `drop-shadow(0 0 12px ${C.cyan}AA) drop-shadow(0 0 4px ${C.cyan})` }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -120,13 +123,18 @@ function ScoreRing({ score }: { score: number }) {
   );
 }
 
-// ---------- Card chrome ----------
+// ---------- Card chrome (glassmorphism) ----------
+const glassStyle: React.CSSProperties = {
+  background: "linear-gradient(135deg, rgba(5,5,5,0.75) 0%, rgba(26,26,26,0.65) 100%)",
+  borderColor: "rgba(0,196,181,0.20)",
+  backdropFilter: "blur(14px) saturate(140%)",
+  WebkitBackdropFilter: "blur(14px) saturate(140%)",
+  boxShadow: "0 8px 40px -12px rgba(0,196,181,0.10), inset 0 1px 0 rgba(255,255,255,0.03)",
+};
+
 function Panel({ title, subtitle, children, className = "" }: { title?: string; subtitle?: string; children: React.ReactNode; className?: string }) {
   return (
-    <div
-      className={`rounded-xl border p-5 h-full ${className}`}
-      style={{ background: C.card, borderColor: C.border }}
-    >
+    <div className={`rounded-xl border p-5 h-full ${className}`} style={glassStyle}>
       {title && (
         <div className="mb-4">
           <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>{title}</h3>
@@ -149,7 +157,16 @@ function ChartPanel({ title, subtitle, children }: { title: string; subtitle?: s
 }
 
 // ---------- Tooltip styling ----------
-const tooltipStyle = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, color: C.white, fontSize: 12 };
+const tooltipStyle: React.CSSProperties = {
+  background: "rgba(11,11,11,0.92)",
+  border: `1px solid rgba(0,196,181,0.35)`,
+  borderRadius: 8,
+  color: C.white,
+  fontSize: 12,
+  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, monospace",
+  backdropFilter: "blur(8px)",
+  boxShadow: `0 0 24px rgba(0,196,181,0.15)`,
+};
 
 // ---------- 401 ----------
 function Classified({ message }: { message?: string }) {
@@ -298,15 +315,56 @@ export default function Report() {
   const reportDate = new Date(report.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
   return (
-    <div className="min-h-screen" style={{ background: C.bg, color: C.white }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="min-h-screen relative overflow-hidden" style={{ background: C.bg, color: C.white }}>
+      {/* Animated mesh background */}
+      <style>{`
+        @keyframes obsidianMesh {
+          0%   { transform: translate3d(0,0,0) scale(1); }
+          50%  { transform: translate3d(2%, -1%, 0) scale(1.05); }
+          100% { transform: translate3d(0,0,0) scale(1); }
+        }
+        @keyframes obsidianBreathe {
+          0%, 100% { opacity: 0.55; transform: scale(1); }
+          50%      { opacity: 1;    transform: scale(1.35); }
+        }
+        .obs-mesh {
+          position: absolute; inset: -10%;
+          background:
+            radial-gradient(45% 35% at 20% 30%, rgba(0,196,181,0.10) 0%, transparent 60%),
+            radial-gradient(40% 30% at 80% 20%, rgba(14,132,123,0.12) 0%, transparent 60%),
+            radial-gradient(50% 40% at 60% 80%, rgba(0,196,181,0.08) 0%, transparent 65%),
+            radial-gradient(30% 25% at 10% 90%, rgba(14,132,123,0.10) 0%, transparent 60%);
+          filter: blur(40px);
+          animation: obsidianMesh 28s ease-in-out infinite;
+          pointer-events: none;
+          z-index: 0;
+        }
+        .obs-breathe {
+          animation: obsidianBreathe 2.6s ease-in-out infinite;
+          box-shadow: 0 0 12px ${C.cyan}, 0 0 28px ${C.cyan}80;
+        }
+        .obs-chart-glow .recharts-line .recharts-curve,
+        .obs-chart-glow .recharts-area-area,
+        .obs-chart-glow .recharts-radar-polygon {
+          filter: drop-shadow(0 0 6px ${C.cyan}AA);
+        }
+        .obs-chart-glow .recharts-bar-rectangle path {
+          filter: drop-shadow(0 0 6px ${C.cyan}80);
+        }
+      `}</style>
+      <div className="obs-mesh" aria-hidden />
 
-        {/* ---------- Header / Reveal ---------- */}
-        <Reveal>
-          <header className="flex items-start justify-between gap-6 mb-12 pb-8 border-b" style={{ borderColor: C.border }}>
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+        {/* ---------- Header ---------- */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <header className="flex items-start justify-between gap-6 mb-12 pb-8 border-b" style={{ borderColor: "rgba(0,196,181,0.15)" }}>
             <div className="min-w-0 flex-1">
               <div className={`${mono} text-[10px] uppercase tracking-[0.35em] mb-4 flex items-center gap-2`} style={{ color: C.cyan }}>
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.cyan }} />
+                <span className="w-1.5 h-1.5 rounded-full obs-breathe" style={{ background: C.cyan }} />
                 SONGSS Intelligence
               </div>
               <h1 className="text-4xl sm:text-6xl font-semibold tracking-tight leading-[1.05] mb-5" style={{ color: C.white }}>
@@ -320,15 +378,15 @@ export default function Report() {
                   </span>
                 )}
                 <span className={`${mono} text-[10px] uppercase tracking-[0.2em] px-3 py-1.5 rounded-full border flex items-center gap-2`}
-                  style={{ borderColor: C.border, color: C.gray }}>
+                  style={{ borderColor: "rgba(0,196,181,0.20)", color: C.gray }}>
                   <span className="relative flex w-2 h-2">
-                    <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ background: C.cyan }} />
+                    <span className="absolute inline-flex h-full w-full rounded-full obs-breathe" style={{ background: C.cyan }} />
                     <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: C.cyan }} />
                   </span>
                   Neural Engine Active
                 </span>
                 <span className={`${mono} text-[10px] uppercase tracking-[0.2em] px-3 py-1.5 rounded-full border flex items-center gap-1.5`}
-                  style={{ borderColor: C.border, color: C.gray }}>
+                  style={{ borderColor: "rgba(0,196,181,0.20)", color: C.gray }}>
                   <Calendar className="w-3 h-3" /> {reportDate}
                 </span>
               </div>
@@ -340,10 +398,13 @@ export default function Report() {
           <div className="sm:hidden mb-10 flex justify-center">
             <ScoreRing score={Number(report.digital_score ?? 0)} />
           </div>
-        </Reveal>
+        </motion.div>
 
         {/* ---------- KPI Cards ---------- */}
-        <Reveal delay={0.05}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+        >
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
             {[
               { label: "Engagement Score", value: engagementScore, suffix: "", icon: Activity, decimals: 1 },
@@ -353,27 +414,31 @@ export default function Report() {
             ].map((k, i) => (
               <motion.div
                 key={k.label}
-                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 + i * 0.08, duration: 0.6 }}
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 + i * 0.08, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 className="rounded-xl border p-5"
-                style={{ background: C.card, borderColor: C.border }}
+                style={glassStyle}
               >
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: C.gray }}>{k.label}</span>
-                  <k.icon className="w-3.5 h-3.5" style={{ color: C.cyan }} />
+                  <k.icon className="w-3.5 h-3.5" style={{ color: C.cyan, filter: `drop-shadow(0 0 6px ${C.cyan}AA)` }} />
                 </div>
                 <div className={`${mono} text-3xl font-semibold`} style={{ color: C.white }}>
-                  {k.currency ? fmtUSD(k.value)
-                    : k.compact ? fmtCompact(k.value)
+                  {k.currency ? <CountUp to={k.value} format={(v) => fmtUSD(v)} />
+                    : k.compact ? <CountUp to={k.value} format={(v) => fmtCompact(v)} />
                     : <><CountUp to={k.value} decimals={k.decimals} />{k.suffix}</>}
                 </div>
               </motion.div>
             ))}
           </div>
-        </Reveal>
+        </motion.div>
 
         {/* ---------- Charts ---------- */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-12">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.30, ease: [0.22, 1, 0.36, 1] }}
+          className="obs-chart-glow grid grid-cols-1 lg:grid-cols-2 gap-5 mb-12"
+        >
           {/* Always: Monthly Growth */}
           <ChartPanel title="Monthly Growth" subtitle="Stream trajectory over reporting period">
             <ResponsiveContainer width="100%" height="100%">
@@ -409,8 +474,8 @@ export default function Report() {
                 <AreaChart data={revProjection}>
                   <defs>
                     <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={C.cyan} stopOpacity={0.5} />
-                      <stop offset="100%" stopColor={C.cyan} stopOpacity={0.02} />
+                      <stop offset="0%" stopColor={C.cyan} stopOpacity={0.4} />
+                      <stop offset="100%" stopColor={C.cyan} stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid stroke={C.border} strokeDasharray="3 3" vertical={false} />
@@ -470,7 +535,7 @@ export default function Report() {
               </ResponsiveContainer>
             </ChartPanel>
           )}
-        </div>
+        </motion.div>
 
         {/* Enterprise+: Revenue Streams Table */}
         {has(tier, "enterprise") && (
@@ -551,7 +616,7 @@ export default function Report() {
           <div className="rounded-xl border p-8 sm:p-10 text-center" style={{ background: C.card, borderColor: C.border }}>
             <div className="inline-flex items-center gap-2 mb-5">
               <span className="relative flex w-2 h-2">
-                <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ background: C.cyan }} />
+                <span className="absolute inline-flex h-full w-full rounded-full obs-breathe" style={{ background: C.cyan }} />
                 <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: C.cyan }} />
               </span>
               <span className={`${mono} text-[10px] uppercase tracking-[0.3em]`} style={{ color: C.cyan }}>Neural Engine Active</span>
