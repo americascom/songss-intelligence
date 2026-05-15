@@ -123,13 +123,18 @@ function ScoreRing({ score }: { score: number }) {
   );
 }
 
-// ---------- Card chrome ----------
+// ---------- Card chrome (glassmorphism) ----------
+const glassStyle: React.CSSProperties = {
+  background: "linear-gradient(135deg, rgba(5,5,5,0.75) 0%, rgba(26,26,26,0.65) 100%)",
+  borderColor: "rgba(0,196,181,0.20)",
+  backdropFilter: "blur(14px) saturate(140%)",
+  WebkitBackdropFilter: "blur(14px) saturate(140%)",
+  boxShadow: "0 8px 40px -12px rgba(0,196,181,0.10), inset 0 1px 0 rgba(255,255,255,0.03)",
+};
+
 function Panel({ title, subtitle, children, className = "" }: { title?: string; subtitle?: string; children: React.ReactNode; className?: string }) {
   return (
-    <div
-      className={`rounded-xl border p-5 h-full ${className}`}
-      style={{ background: C.card, borderColor: C.border }}
-    >
+    <div className={`rounded-xl border p-5 h-full ${className}`} style={glassStyle}>
       {title && (
         <div className="mb-4">
           <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>{title}</h3>
@@ -152,7 +157,16 @@ function ChartPanel({ title, subtitle, children }: { title: string; subtitle?: s
 }
 
 // ---------- Tooltip styling ----------
-const tooltipStyle = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, color: C.white, fontSize: 12 };
+const tooltipStyle: React.CSSProperties = {
+  background: "rgba(11,11,11,0.92)",
+  border: `1px solid rgba(0,196,181,0.35)`,
+  borderRadius: 8,
+  color: C.white,
+  fontSize: 12,
+  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, monospace",
+  backdropFilter: "blur(8px)",
+  boxShadow: `0 0 24px rgba(0,196,181,0.15)`,
+};
 
 // ---------- 401 ----------
 function Classified({ message }: { message?: string }) {
