@@ -474,8 +474,8 @@ export default function Report() {
                 <AreaChart data={revProjection}>
                   <defs>
                     <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={C.cyan} stopOpacity={0.5} />
-                      <stop offset="100%" stopColor={C.cyan} stopOpacity={0.02} />
+                      <stop offset="0%" stopColor={C.cyan} stopOpacity={0.4} />
+                      <stop offset="100%" stopColor={C.cyan} stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid stroke={C.border} strokeDasharray="3 3" vertical={false} />
