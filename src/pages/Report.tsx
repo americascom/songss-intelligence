@@ -535,7 +535,7 @@ export default function Report() {
               </ResponsiveContainer>
             </ChartPanel>
           )}
-        </div>
+        </motion.div>
 
         {/* Enterprise+: Revenue Streams Table */}
         {has(tier, "enterprise") && (
