@@ -9,6 +9,7 @@ import {
   LineChart, Line,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   AreaChart, Area,
+  ComposedChart, ReferenceLine, Scatter,
 } from "recharts";
 import { Lock, Loader2, Activity, Mail, Calendar, ShieldCheck, Zap, TrendingUp, Users, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -315,6 +316,32 @@ export default function Report() {
     em.monthly_growth ?? em.monthlyGrowth ??
     Array.from({ length: 6 }, (_, i) => ({ month: `M${i + 1}`, value: Math.round(monthlyStreams * (0.6 + i * 0.1)) || (i + 1) * 1000 }));
 
+  // ---- neural trajectory (multi-axis: streams area + SNIE line + social dots)
+  const snieFinal = Number(report.digital_score ?? 0) || 72;
+  const trajectoryRaw: any[] =
+    em.trajectory ?? em.neural_trajectory ?? em.multi_axis ?? [];
+  const trajectory: { label: string; streams: number; snie: number; social: number }[] =
+    Array.isArray(trajectoryRaw) && trajectoryRaw.length
+      ? trajectoryRaw.map((r: any, i: number) => ({
+          label: r.label ?? r.month ?? r.week ?? `M${i + 1}`,
+          streams: Number(r.streams ?? r.value ?? 0),
+          snie: Number(r.snie ?? r.score ?? 0),
+          social: Number(r.social ?? r.social_index ?? 0),
+        }))
+      : Array.from({ length: 8 }, (_, i) => {
+          const base = (monthlyStreams || 850000) / 8;
+          const wave = Math.sin(i / 1.6) * 0.25 + 1;
+          return {
+            label: `M${i + 1}`,
+            streams: Math.round(base * (0.55 + i * 0.12) * wave),
+            snie: Math.min(99, Math.round(snieFinal * (0.55 + i * 0.07))),
+            social: Math.round(40 + i * 6 + Math.sin(i) * 8),
+          };
+        });
+  const peakIdx = trajectory.reduce((best, p, i, a) => (p.streams > a[best].streams ? i : best), 0);
+  const peakLabel = trajectory[peakIdx]?.label;
+
+
   // ---- consumption sources (doughnut)
   const sourcesObj = em.consumption_sources ?? em.sources ?? { organic: 60, algorithmic: 25, editorial: 15 };
   const sourceData = Object.entries(sourcesObj).map(([k, v]) => ({ name: k.charAt(0).toUpperCase() + k.slice(1), value: Number(v) }));
@@ -513,18 +540,85 @@ export default function Report() {
           transition={{ duration: 0.7, delay: 0.30, ease: [0.22, 1, 0.36, 1] }}
           className="obs-chart-glow grid grid-cols-1 lg:grid-cols-2 gap-5 mb-12"
         >
-          {/* Always: Monthly Growth */}
-          <ChartPanel title="Monthly Growth" subtitle="Stream trajectory over reporting period">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyGrowth}>
-                <CartesianGrid stroke={C.border} strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="month" stroke={C.gray} fontSize={11} tickLine={false} axisLine={{ stroke: C.border }} />
-                <YAxis stroke={C.gray} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => fmtCompact(v)} />
-                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: `${C.cyan}10` }} formatter={(v: any) => fmtNum(Number(v))} />
-                <Bar dataKey="value" fill={C.cyan} radius={[4, 4, 0, 0]} animationDuration={1200} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartPanel>
+          {/* Always: Neural Multi-Axis Trajectory */}
+          <div className="lg:col-span-2">
+            <ChartPanel title="Neural Trajectory" subtitle="Streams · SNIE™ Score · Social Index — multi-axis projection">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={trajectory} margin={{ top: 16, right: 16, left: 0, bottom: 4 }}>
+                  <defs>
+                    <linearGradient id="ntStreams" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={C.cyan} stopOpacity={0.45} />
+                      <stop offset="100%" stopColor={C.cyan} stopOpacity={0} />
+                    </linearGradient>
+                    <filter id="ntGlow" x="-50%" y="-50%" width="200%" height="200%">
+                      <feGaussianBlur stdDeviation="3" result="b" />
+                      <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+                    </filter>
+                  </defs>
+                  <CartesianGrid stroke={C.border} strokeDasharray="2 4" vertical={false} />
+                  <XAxis dataKey="label" stroke={C.gray} fontSize={11} tickLine={false} axisLine={{ stroke: C.border }} />
+                  <YAxis yAxisId="left" stroke={C.gray} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => fmtCompact(v)} />
+                  <YAxis yAxisId="right" orientation="right" domain={[0, 100]} stroke={C.gray} fontSize={11} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    cursor={{ stroke: `${C.cyan}55`, strokeWidth: 1, strokeDasharray: "3 3" }}
+                    formatter={(v: any, name: any) => {
+                      if (name === "Streams") return [fmtNum(Number(v)), "Streams"];
+                      if (name === "SNIE™") return [`${Number(v).toFixed(0)} / 100`, "SNIE™"];
+                      if (name === "Social") return [`${Number(v).toFixed(0)}`, "Social Index"];
+                      return [v, name];
+                    }}
+                  />
+                  <ReferenceLine
+                    yAxisId="left"
+                    x={peakLabel}
+                    stroke="#F5C84B"
+                    strokeDasharray="4 4"
+                    strokeWidth={1.5}
+                    label={{ value: "NIE™ Predictive Flag", position: "top", fill: "#F5C84B", fontSize: 10, fontFamily: "ui-monospace, monospace" }}
+                  />
+                  <Area
+                    yAxisId="left"
+                    type="monotone"
+                    name="Streams"
+                    dataKey="streams"
+                    stroke={C.cyan}
+                    strokeWidth={2}
+                    fill="url(#ntStreams)"
+                    filter="url(#ntGlow)"
+                    isAnimationActive
+                    animationDuration={1600}
+                    animationEasing="ease-out"
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    name="SNIE™"
+                    dataKey="snie"
+                    stroke="#F5C84B"
+                    strokeWidth={2}
+                    strokeDasharray="6 4"
+                    dot={false}
+                    filter="url(#ntGlow)"
+                    isAnimationActive
+                    animationDuration={1800}
+                    animationEasing="ease-out"
+                  />
+                  <Scatter
+                    yAxisId="right"
+                    name="Social"
+                    dataKey="social"
+                    fill={C.white}
+                    shape={(props: any) => (
+                      <circle cx={props.cx} cy={props.cy} r={4} fill={C.white} stroke={C.cyan} strokeWidth={1} style={{ filter: `drop-shadow(0 0 6px ${C.white}AA)` }} />
+                    )}
+                    isAnimationActive
+                    animationDuration={1400}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </ChartPanel>
+          </div>
 
           {/* Growth+: Consumption Sources */}
           {has(tier, "growth") && (
