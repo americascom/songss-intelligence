@@ -19,9 +19,16 @@ export type Database = {
           artist_name: string | null
           charts_data: Json
           created_at: string
+          customer_email: string | null
+          digital_score: number | null
           email: string
+          engagement_metrics: Json | null
+          geo_hotspots: Json | null
           id: string
+          plan_name: string | null
+          report_html: string | null
           report_markdown: string
+          revenue_economics: Json | null
           session_id: string
           updated_at: string
         }
@@ -29,9 +36,16 @@ export type Database = {
           artist_name?: string | null
           charts_data?: Json
           created_at?: string
+          customer_email?: string | null
+          digital_score?: number | null
           email: string
+          engagement_metrics?: Json | null
+          geo_hotspots?: Json | null
           id?: string
+          plan_name?: string | null
+          report_html?: string | null
           report_markdown?: string
+          revenue_economics?: Json | null
           session_id: string
           updated_at?: string
         }
@@ -39,9 +53,16 @@ export type Database = {
           artist_name?: string | null
           charts_data?: Json
           created_at?: string
+          customer_email?: string | null
+          digital_score?: number | null
           email?: string
+          engagement_metrics?: Json | null
+          geo_hotspots?: Json | null
           id?: string
+          plan_name?: string | null
+          report_html?: string | null
           report_markdown?: string
+          revenue_economics?: Json | null
           session_id?: string
           updated_at?: string
         }
