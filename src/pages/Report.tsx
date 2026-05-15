@@ -274,12 +274,19 @@ export default function Report() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-5 px-6" style={{ background: C.bg }}>
-        <div className="obs-mesh" aria-hidden />
+      <div className="min-h-screen flex flex-col items-center justify-center gap-5 px-6 relative overflow-hidden" style={{ background: C.bg }}>
+        <style>{`
+          @keyframes obsBreatheLoad { 0%,100%{opacity:.55;transform:scale(1)} 50%{opacity:1;transform:scale(1.35)} }
+          @keyframes obsSonarLoad { 0%{transform:scale(1);opacity:.7} 100%{transform:scale(3.6);opacity:0} }
+          .obs-load-mesh{position:absolute;inset:-10%;background:radial-gradient(45% 35% at 30% 40%,rgba(0,196,181,.10) 0%,transparent 60%),radial-gradient(40% 30% at 70% 60%,rgba(14,132,123,.12) 0%,transparent 60%);filter:blur(40px);pointer-events:none}
+          .obs-load-breathe{animation:obsBreatheLoad 2.6s ease-in-out infinite;box-shadow:0 0 12px ${C.cyan},0 0 28px ${C.cyan}80}
+          .obs-load-sonar{animation:obsSonarLoad 2s cubic-bezier(.22,1,.36,1) infinite;box-shadow:0 0 0 1px ${C.cyan}80}
+        `}</style>
+        <div className="obs-load-mesh" aria-hidden />
         <div className="relative z-10 flex flex-col items-center gap-4">
           <div className="relative flex w-3 h-3">
-            <span className="absolute inline-flex h-full w-full rounded-full obs-sonar" style={{ background: C.cyan }} />
-            <span className="relative inline-flex rounded-full h-3 w-3 obs-breathe" style={{ background: C.cyan }} />
+            <span className="absolute inline-flex h-full w-full rounded-full obs-load-sonar" style={{ background: C.cyan }} />
+            <span className="relative inline-flex rounded-full h-3 w-3 obs-load-breathe" style={{ background: C.cyan }} />
           </div>
           <div className={`${mono} text-xs uppercase tracking-[0.4em]`} style={{ color: C.cyan }}>
             <Scramble value="Decrypting Intelligence..." duration={1200} />
