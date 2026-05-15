@@ -85,6 +85,54 @@ function CountUp({
   return <span className={mono}>{val}</span>;
 }
 
+// ---------- Scramble / Decrypt ----------
+const SCRAMBLE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789!@#$%&*+=/<>";
+function Scramble({ value, duration = 800, className = "" }: { value: string; duration?: number; className?: string }) {
+  const [out, setOut] = useState(value);
+  useEffect(() => {
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const lockedCount = Math.floor(t * value.length);
+      let s = "";
+      for (let i = 0; i < value.length; i++) {
+        const ch = value[i];
+        if (i < lockedCount || /[\s.,$%+\-/:]/.test(ch)) s += ch;
+        else s += SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
+      }
+      setOut(s);
+      if (t < 1) raf = requestAnimationFrame(tick);
+      else setOut(value);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value, duration]);
+  return <span className={`${mono} ${className}`}>{out}</span>;
+}
+
+// ---------- Typewriter (on scroll) ----------
+function Typewriter({ text, cps = 220, children }: { text: string; cps?: number; children: (shown: string) => React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!inView) return;
+    const total = text.length;
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const elapsed = (now - start) / 1000;
+      const k = Math.min(total, Math.floor(elapsed * cps));
+      setN(k);
+      if (k < total) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [inView, text, cps]);
+  return <div ref={ref}>{children(text.slice(0, n))}</div>;
+}
+
 // ---------- Score Ring ----------
 function ScoreRing({ score }: { score: number }) {
   const size = 180;
