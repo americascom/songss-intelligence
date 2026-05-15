@@ -274,8 +274,18 @@ export default function Report() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: C.bg }}>
-        <Loader2 className="w-6 h-6 animate-spin" style={{ color: C.cyan }} />
+      <div className="min-h-screen flex flex-col items-center justify-center gap-5 px-6" style={{ background: C.bg }}>
+        <div className="obs-mesh" aria-hidden />
+        <div className="relative z-10 flex flex-col items-center gap-4">
+          <div className="relative flex w-3 h-3">
+            <span className="absolute inline-flex h-full w-full rounded-full obs-sonar" style={{ background: C.cyan }} />
+            <span className="relative inline-flex rounded-full h-3 w-3 obs-breathe" style={{ background: C.cyan }} />
+          </div>
+          <div className={`${mono} text-xs uppercase tracking-[0.4em]`} style={{ color: C.cyan }}>
+            <Scramble value="Decrypting Intelligence..." duration={1200} />
+          </div>
+          <Loader2 className="w-5 h-5 animate-spin" style={{ color: C.cyan }} />
+        </div>
       </div>
     );
   }
