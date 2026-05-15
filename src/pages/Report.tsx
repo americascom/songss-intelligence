@@ -316,6 +316,32 @@ export default function Report() {
     em.monthly_growth ?? em.monthlyGrowth ??
     Array.from({ length: 6 }, (_, i) => ({ month: `M${i + 1}`, value: Math.round(monthlyStreams * (0.6 + i * 0.1)) || (i + 1) * 1000 }));
 
+  // ---- neural trajectory (multi-axis: streams area + SNIE line + social dots)
+  const snieFinal = Number(report.digital_score ?? 0) || 72;
+  const trajectoryRaw: any[] =
+    em.trajectory ?? em.neural_trajectory ?? em.multi_axis ?? [];
+  const trajectory: { label: string; streams: number; snie: number; social: number }[] =
+    Array.isArray(trajectoryRaw) && trajectoryRaw.length
+      ? trajectoryRaw.map((r: any, i: number) => ({
+          label: r.label ?? r.month ?? r.week ?? `M${i + 1}`,
+          streams: Number(r.streams ?? r.value ?? 0),
+          snie: Number(r.snie ?? r.score ?? 0),
+          social: Number(r.social ?? r.social_index ?? 0),
+        }))
+      : Array.from({ length: 8 }, (_, i) => {
+          const base = (monthlyStreams || 850000) / 8;
+          const wave = Math.sin(i / 1.6) * 0.25 + 1;
+          return {
+            label: `M${i + 1}`,
+            streams: Math.round(base * (0.55 + i * 0.12) * wave),
+            snie: Math.min(99, Math.round(snieFinal * (0.55 + i * 0.07))),
+            social: Math.round(40 + i * 6 + Math.sin(i) * 8),
+          };
+        });
+  const peakIdx = trajectory.reduce((best, p, i, a) => (p.streams > a[best].streams ? i : best), 0);
+  const peakLabel = trajectory[peakIdx]?.label;
+
+
   // ---- consumption sources (doughnut)
   const sourcesObj = em.consumption_sources ?? em.sources ?? { organic: 60, algorithmic: 25, editorial: 15 };
   const sourceData = Object.entries(sourcesObj).map(([k, v]) => ({ name: k.charAt(0).toUpperCase() + k.slice(1), value: Number(v) }));
