@@ -95,7 +95,7 @@ function ScoreRing({ score }: { score: number }) {
   const [progress, setProgress] = useState(0);
   useEffect(() => {
     const ctrl = animate(0, target, {
-      duration: 1.8, ease: [0.22, 1, 0.36, 1],
+      duration: 2.0, ease: [0.22, 1, 0.36, 1],
       onUpdate: (v) => setProgress(v),
     });
     return () => ctrl.stop();
