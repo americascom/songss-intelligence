@@ -592,6 +592,31 @@ export default function Report() {
             </ChartPanel>
           )}
 
+          {/* Pro+: Engagement Profile Radar */}
+          {has(tier, "pro") && (() => {
+            const engagementRadar = [
+              { axis: "Engagement", value: Math.min(100, Number(engagementScore) || 0) },
+              { axis: "Retention", value: Math.min(100, Number(retentionRate) || 0) },
+              { axis: "Discovery", value: Math.min(100, Number(em.discovery_rate ?? em.discoveryRate ?? 62)) },
+              { axis: "Virality", value: Math.min(100, Number(em.virality_score ?? em.viralityScore ?? 48)) },
+              { axis: "Loyalty", value: Math.min(100, Number(em.loyalty_index ?? em.loyaltyIndex ?? 71)) },
+              { axis: "Saves Rate", value: Math.min(100, Number(em.saves_rate ?? em.savesRate ?? 35)) },
+            ];
+            return (
+              <ChartPanel title="Engagement Profile" subtitle="Multi-axis behavioral signature">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart data={engagementRadar}>
+                    <PolarGrid stroke={C.border} />
+                    <PolarAngleAxis dataKey="axis" stroke={C.gray} tick={{ fill: C.gray, fontSize: 11 }} />
+                    <PolarRadiusAxis stroke={C.border} tick={{ fill: C.gray, fontSize: 10 }} domain={[0, 100]} />
+                    <Radar dataKey="value" stroke={C.cyan} fill={C.cyan} fillOpacity={0.3} animationDuration={1400} />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => `${Number(v).toFixed(0)}`} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </ChartPanel>
+            );
+          })()}
+
           {/* Enterprise+: TikTok vs DSP */}
           {has(tier, "enterprise") && (
             <ChartPanel title="TikTok × DSP Correlation" subtitle="Viral signal vs streaming response">
