@@ -497,9 +497,9 @@ export default function Report() {
                   <k.icon className="w-3.5 h-3.5" style={{ color: C.cyan, filter: `drop-shadow(0 0 6px ${C.cyan}AA)` }} />
                 </div>
                 <div className={`${mono} text-3xl font-semibold`} style={{ color: C.white }}>
-                  {k.currency ? <CountUp to={k.value} format={(v) => fmtUSD(v)} />
-                    : k.compact ? <CountUp to={k.value} format={(v) => fmtCompact(v)} />
-                    : <><CountUp to={k.value} decimals={k.decimals} />{k.suffix}</>}
+                  {k.currency ? <Scramble value={fmtUSD(k.value)} />
+                    : k.compact ? <Scramble value={fmtCompact(k.value)} />
+                    : <Scramble value={`${k.value.toFixed(k.decimals)}${k.suffix}`} />}
                 </div>
               </motion.div>
             ))}
