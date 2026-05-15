@@ -173,11 +173,11 @@ function ScoreRing({ score }: { score: number }) {
 
 // ---------- Card chrome (glassmorphism) ----------
 const glassStyle: React.CSSProperties = {
-  background: "linear-gradient(135deg, rgba(5,5,5,0.75) 0%, rgba(26,26,26,0.65) 100%)",
-  borderColor: "rgba(0,196,181,0.20)",
-  backdropFilter: "blur(14px) saturate(140%)",
-  WebkitBackdropFilter: "blur(14px) saturate(140%)",
-  boxShadow: "0 8px 40px -12px rgba(0,196,181,0.10), inset 0 1px 0 rgba(255,255,255,0.03)",
+  background: "linear-gradient(135deg, rgba(5,5,5,0.78) 0%, rgba(26,26,26,0.62) 100%)",
+  borderColor: "rgba(0,196,181,0.15)",
+  backdropFilter: "blur(22px) saturate(150%)",
+  WebkitBackdropFilter: "blur(22px) saturate(150%)",
+  boxShadow: "0 12px 48px -16px rgba(0,196,181,0.12), inset 0 1px 0 rgba(255,255,255,0.03)",
 };
 
 function Panel({ title, subtitle, children, className = "" }: { title?: string; subtitle?: string; children: React.ReactNode; className?: string }) {
