@@ -616,7 +616,7 @@ export default function Report() {
           <div className="rounded-xl border p-8 sm:p-10 text-center" style={{ background: C.card, borderColor: C.border }}>
             <div className="inline-flex items-center gap-2 mb-5">
               <span className="relative flex w-2 h-2">
-                <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ background: C.cyan }} />
+                <span className="absolute inline-flex h-full w-full rounded-full obs-breathe" style={{ background: C.cyan }} />
                 <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: C.cyan }} />
               </span>
               <span className={`${mono} text-[10px] uppercase tracking-[0.3em]`} style={{ color: C.cyan }}>Neural Engine Active</span>
