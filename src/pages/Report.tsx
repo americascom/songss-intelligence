@@ -85,6 +85,54 @@ function CountUp({
   return <span className={mono}>{val}</span>;
 }
 
+// ---------- Scramble / Decrypt ----------
+const SCRAMBLE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789!@#$%&*+=/<>";
+function Scramble({ value, duration = 800, className = "" }: { value: string; duration?: number; className?: string }) {
+  const [out, setOut] = useState(value);
+  useEffect(() => {
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const lockedCount = Math.floor(t * value.length);
+      let s = "";
+      for (let i = 0; i < value.length; i++) {
+        const ch = value[i];
+        if (i < lockedCount || /[\s.,$%+\-/:]/.test(ch)) s += ch;
+        else s += SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
+      }
+      setOut(s);
+      if (t < 1) raf = requestAnimationFrame(tick);
+      else setOut(value);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value, duration]);
+  return <span className={`${mono} ${className}`}>{out}</span>;
+}
+
+// ---------- Typewriter (on scroll) ----------
+function Typewriter({ text, cps = 220, children }: { text: string; cps?: number; children: (shown: string) => React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!inView) return;
+    const total = text.length;
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const elapsed = (now - start) / 1000;
+      const k = Math.min(total, Math.floor(elapsed * cps));
+      setN(k);
+      if (k < total) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [inView, text, cps]);
+  return <div ref={ref}>{children(text.slice(0, n))}</div>;
+}
+
 // ---------- Score Ring ----------
 function ScoreRing({ score }: { score: number }) {
   const size = 180;
@@ -115,7 +163,7 @@ function ScoreRing({ score }: { score: number }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <div className={`${mono} text-5xl font-bold`} style={{ color: C.white }}>
-          <CountUp to={target} />
+          <Scramble value={String(target)} duration={800} />
         </div>
         <div className="text-[10px] uppercase tracking-[0.3em] mt-1" style={{ color: C.cyan }}>SNIE™ Score</div>
       </div>
@@ -125,11 +173,11 @@ function ScoreRing({ score }: { score: number }) {
 
 // ---------- Card chrome (glassmorphism) ----------
 const glassStyle: React.CSSProperties = {
-  background: "linear-gradient(135deg, rgba(5,5,5,0.75) 0%, rgba(26,26,26,0.65) 100%)",
-  borderColor: "rgba(0,196,181,0.20)",
-  backdropFilter: "blur(14px) saturate(140%)",
-  WebkitBackdropFilter: "blur(14px) saturate(140%)",
-  boxShadow: "0 8px 40px -12px rgba(0,196,181,0.10), inset 0 1px 0 rgba(255,255,255,0.03)",
+  background: "linear-gradient(135deg, rgba(5,5,5,0.78) 0%, rgba(26,26,26,0.62) 100%)",
+  borderColor: "rgba(0,196,181,0.15)",
+  backdropFilter: "blur(22px) saturate(150%)",
+  WebkitBackdropFilter: "blur(22px) saturate(150%)",
+  boxShadow: "0 12px 48px -16px rgba(0,196,181,0.12), inset 0 1px 0 rgba(255,255,255,0.03)",
 };
 
 function Panel({ title, subtitle, children, className = "" }: { title?: string; subtitle?: string; children: React.ReactNode; className?: string }) {
@@ -226,8 +274,25 @@ export default function Report() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: C.bg }}>
-        <Loader2 className="w-6 h-6 animate-spin" style={{ color: C.cyan }} />
+      <div className="min-h-screen flex flex-col items-center justify-center gap-5 px-6 relative overflow-hidden" style={{ background: C.bg }}>
+        <style>{`
+          @keyframes obsBreatheLoad { 0%,100%{opacity:.55;transform:scale(1)} 50%{opacity:1;transform:scale(1.35)} }
+          @keyframes obsSonarLoad { 0%{transform:scale(1);opacity:.7} 100%{transform:scale(3.6);opacity:0} }
+          .obs-load-mesh{position:absolute;inset:-10%;background:radial-gradient(45% 35% at 30% 40%,rgba(0,196,181,.10) 0%,transparent 60%),radial-gradient(40% 30% at 70% 60%,rgba(14,132,123,.12) 0%,transparent 60%);filter:blur(40px);pointer-events:none}
+          .obs-load-breathe{animation:obsBreatheLoad 2.6s ease-in-out infinite;box-shadow:0 0 12px ${C.cyan},0 0 28px ${C.cyan}80}
+          .obs-load-sonar{animation:obsSonarLoad 2s cubic-bezier(.22,1,.36,1) infinite;box-shadow:0 0 0 1px ${C.cyan}80}
+        `}</style>
+        <div className="obs-load-mesh" aria-hidden />
+        <div className="relative z-10 flex flex-col items-center gap-4">
+          <div className="relative flex w-3 h-3">
+            <span className="absolute inline-flex h-full w-full rounded-full obs-load-sonar" style={{ background: C.cyan }} />
+            <span className="relative inline-flex rounded-full h-3 w-3 obs-load-breathe" style={{ background: C.cyan }} />
+          </div>
+          <div className={`${mono} text-xs uppercase tracking-[0.4em]`} style={{ color: C.cyan }}>
+            <Scramble value="Decrypting Intelligence..." duration={1200} />
+          </div>
+          <Loader2 className="w-5 h-5 animate-spin" style={{ color: C.cyan }} />
+        </div>
       </div>
     );
   }
@@ -343,6 +408,14 @@ export default function Report() {
           animation: obsidianBreathe 2.6s ease-in-out infinite;
           box-shadow: 0 0 12px ${C.cyan}, 0 0 28px ${C.cyan}80;
         }
+        @keyframes obsidianSonar {
+          0%   { transform: scale(1);   opacity: 0.7; }
+          100% { transform: scale(3.6); opacity: 0; }
+        }
+        .obs-sonar {
+          animation: obsidianSonar 2s cubic-bezier(0.22,1,0.36,1) infinite;
+          box-shadow: 0 0 0 1px ${C.cyan}80;
+        }
         .obs-chart-glow .recharts-line .recharts-curve,
         .obs-chart-glow .recharts-area-area,
         .obs-chart-glow .recharts-radar-polygon {
@@ -380,6 +453,7 @@ export default function Report() {
                 <span className={`${mono} text-[10px] uppercase tracking-[0.2em] px-3 py-1.5 rounded-full border flex items-center gap-2`}
                   style={{ borderColor: "rgba(0,196,181,0.20)", color: C.gray }}>
                   <span className="relative flex w-2 h-2">
+                    <span className="absolute inline-flex h-full w-full rounded-full obs-sonar" style={{ background: C.cyan }} />
                     <span className="absolute inline-flex h-full w-full rounded-full obs-breathe" style={{ background: C.cyan }} />
                     <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: C.cyan }} />
                   </span>
@@ -424,9 +498,9 @@ export default function Report() {
                   <k.icon className="w-3.5 h-3.5" style={{ color: C.cyan, filter: `drop-shadow(0 0 6px ${C.cyan}AA)` }} />
                 </div>
                 <div className={`${mono} text-3xl font-semibold`} style={{ color: C.white }}>
-                  {k.currency ? <CountUp to={k.value} format={(v) => fmtUSD(v)} />
-                    : k.compact ? <CountUp to={k.value} format={(v) => fmtCompact(v)} />
-                    : <><CountUp to={k.value} decimals={k.decimals} />{k.suffix}</>}
+                  {k.currency ? <Scramble value={fmtUSD(k.value)} />
+                    : k.compact ? <Scramble value={fmtCompact(k.value)} />
+                    : <Scramble value={`${k.value.toFixed(k.decimals)}${k.suffix}`} />}
                 </div>
               </motion.div>
             ))}
@@ -518,6 +592,31 @@ export default function Report() {
             </ChartPanel>
           )}
 
+          {/* Pro+: Engagement Profile Radar */}
+          {has(tier, "pro") && (() => {
+            const engagementRadar = [
+              { axis: "Engagement", value: Math.min(100, Number(engagementScore) || 0) },
+              { axis: "Retention", value: Math.min(100, Number(retentionRate) || 0) },
+              { axis: "Discovery", value: Math.min(100, Number(em.discovery_rate ?? em.discoveryRate ?? 62)) },
+              { axis: "Virality", value: Math.min(100, Number(em.virality_score ?? em.viralityScore ?? 48)) },
+              { axis: "Loyalty", value: Math.min(100, Number(em.loyalty_index ?? em.loyaltyIndex ?? 71)) },
+              { axis: "Saves Rate", value: Math.min(100, Number(em.saves_rate ?? em.savesRate ?? 35)) },
+            ];
+            return (
+              <ChartPanel title="Engagement Profile" subtitle="Multi-axis behavioral signature">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart data={engagementRadar}>
+                    <PolarGrid stroke={C.border} />
+                    <PolarAngleAxis dataKey="axis" stroke={C.gray} tick={{ fill: C.gray, fontSize: 11 }} />
+                    <PolarRadiusAxis stroke={C.border} tick={{ fill: C.gray, fontSize: 10 }} domain={[0, 100]} />
+                    <Radar dataKey="value" stroke={C.cyan} fill={C.cyan} fillOpacity={0.3} animationDuration={1400} />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => `${Number(v).toFixed(0)}`} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </ChartPanel>
+            );
+          })()}
+
           {/* Enterprise+: TikTok vs DSP */}
           {has(tier, "enterprise") && (
             <ChartPanel title="TikTok × DSP Correlation" subtitle="Viral signal vs streaming response">
@@ -603,9 +702,13 @@ export default function Report() {
             <Panel title="Executive Analysis" subtitle="Powered by Songss Neural Intelligence Engine™" className="mb-12">
               <div className="prose prose-invert max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-3xl prose-h2:text-2xl prose-h2:mt-10 prose-h3:text-xl prose-p:leading-[1.9] prose-p:text-[15px] prose-li:leading-[1.8] prose-strong:text-white prose-a:text-[#00C4B5] prose-a:no-underline hover:prose-a:underline prose-blockquote:border-l-4 prose-blockquote:border-[#00C4B5] prose-blockquote:bg-[#0B0B0B] prose-blockquote:py-1 prose-blockquote:px-5 prose-blockquote:rounded-r-md prose-blockquote:not-italic prose-code:font-mono prose-code:text-[#00C4B5] prose-code:bg-[#0B0B0B] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-hr:border-[#1A1A1A] prose-th:text-[#00C4B5] prose-th:uppercase prose-th:tracking-wider prose-th:text-xs prose-td:font-mono"
                 style={{ color: "#D4D4D4" }}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {report.report_markdown}
-                </ReactMarkdown>
+                <Typewriter text={report.report_markdown} cps={260}>
+                  {(shown) => (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {shown}
+                    </ReactMarkdown>
+                  )}
+                </Typewriter>
               </div>
             </Panel>
           </Reveal>
@@ -616,6 +719,7 @@ export default function Report() {
           <div className="rounded-xl border p-8 sm:p-10 text-center" style={{ background: C.card, borderColor: C.border }}>
             <div className="inline-flex items-center gap-2 mb-5">
               <span className="relative flex w-2 h-2">
+                <span className="absolute inline-flex h-full w-full rounded-full obs-sonar" style={{ background: C.cyan }} />
                 <span className="absolute inline-flex h-full w-full rounded-full obs-breathe" style={{ background: C.cyan }} />
                 <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: C.cyan }} />
               </span>
