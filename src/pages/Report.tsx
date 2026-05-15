@@ -677,9 +677,13 @@ export default function Report() {
             <Panel title="Executive Analysis" subtitle="Powered by Songss Neural Intelligence Engine™" className="mb-12">
               <div className="prose prose-invert max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-3xl prose-h2:text-2xl prose-h2:mt-10 prose-h3:text-xl prose-p:leading-[1.9] prose-p:text-[15px] prose-li:leading-[1.8] prose-strong:text-white prose-a:text-[#00C4B5] prose-a:no-underline hover:prose-a:underline prose-blockquote:border-l-4 prose-blockquote:border-[#00C4B5] prose-blockquote:bg-[#0B0B0B] prose-blockquote:py-1 prose-blockquote:px-5 prose-blockquote:rounded-r-md prose-blockquote:not-italic prose-code:font-mono prose-code:text-[#00C4B5] prose-code:bg-[#0B0B0B] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-hr:border-[#1A1A1A] prose-th:text-[#00C4B5] prose-th:uppercase prose-th:tracking-wider prose-th:text-xs prose-td:font-mono"
                 style={{ color: "#D4D4D4" }}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {report.report_markdown}
-                </ReactMarkdown>
+                <Typewriter text={report.report_markdown} cps={260}>
+                  {(shown) => (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {shown}
+                    </ReactMarkdown>
+                  )}
+                </Typewriter>
               </div>
             </Panel>
           </Reveal>
