@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
@@ -16,10 +17,12 @@ export type Hotspot = {
   lat: number;
   lng: number;
   opportunity?: string;
+  value?: number | string;
   streams?: number | string;
   score?: number;
 };
 
+// City coordinate lookup (city name, or "city, country")
 const KNOWN: Record<string, [number, number]> = {
   london: [-0.1276, 51.5074],
   "new york": [-74.006, 40.7128],
@@ -47,7 +50,32 @@ const KNOWN: Record<string, [number, number]> = {
   miami: [-80.1918, 25.7617],
   chicago: [-87.6298, 41.8781],
   atlanta: [-84.388, 33.749],
+  // Country fallbacks (capitals / centroids)
+  uk: [-0.1276, 51.5074],
+  "united kingdom": [-0.1276, 51.5074],
+  usa: [-98.5, 39.5],
+  "united states": [-98.5, 39.5],
+  japan: [139.6917, 35.6895],
+  france: [2.3522, 48.8566],
+  germany: [13.405, 52.52],
+  brazil: [-46.6333, -23.5505],
+  canada: [-79.3832, 43.6532],
+  australia: [151.2093, -33.8688],
+  india: [72.8777, 19.076],
+  spain: [-3.7038, 40.4168],
+  netherlands: [4.9041, 52.3676],
+  mexico: [-99.1332, 19.4326],
+  "south korea": [126.978, 37.5665],
 };
+
+function lookup(...keys: (string | undefined)[]): [number, number] | null {
+  for (const k of keys) {
+    if (!k) continue;
+    const key = String(k).toLowerCase().trim();
+    if (KNOWN[key]) return KNOWN[key];
+  }
+  return null;
+}
 
 function compact(n: number) {
   return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n);
@@ -62,19 +90,23 @@ export function normalizeHotspots(raw: any): Hotspot[] {
   const out: Hotspot[] = [];
   for (const r of arr) {
     if (!r) continue;
-    const name = r.name ?? r.city ?? r.location ?? r.country ?? "Unknown";
+    const city = r.city ?? r.name ?? r.location;
+    const country = r.country;
+    const name = city ?? country ?? "Unknown";
     let lat = Number(r.lat ?? r.latitude);
     let lng = Number(r.lng ?? r.lon ?? r.longitude);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      const k = String(name).toLowerCase().trim();
-      if (KNOWN[k]) { lng = KNOWN[k][0]; lat = KNOWN[k][1]; }
+      const coords =
+        lookup(city, city && country ? `${city}, ${country}` : undefined, country);
+      if (coords) { lng = coords[0]; lat = coords[1]; }
     }
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
     out.push({
       name,
-      country: r.country,
+      country,
       lat, lng,
       opportunity: r.opportunity ?? r.insight ?? r.note ?? r.strategy,
+      value: r.value,
       streams: r.streams ?? r.value,
       score: r.score ?? r.velocity,
     });
@@ -82,15 +114,28 @@ export function normalizeHotspots(raw: any): Hotspot[] {
   return out;
 }
 
-export const FALLBACK_HOTSPOTS: Hotspot[] = [
-  { name: "London", country: "UK", lat: 51.5074, lng: -0.1276, opportunity: "Late-night radio sync window. Peak Spotify saves 22:00–02:00 GMT.", streams: 2400000, score: 92 },
-  { name: "New York", country: "USA", lat: 40.7128, lng: -74.006, opportunity: "Editorial playlist pickup probability 87%. Push pre-save campaign.", streams: 3100000, score: 95 },
-  { name: "Tokyo", country: "JP", lat: 35.6895, lng: 139.6917, opportunity: "TikTok velocity +340% week-over-week. License J-pop sync potential.", streams: 1500000, score: 88 },
-];
-
-export default function NeuralWorldMap({ hotspots }: { hotspots: Hotspot[] }) {
+export default function NeuralWorldMap({ hotspots: hotspotsProp }: { hotspots?: Hotspot[] }) {
   const [hover, setHover] = useState<{ h: Hotspot; x: number; y: number } | null>(null);
-  const points = hotspots.length ? hotspots : FALLBACK_HOTSPOTS;
+  const [fetched, setFetched] = useState<Hotspot[] | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const { data } = await supabase
+        .from("intelligence_reports")
+        .select("geo_hotspots, created_at")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!alive) return;
+      setFetched(normalizeHotspots(data?.geo_hotspots));
+      setLoading(false);
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const points = (hotspotsProp && hotspotsProp.length ? hotspotsProp : fetched) ?? [];
 
   return (
     <div className="relative w-full" style={{ aspectRatio: "16 / 9" }}>
@@ -151,32 +196,33 @@ export default function NeuralWorldMap({ hotspots }: { hotspots: Hotspot[] }) {
               onMouseLeave={() => setHover(null)}
               style={{ cursor: "pointer" }}
             >
-              {/* Sonar ripples */}
               <motion.circle
-                r={4}
-                fill="none"
-                stroke={C.cyan}
-                strokeWidth={1}
+                r={4} fill="none" stroke={C.cyan} strokeWidth={1}
                 initial={{ opacity: 0.6, scale: 1 }}
                 animate={{ opacity: 0, scale: 4 }}
                 transition={{ duration: 2.4, repeat: Infinity, ease: "easeOut", delay: i * 0.25 }}
               />
               <motion.circle
-                r={4}
-                fill="none"
-                stroke={C.cyan}
-                strokeWidth={1}
+                r={4} fill="none" stroke={C.cyan} strokeWidth={1}
                 initial={{ opacity: 0.5, scale: 1 }}
                 animate={{ opacity: 0, scale: 3 }}
                 transition={{ duration: 2.4, repeat: Infinity, ease: "easeOut", delay: i * 0.25 + 0.8 }}
               />
-              {/* Core dot with glow */}
               <circle r={4.5} fill={C.cyan} opacity={0.25} filter="url(#nwmGlow)" />
               <circle r={2.6} fill={C.cyan} stroke={C.white} strokeWidth={0.6} />
             </g>
           </Marker>
         ))}
       </ComposableMap>
+
+      {/* Empty / loading overlay */}
+      {!points.length && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="font-mono text-[11px] uppercase tracking-[0.3em]" style={{ color: C.gray }}>
+            {loading ? "Loading geo intelligence…" : "No hotspots available"}
+          </div>
+        </div>
+      )}
 
       {/* Glassmorphism tooltip */}
       <AnimatePresence>
@@ -208,9 +254,10 @@ export default function NeuralWorldMap({ hotspots }: { hotspots: Hotspot[] }) {
               )}
             </div>
             <div className="text-sm font-semibold mb-1" style={{ color: C.white }}>{hover.h.name}</div>
-            {hover.h.streams != null && (
-              <div className="font-mono text-[11px] mb-1.5" style={{ color: C.gray }}>
-                {typeof hover.h.streams === "number" ? `${compact(hover.h.streams)} streams` : String(hover.h.streams)}
+            {hover.h.value != null && (
+              <div className="font-mono text-[11px] mb-1.5" style={{ color: C.cyan }}>
+                <span className="uppercase tracking-[0.2em] text-[9px] mr-1.5" style={{ color: C.gray }}>Value</span>
+                {typeof hover.h.value === "number" ? compact(hover.h.value) : String(hover.h.value)}
               </div>
             )}
             {hover.h.opportunity && (
