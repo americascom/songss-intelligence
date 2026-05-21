@@ -21,6 +21,7 @@ const plans = [
     ],
     isPopular: true,
     ctaText: "Get Started",
+    ctaLink: "https://buyer.americaspay.com/b/cNi8wPdJzbuTcFYbal3cd0M",
   },
   {
     name: "Tier 2",
