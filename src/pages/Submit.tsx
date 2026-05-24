@@ -38,7 +38,6 @@ type ReportRow = {
   session_id: string;
   plan_name: string | null;
   customer_email: string | null;
-  email: string | null;
   artist_name: string | null;
   engagement_metrics: Record<string, unknown> | null;
 };
@@ -67,7 +66,7 @@ export default function Submit() {
       if (!sessionId) return;
       const { data, error } = await supabase
         .from("intelligence_reports")
-        .select("id, session_id, plan_name, customer_email, email, artist_name, engagement_metrics")
+        .select("id, session_id, plan_name, customer_email, artist_name, engagement_metrics")
         .eq("session_id", sessionId)
         .maybeSingle();
       if (!active) return;
