@@ -38,6 +38,7 @@ const plans = [
       "Weekly automated performance insights",
     ],
     ctaText: "Get Started",
+    ctaLink: "https://buyer.americaspay.com/b/5kQcN57lb9mL5dwemx3cd0N",
   },
   {
     name: "Tier 3",
@@ -54,6 +55,7 @@ const plans = [
       "Custom date-range analysis and priority BI reporting",
     ],
     ctaText: "Get Started",
+    ctaLink: "https://buyer.americaspay.com/b/aFa4gz9tj7eD49sguF3cd0O",
   },
   {
     name: "Tier 4",
@@ -70,6 +72,7 @@ const plans = [
       "Financial ROI projections and campaign conversion rates",
     ],
     ctaText: "Get Started",
+    ctaLink: "https://buyer.americaspay.com/b/4gM8wP6h742r9tM5Q13cd0P",
   },
   {
     name: "Tier 5",
@@ -85,8 +88,8 @@ const plans = [
       "Multi-layered predictive data crossing",
       "Direct strategic advisory from our proprietary AI architecture",
     ],
-    ctaText: "Request Access",
-    ctaLink: "/chat",
+    ctaText: "Get Started",
+    ctaLink: "https://buyer.americaspay.com/b/dRm9AT8pf0Qf7lE4LX3cd0Q",
     subtext: "Taylor Made VIP — White-glove intelligence for labels, investors, and global management.",
   },
 ];
