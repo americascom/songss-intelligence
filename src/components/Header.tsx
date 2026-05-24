@@ -81,18 +81,11 @@ const Header = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <>
-              <Link to="/auth">
-                <Button variant="outline" size="sm" className="bg-transparent border-2 border-primary text-foreground hover:bg-primary/10 hover:text-foreground">
-                  Log In
-                </Button>
-              </Link>
-              <Link to="/pricing">
-                <Button size="sm" className="gradient-primary font-semibold">
-                  Get Started
-                </Button>
-              </Link>
-            </>
+            <Link to="/auth">
+              <Button variant="outline" size="sm" className="bg-transparent border-2 border-primary text-foreground hover:bg-primary/10 hover:text-foreground">
+                Log In
+              </Button>
+            </Link>
           )}
         </div>
 
@@ -143,18 +136,11 @@ const Header = () => {
                   </Button>
                 </>
               ) : (
-                <>
-                  <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
-                    <Button variant="outline" className="w-full justify-start bg-transparent border-2 border-primary text-foreground hover:bg-primary/10 hover:text-foreground">
-                      Log In
-                    </Button>
-                  </Link>
-                  <Link to="/pricing" onClick={() => setIsMenuOpen(false)}>
-                    <Button className="w-full gradient-primary font-semibold">
-                      Get Started
-                    </Button>
-                  </Link>
-                </>
+                <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
+                  <Button variant="outline" className="w-full justify-start bg-transparent border-2 border-primary text-foreground hover:bg-primary/10 hover:text-foreground">
+                    Log In
+                  </Button>
+                </Link>
               )}
             </div>
           </nav>
