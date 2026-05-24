@@ -144,9 +144,6 @@ export default function Submit() {
             <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">
               Welcome to <span style={{ color: C.cyan }}>{report.plan_name || "SONGSS Intelligence"}</span>
             </h1>
-            <p className="mt-3 text-sm" style={{ color: C.gray }}>
-              {report.customer_email ? <span className="inline-flex items-center gap-2"><Mail className="h-3.5 w-3.5" />{report.customer_email}</span> : null}
-            </p>
             <p className="mt-4 text-sm leading-relaxed" style={{ color: "#B8B8B8" }}>
               Provide the briefing details below. Our Neural Intelligence engine will compile your bespoke report and deliver it to your inbox within minutes.
             </p>
@@ -266,8 +263,7 @@ export default function Submit() {
               <h2 className="text-2xl md:text-3xl font-semibold">Your report is being generated…</h2>
               <p className="mt-4 text-sm leading-relaxed max-w-md mx-auto" style={{ color: C.gray }}>
                 We are compiling deep market intelligence for{" "}
-                <span style={{ color: C.white }}>{artistName}</span>
-                {report?.customer_email ? <> and will deliver it to <span style={{ color: C.white }}>{report.customer_email}</span></> : null}.
+                <span style={{ color: C.white }}>{artistName}</span>.
                 You may safely close this window.
               </p>
               <div className="mt-8 inline-flex items-center gap-2 font-mono text-[11px]" style={{ color: C.gray }}>
