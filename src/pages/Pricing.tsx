@@ -89,7 +89,7 @@ const plans = [
       "Direct strategic advisory from our proprietary AI architecture",
     ],
     ctaText: "Get Started",
-    ctaLink: "https://buyer.americaspay.com/b/dRm9AT8pf0Qf7lE4LX3cd0Q",
+    ctaLink: "/opus",
     subtext: "Taylor Made VIP — White-glove intelligence for labels, investors, and global management.",
   },
 ];
