@@ -1,7 +1,7 @@
 import { useEffect, useState, FormEvent } from "react";
 import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Loader2, Sparkles, ShieldCheck, CheckCircle2, Mail } from "lucide-react";
+import { Loader2, Sparkles, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
