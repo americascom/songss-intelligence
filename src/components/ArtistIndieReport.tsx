@@ -201,13 +201,20 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
         .indie-mesh{position:absolute;inset:-10%;background:radial-gradient(45% 35% at 25% 30%,rgba(0,196,181,.10) 0%,transparent 60%),radial-gradient(40% 30% at 75% 70%,rgba(245,200,75,.06) 0%,transparent 60%);filter:blur(40px);pointer-events:none;animation:indieMesh 28s ease-in-out infinite;z-index:0}
         .indie-glow{animation:indieGlow 2.6s ease-in-out infinite}
         @media print {
-          @page { size: A4; margin: 14mm; }
-          html, body { background: #ffffff !important; color: #0a0a0a !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          @page { size: A4; margin: 12mm; }
+          html, body { background: #0a0a0a !important; color: #f5f5f5 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .no-print, header[role="banner"], footer, nav { display: none !important; }
           .indie-mesh { display: none !important; }
-          .indie-report-root { background: #ffffff !important; color: #0a0a0a !important; }
+          .indie-report-root { background: #0a0a0a !important; color: #f5f5f5 !important; }
           .indie-report-root * { box-shadow: none !important; text-shadow: none !important; animation: none !important; }
+          .indie-report-root .snie-number { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; opacity: 1 !important; text-shadow: none !important; }
           .indie-report-root .recharts-wrapper, .indie-report-root .recharts-surface { overflow: visible !important; }
+          .indie-report-root .curator-pitch-content, .indie-report-root .curator-pitch-content * { color: #e8e8e8 !important; opacity: 1 !important; }
+          .indie-report-root .curator-pitch-content { display: block !important; }
+          .indie-report-root .mb-14 { margin-bottom: 1.25rem !important; }
+          .indie-report-root .mb-8 { margin-bottom: 0.75rem !important; }
+          .indie-report-root .py-10 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
+          .indie-report-root .pb-10 { padding-bottom: 0.75rem !important; }
           .indie-report-root section, .indie-report-root .rounded-xl, .indie-report-root .rounded-2xl { page-break-inside: avoid; break-inside: avoid; }
         }
       `}</style>
@@ -260,9 +267,10 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
             <div className="text-[10px] uppercase tracking-[0.3em] mb-3" style={{ color: C.cyan }}>SNIE™ Score</div>
             <div className="relative">
               <div
-                className={`${mono} text-[120px] sm:text-[180px] font-bold leading-none`}
+                className={`${mono} snie-number text-[120px] sm:text-[180px] font-bold leading-none`}
                 style={{
                   color: C.white,
+                  WebkitTextFillColor: C.white,
                   textShadow: `0 0 40px ${C.cyan}66, 0 0 80px ${C.cyan}33`,
                 }}
               >
@@ -271,6 +279,10 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
               <div className="text-xs mt-2" style={{ color: C.gray }}>out of 100</div>
             </div>
           </div>
+
+          <p className="mt-6 text-[11px] max-w-md mx-auto leading-relaxed italic" style={{ color: C.grayDim }}>
+            SNIE™ Score reflects real-time streaming and market data at the moment of analysis. Scores may vary between reports as platform data and market conditions update continuously.
+          </p>
 
           <p className="mt-8 text-base max-w-xl mx-auto leading-relaxed" style={{ color: C.gray }}>
             A warm read on where you are, what's working, and the next moves that matter most.
@@ -411,7 +423,7 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
               <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>Your Curator Pitch</h3>
             </div>
             <div
-              className="prose prose-invert max-w-none prose-p:leading-[1.85] prose-p:text-[15px] prose-strong:text-white prose-a:text-[#00C4B5]"
+              className="curator-pitch-content prose prose-invert max-w-none prose-p:leading-[1.85] prose-p:text-[15px] prose-strong:text-white prose-a:text-[#00C4B5]"
               style={{ color: "#D8D8D8" }}
             >
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{curatorPitch}</ReactMarkdown>
@@ -479,7 +491,7 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
         </div>
 
         <div className={`${mono} text-center mt-8 text-[10px] uppercase tracking-[0.3em]`} style={{ color: C.grayDim }}>
-          Confidential · Session {report.session_id.slice(0, 8)}
+          CONFIDENTIAL · SONGSS Intelligence · Americascom, Inc.
         </div>
       </div>
     </div>
