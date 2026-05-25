@@ -92,14 +92,42 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
 
   // Top 3 markets
   const markets = useMemo(() => {
-    const raw =
-      geo.top_cities ?? geo.cities ?? geo.top ?? geo.hotspots ??
-      (Array.isArray(geo) ? geo : []);
-    const arr = (Array.isArray(raw) ? raw : []).slice(0, 3).map((r: any) => ({
-      country: r.country ?? r.city ?? r.name ?? "—",
-      city: r.city ?? null,
-      score: Math.round(Number(r.score ?? r.velocity ?? r.value ?? r.potential ?? 70)),
-      opportunity: r.opportunity ?? r.note ?? null,
+    // geo_hotspots is a JSONB array of { city, country, opportunity, value }
+    const raw = Array.isArray(geo)
+      ? geo
+      : (geo.top_cities ?? geo.cities ?? geo.top ?? geo.hotspots ?? []);
+    const list = Array.isArray(raw) ? raw : [];
+
+    // parse a score from possibly-string values like "1.2M", "85", 85
+    const parseNum = (v: any): number | null => {
+      if (v == null) return null;
+      if (typeof v === "number" && Number.isFinite(v)) return v;
+      const s = String(v).replace(/[, ]/g, "");
+      const m = s.match(/(-?\d+(?:\.\d+)?)\s*([KkMmBb]?)/);
+      if (!m) return null;
+      const n = parseFloat(m[1]);
+      if (!Number.isFinite(n)) return null;
+      const mult = m[2]?.toLowerCase() === "k" ? 1e3 : m[2]?.toLowerCase() === "m" ? 1e6 : m[2]?.toLowerCase() === "b" ? 1e9 : 1;
+      return n * mult;
+    };
+
+    // collect raw values to normalize stream-like numbers into a 0–100 score
+    const rawScores = list.map((r: any) =>
+      parseNum(r?.score ?? r?.potential ?? r?.potential_score ?? r?.velocity ?? r?.value)
+    );
+    const maxScore = Math.max(0, ...rawScores.filter((n): n is number => n != null));
+    const normalize = (n: number | null, idx: number): number => {
+      if (n == null) return [82, 76, 71][idx] ?? 70;
+      if (n <= 100) return Math.round(n);
+      if (maxScore > 0) return Math.max(40, Math.round((n / maxScore) * 100));
+      return 70;
+    };
+
+    const arr = list.slice(0, 3).map((r: any, i: number) => ({
+      country: r?.country ?? r?.name ?? r?.city ?? "—",
+      city: r?.city && r?.country && r.city !== r.country ? r.city : null,
+      score: normalize(rawScores[i], i),
+      opportunity: r?.opportunity ?? r?.insight ?? r?.note ?? null,
     }));
     if (arr.length) return arr;
     return [
@@ -166,13 +194,22 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
   });
 
   return (
-    <div className="min-h-screen relative overflow-hidden" style={{ background: C.bg, color: C.white }}>
+    <div className="indie-report-root min-h-screen relative overflow-hidden" style={{ background: C.bg, color: C.white }}>
       <style>{`
         @keyframes indieGlow { 0%,100%{opacity:.6;transform:scale(1)} 50%{opacity:1;transform:scale(1.08)} }
         @keyframes indieMesh { 0%{transform:translate3d(0,0,0)} 50%{transform:translate3d(1%,-1%,0) scale(1.04)} 100%{transform:translate3d(0,0,0)} }
         .indie-mesh{position:absolute;inset:-10%;background:radial-gradient(45% 35% at 25% 30%,rgba(0,196,181,.10) 0%,transparent 60%),radial-gradient(40% 30% at 75% 70%,rgba(245,200,75,.06) 0%,transparent 60%);filter:blur(40px);pointer-events:none;animation:indieMesh 28s ease-in-out infinite;z-index:0}
         .indie-glow{animation:indieGlow 2.6s ease-in-out infinite}
-        @media print { .no-print{display:none!important} body{background:white!important} }
+        @media print {
+          @page { size: A4; margin: 14mm; }
+          html, body { background: #ffffff !important; color: #0a0a0a !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .no-print, header[role="banner"], footer, nav { display: none !important; }
+          .indie-mesh { display: none !important; }
+          .indie-report-root { background: #ffffff !important; color: #0a0a0a !important; }
+          .indie-report-root * { box-shadow: none !important; text-shadow: none !important; animation: none !important; }
+          .indie-report-root .recharts-wrapper, .indie-report-root .recharts-surface { overflow: visible !important; }
+          .indie-report-root section, .indie-report-root .rounded-xl, .indie-report-root .rounded-2xl { page-break-inside: avoid; break-inside: avoid; }
+        }
       `}</style>
       <div className="indie-mesh" aria-hidden />
 
@@ -184,7 +221,17 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
             SONGSS Intelligence · Artist Indie
           </div>
           <button
-            onClick={() => window.print()}
+            onClick={() => {
+              const prev = document.title;
+              const safe = (report.artist_name || "Artist-Indie-Report").replace(/[^\w\- ]+/g, "").trim() || "Artist-Indie-Report";
+              document.title = `${safe} — SONGSS Intelligence`;
+              const restore = () => {
+                document.title = prev;
+                window.removeEventListener("afterprint", restore);
+              };
+              window.addEventListener("afterprint", restore);
+              setTimeout(() => window.print(), 50);
+            }}
             className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.2em] border transition-all hover:scale-[1.02]"
             style={{ borderColor: C.cyan, color: C.cyan, background: "rgba(0,196,181,0.06)" }}
           >
