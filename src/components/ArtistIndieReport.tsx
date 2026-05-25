@@ -194,7 +194,7 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
   });
 
   return (
-    <div className="min-h-screen relative overflow-hidden" style={{ background: C.bg, color: C.white }}>
+    <div className="indie-report-root min-h-screen relative overflow-hidden" style={{ background: C.bg, color: C.white }}>
       <style>{`
         @keyframes indieGlow { 0%,100%{opacity:.6;transform:scale(1)} 50%{opacity:1;transform:scale(1.08)} }
         @keyframes indieMesh { 0%{transform:translate3d(0,0,0)} 50%{transform:translate3d(1%,-1%,0) scale(1.04)} 100%{transform:translate3d(0,0,0)} }
