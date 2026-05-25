@@ -267,9 +267,10 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
             <div className="text-[10px] uppercase tracking-[0.3em] mb-3" style={{ color: C.cyan }}>SNIE™ Score</div>
             <div className="relative">
               <div
-                className={`${mono} text-[120px] sm:text-[180px] font-bold leading-none`}
+                className={`${mono} snie-number text-[120px] sm:text-[180px] font-bold leading-none`}
                 style={{
                   color: C.white,
+                  WebkitTextFillColor: C.white,
                   textShadow: `0 0 40px ${C.cyan}66, 0 0 80px ${C.cyan}33`,
                 }}
               >
@@ -278,6 +279,10 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
               <div className="text-xs mt-2" style={{ color: C.gray }}>out of 100</div>
             </div>
           </div>
+
+          <p className="mt-6 text-[11px] max-w-md mx-auto leading-relaxed italic" style={{ color: C.grayDim }}>
+            SNIE™ Score reflects real-time streaming and market data at the moment of analysis. Scores may vary between reports as platform data and market conditions update continuously.
+          </p>
 
           <p className="mt-8 text-base max-w-xl mx-auto leading-relaxed" style={{ color: C.gray }}>
             A warm read on where you are, what's working, and the next moves that matter most.
