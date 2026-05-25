@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import {
   Download, Sparkles, Heart, TrendingUp, Users, DollarSign,
-  Activity, MapPin, Lightbulb, Music, ArrowUpRight,
+  Activity, MapPin, Lightbulb, Music, ArrowUpRight, Youtube,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -62,12 +62,18 @@ interface ReportRow {
   engagement_metrics: any;
   report_markdown: string | null;
   created_at: string;
+  youtube_data: { subscribers?: number; total_views?: number | string } | null;
 }
 
 export default function ArtistIndieReport({ report }: { report: ReportRow }) {
   const em = report.engagement_metrics || {};
   const re = report.revenue_economics || {};
   const geo = report.geo_hotspots || {};
+
+  const yt = report.youtube_data || {};
+  const ytSubscribers = Number(yt.subscribers ?? 0);
+  const ytTotalViews = Number(yt.total_views ?? 0);
+  const hasYouTubeData = ytSubscribers > 0 || ytTotalViews > 0;
 
   const snie = Number(report.digital_score ?? 0) || 72;
   const engagementScore = Number(em.engagement_score ?? em.engagementScore ?? 0) || 7.4;
@@ -458,6 +464,38 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
             </ResponsiveContainer>
           </div>
         </div>
+
+        {/* YouTube Presence */}
+        {hasYouTubeData && (
+          <div className="mb-14">
+            <div className="mb-5 flex items-center gap-2">
+              <Youtube className="w-4 h-4" style={{ color: C.cyan, filter: `drop-shadow(0 0 6px ${C.cyan}AA)` }} />
+              <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>Your YouTube Presence</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { label: "Subscribers", value: ytSubscribers },
+                { label: "Total Views", value: ytTotalViews },
+              ].map((k, i) => (
+                <motion.div
+                  key={k.label}
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.08, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                  className="rounded-xl border p-5"
+                  style={glass}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: C.gray }}>{k.label}</span>
+                    <Youtube className="w-3.5 h-3.5" style={{ color: C.cyan, filter: `drop-shadow(0 0 6px ${C.cyan}AA)` }} />
+                  </div>
+                  <div className={`${mono} text-3xl font-semibold`} style={{ color: C.white }}>
+                    {fmtCompact(k.value)}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Upgrade CTA */}
         <div
