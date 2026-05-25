@@ -491,7 +491,7 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
         </div>
 
         <div className={`${mono} text-center mt-8 text-[10px] uppercase tracking-[0.3em]`} style={{ color: C.grayDim }}>
-          Confidential · Session {report.session_id.slice(0, 8)}
+          CONFIDENTIAL · SONGSS Intelligence · Americascom, Inc.
         </div>
       </div>
     </div>
