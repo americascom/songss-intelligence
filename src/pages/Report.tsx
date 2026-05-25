@@ -302,6 +302,11 @@ export default function Report() {
 
   if (error || !report) return <Classified />;
 
+  // Artist Indie plan gets a warm, encouraging template
+  if ((report.plan_name || "").trim().toLowerCase() === "artist indie") {
+    return <ArtistIndieReport report={report as any} />;
+  }
+
   const tier = planTier(report.plan_name);
   const em = report.engagement_metrics || {};
   const re = report.revenue_economics || {};
