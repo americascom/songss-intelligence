@@ -11,7 +11,7 @@ import {
   AreaChart, Area,
   ComposedChart, ReferenceLine, Scatter,
 } from "recharts";
-import { Lock, Loader2, Activity, Mail, Calendar, ShieldCheck, Zap, TrendingUp, Users, DollarSign } from "lucide-react";
+import { Lock, Loader2, Activity, Mail, Calendar, ShieldCheck, Zap, TrendingUp, Users, DollarSign, Youtube } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import NeuralWorldMap, { normalizeHotspots } from "@/components/NeuralWorldMap";
 import ArtistIndieReport from "@/components/ArtistIndieReport";
@@ -251,6 +251,9 @@ interface ReportRow {
   report_markdown: string | null;
   report_html: string | null;
   created_at: string;
+  youtube_data: { subscribers?: number; total_views?: number | string } | null;
+  spotify_data: { followers?: number; monthly_listeners?: number; top_country?: string } | null;
+  tiktok_data: { followers?: number; engagement_rate?: number } | null;
 }
 
 // ---------- main ----------
@@ -311,6 +314,12 @@ export default function Report() {
   const em = report.engagement_metrics || {};
   const re = report.revenue_economics || {};
   const geo = report.geo_hotspots || {};
+
+  // ---- YouTube presence
+  const yt = report.youtube_data || {};
+  const ytSubscribers = Number(yt.subscribers ?? 0);
+  const ytTotalViews = Number(yt.total_views ?? 0);
+  const hasYouTubeData = ytSubscribers > 0 || ytTotalViews > 0;
 
   // ---- engagement KPIs
   const engagementScore = Number(em.engagement_score ?? em.engagementScore ?? 0);
@@ -736,6 +745,42 @@ export default function Report() {
             </ChartPanel>
           )}
         </motion.div>
+
+        {/* ---------- YouTube Presence ---------- */}
+        {hasYouTubeData && (
+          <Reveal>
+            <div className="mb-12">
+              <div className="flex items-center gap-2.5 mb-5">
+                <Youtube className="w-4 h-4" style={{ color: C.cyan, filter: `drop-shadow(0 0 6px ${C.cyan}AA)` }} />
+                <span className={`${mono} text-[10px] uppercase tracking-[0.25em]`} style={{ color: C.cyan }}>
+                  Your YouTube Presence
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { label: "Subscribers", value: ytSubscribers },
+                  { label: "Total Views",  value: ytTotalViews  },
+                ].map((k, i) => (
+                  <motion.div
+                    key={k.label}
+                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.08, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                    className="rounded-xl border p-5"
+                    style={glassStyle}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: C.gray }}>{k.label}</span>
+                      <Youtube className="w-3.5 h-3.5" style={{ color: C.cyan, filter: `drop-shadow(0 0 6px ${C.cyan}AA)` }} />
+                    </div>
+                    <div className={`${mono} text-3xl font-semibold`} style={{ color: C.white }}>
+                      <Scramble value={fmtCompact(k.value)} />
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+        )}
 
         {/* Active Glocalization Strategy — Neural World Map */}
         <Reveal>
