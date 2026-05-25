@@ -92,14 +92,42 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
 
   // Top 3 markets
   const markets = useMemo(() => {
-    const raw =
-      geo.top_cities ?? geo.cities ?? geo.top ?? geo.hotspots ??
-      (Array.isArray(geo) ? geo : []);
-    const arr = (Array.isArray(raw) ? raw : []).slice(0, 3).map((r: any) => ({
-      country: r.country ?? r.city ?? r.name ?? "—",
-      city: r.city ?? null,
-      score: Math.round(Number(r.score ?? r.velocity ?? r.value ?? r.potential ?? 70)),
-      opportunity: r.opportunity ?? r.note ?? null,
+    // geo_hotspots is a JSONB array of { city, country, opportunity, value }
+    const raw = Array.isArray(geo)
+      ? geo
+      : (geo.top_cities ?? geo.cities ?? geo.top ?? geo.hotspots ?? []);
+    const list = Array.isArray(raw) ? raw : [];
+
+    // parse a score from possibly-string values like "1.2M", "85", 85
+    const parseNum = (v: any): number | null => {
+      if (v == null) return null;
+      if (typeof v === "number" && Number.isFinite(v)) return v;
+      const s = String(v).replace(/[, ]/g, "");
+      const m = s.match(/(-?\d+(?:\.\d+)?)\s*([KkMmBb]?)/);
+      if (!m) return null;
+      const n = parseFloat(m[1]);
+      if (!Number.isFinite(n)) return null;
+      const mult = m[2]?.toLowerCase() === "k" ? 1e3 : m[2]?.toLowerCase() === "m" ? 1e6 : m[2]?.toLowerCase() === "b" ? 1e9 : 1;
+      return n * mult;
+    };
+
+    // collect raw values to normalize stream-like numbers into a 0–100 score
+    const rawScores = list.map((r: any) =>
+      parseNum(r?.score ?? r?.potential ?? r?.potential_score ?? r?.velocity ?? r?.value)
+    );
+    const maxScore = Math.max(0, ...rawScores.filter((n): n is number => n != null));
+    const normalize = (n: number | null, idx: number): number => {
+      if (n == null) return [82, 76, 71][idx] ?? 70;
+      if (n <= 100) return Math.round(n);
+      if (maxScore > 0) return Math.max(40, Math.round((n / maxScore) * 100));
+      return 70;
+    };
+
+    const arr = list.slice(0, 3).map((r: any, i: number) => ({
+      country: r?.country ?? r?.name ?? r?.city ?? "—",
+      city: r?.city && r?.country && r.city !== r.country ? r.city : null,
+      score: normalize(rawScores[i], i),
+      opportunity: r?.opportunity ?? r?.insight ?? r?.note ?? null,
     }));
     if (arr.length) return arr;
     return [
