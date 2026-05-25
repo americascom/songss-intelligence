@@ -423,7 +423,7 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
               <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>Your Curator Pitch</h3>
             </div>
             <div
-              className="prose prose-invert max-w-none prose-p:leading-[1.85] prose-p:text-[15px] prose-strong:text-white prose-a:text-[#00C4B5]"
+              className="curator-pitch-content prose prose-invert max-w-none prose-p:leading-[1.85] prose-p:text-[15px] prose-strong:text-white prose-a:text-[#00C4B5]"
               style={{ color: "#D8D8D8" }}
             >
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{curatorPitch}</ReactMarkdown>
