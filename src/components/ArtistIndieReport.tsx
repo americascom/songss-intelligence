@@ -200,7 +200,16 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
         @keyframes indieMesh { 0%{transform:translate3d(0,0,0)} 50%{transform:translate3d(1%,-1%,0) scale(1.04)} 100%{transform:translate3d(0,0,0)} }
         .indie-mesh{position:absolute;inset:-10%;background:radial-gradient(45% 35% at 25% 30%,rgba(0,196,181,.10) 0%,transparent 60%),radial-gradient(40% 30% at 75% 70%,rgba(245,200,75,.06) 0%,transparent 60%);filter:blur(40px);pointer-events:none;animation:indieMesh 28s ease-in-out infinite;z-index:0}
         .indie-glow{animation:indieGlow 2.6s ease-in-out infinite}
-        @media print { .no-print{display:none!important} body{background:white!important} }
+        @media print {
+          @page { size: A4; margin: 14mm; }
+          html, body { background: #ffffff !important; color: #0a0a0a !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .no-print, header[role="banner"], footer, nav { display: none !important; }
+          .indie-mesh { display: none !important; }
+          .indie-report-root { background: #ffffff !important; color: #0a0a0a !important; }
+          .indie-report-root * { box-shadow: none !important; text-shadow: none !important; animation: none !important; }
+          .indie-report-root .recharts-wrapper, .indie-report-root .recharts-surface { overflow: visible !important; }
+          .indie-report-root section, .indie-report-root .rounded-xl, .indie-report-root .rounded-2xl { page-break-inside: avoid; break-inside: avoid; }
+        }
       `}</style>
       <div className="indie-mesh" aria-hidden />
 
