@@ -201,13 +201,20 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
         .indie-mesh{position:absolute;inset:-10%;background:radial-gradient(45% 35% at 25% 30%,rgba(0,196,181,.10) 0%,transparent 60%),radial-gradient(40% 30% at 75% 70%,rgba(245,200,75,.06) 0%,transparent 60%);filter:blur(40px);pointer-events:none;animation:indieMesh 28s ease-in-out infinite;z-index:0}
         .indie-glow{animation:indieGlow 2.6s ease-in-out infinite}
         @media print {
-          @page { size: A4; margin: 14mm; }
-          html, body { background: #ffffff !important; color: #0a0a0a !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          @page { size: A4; margin: 12mm; }
+          html, body { background: #0a0a0a !important; color: #f5f5f5 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .no-print, header[role="banner"], footer, nav { display: none !important; }
           .indie-mesh { display: none !important; }
-          .indie-report-root { background: #ffffff !important; color: #0a0a0a !important; }
+          .indie-report-root { background: #0a0a0a !important; color: #f5f5f5 !important; }
           .indie-report-root * { box-shadow: none !important; text-shadow: none !important; animation: none !important; }
+          .indie-report-root .snie-number { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; opacity: 1 !important; text-shadow: none !important; }
           .indie-report-root .recharts-wrapper, .indie-report-root .recharts-surface { overflow: visible !important; }
+          .indie-report-root .curator-pitch-content, .indie-report-root .curator-pitch-content * { color: #e8e8e8 !important; opacity: 1 !important; }
+          .indie-report-root .curator-pitch-content { display: block !important; }
+          .indie-report-root .mb-14 { margin-bottom: 1.25rem !important; }
+          .indie-report-root .mb-8 { margin-bottom: 0.75rem !important; }
+          .indie-report-root .py-10 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
+          .indie-report-root .pb-10 { padding-bottom: 0.75rem !important; }
           .indie-report-root section, .indie-report-root .rounded-xl, .indie-report-root .rounded-2xl { page-break-inside: avoid; break-inside: avoid; }
         }
       `}</style>
