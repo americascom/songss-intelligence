@@ -221,7 +221,17 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
             SONGSS Intelligence · Artist Indie
           </div>
           <button
-            onClick={() => window.print()}
+            onClick={() => {
+              const prev = document.title;
+              const safe = (report.artist_name || "Artist-Indie-Report").replace(/[^\w\- ]+/g, "").trim() || "Artist-Indie-Report";
+              document.title = `${safe} — SONGSS Intelligence`;
+              const restore = () => {
+                document.title = prev;
+                window.removeEventListener("afterprint", restore);
+              };
+              window.addEventListener("afterprint", restore);
+              setTimeout(() => window.print(), 50);
+            }}
             className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.2em] border transition-all hover:scale-[1.02]"
             style={{ borderColor: C.cyan, color: C.cyan, background: "rgba(0,196,181,0.06)" }}
           >
