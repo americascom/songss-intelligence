@@ -7,6 +7,7 @@ import {
 import {
   Download, Sparkles, Heart, TrendingUp, Users, DollarSign,
   Activity, MapPin, Lightbulb, Music, ArrowUpRight, Youtube,
+  ShieldCheck, Radio, Calculator, Film, Award, AlertTriangle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -48,6 +49,31 @@ function fmtCompact(n: number) {
 function fmtUSD(n: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 }
+
+function stripCodeFence(raw: string): string {
+  let s = raw.trim();
+  if (s.startsWith("```html")) s = s.slice(7);
+  else if (s.startsWith("```")) s = s.slice(3);
+  if (s.endsWith("```")) s = s.slice(0, -3);
+  return s.trim();
+}
+
+function extractSection(content: string, ...keywords: string[]): string | null {
+  for (const kw of keywords) {
+    // HTML <h2> heading
+    const h2 = new RegExp(`<h2[^>]*>[^<]*${kw}[^<]*<\\/h2>([\\s\\S]*?)(?=<h2|$)`, "i");
+    const m2 = content.match(h2);
+    if (m2) return m2[1].trim();
+    // Markdown ## heading
+    const md = new RegExp(`##\\s*[^\\n]*${kw}[^\\n]*\\n([\\s\\S]*?)(?=\\n##\\s|\\n#\\s|$)`, "i");
+    const mm = content.match(md);
+    if (mm) return mm[1].trim();
+  }
+  return null;
+}
+
+const GROWTH_LADDER = ["Seed", "Sprout", "Root", "Branch", "Crown"] as const;
+type GrowthLevel = (typeof GROWTH_LADDER)[number];
 
 interface ReportRow {
   id: string;
@@ -183,16 +209,38 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
     ];
   }, [em, markets]);
 
+  const cleanMd = useMemo(
+    () => stripCodeFence(report.report_markdown || report.report_html || ""),
+    [report.report_markdown, report.report_html]
+  );
+
+  // 5 Artist Indie exclusive sections parsed from the report
+  const hygieneHtml = useMemo(() => extractSection(cleanMd, "DIGITAL HYGIENE"), [cleanMd]);
+  const microHtml   = useMemo(() => extractSection(cleanMd, "MICRO-INFLUENCE", "MICRO INFLUENCE"), [cleanMd]);
+  const investHtml  = useMemo(() => extractSection(cleanMd, "INVESTMENT CALCULATOR", "NEXT STEP INVESTMENT"), [cleanMd]);
+  const syncHtml    = useMemo(() => extractSection(cleanMd, "SYNC-READINESS", "SYNC READINESS", "SYNC-READY"), [cleanMd]);
+  const peerHtml    = useMemo(() => extractSection(cleanMd, "PEER BENCHMARK"), [cleanMd]);
+
+  const hygieneScore = useMemo((): number | null => {
+    if (!hygieneHtml) return null;
+    const m = hygieneHtml.match(/(\d{1,3})\s*(?:\/\s*100|out\s+of\s+100)/i)
+           || hygieneHtml.match(/score[^:]*:\s*(\d{1,3})/i);
+    const n = m ? parseInt(m[1], 10) : NaN;
+    return Number.isFinite(n) && n >= 0 && n <= 100 ? n : null;
+  }, [hygieneHtml]);
+
+  const currentLevel = useMemo((): GrowthLevel | null => {
+    if (!peerHtml) return null;
+    for (const lvl of GROWTH_LADDER) {
+      if (new RegExp(`current[^.]{0,60}\\b${lvl}\\b|\\b${lvl}\\b[^.]{0,60}current`, "i").test(peerHtml)) return lvl;
+    }
+    const m = peerHtml.match(new RegExp(`\\b(${GROWTH_LADDER.join("|")})\\b`, "i"));
+    return m ? (m[1] as GrowthLevel) : null;
+  }, [peerHtml]);
+
   // Curator pitch from markdown — strips code-fence wrapping, converts markdown to HTML
   const curatorPitch = useMemo(() => {
-    const raw = report.report_markdown || report.report_html || "";
-
-    // Strip ```html ... ``` fence that the AI sometimes wraps around the output
-    let content = raw.trim();
-    if (content.startsWith("```html")) content = content.slice(7);
-    else if (content.startsWith("```")) content = content.slice(3);
-    if (content.endsWith("```")) content = content.slice(0, -3);
-    content = content.trim();
+    const content = cleanMd;
 
     // Convert the most common markdown patterns to HTML so bold/italic render correctly
     const mdToHtml = (text: string) =>
@@ -230,7 +278,7 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
     if (firstPara) return mdToHtml(firstPara.trim());
 
     return "Your sound bridges intimacy and momentum — a rare combination that resonates with playlist curators looking for authentic voices with crossover appeal.";
-  }, [report.report_markdown, report.report_html]);
+  }, [cleanMd]);
 
   const reportDate = new Date(report.created_at).toLocaleDateString("en-US", {
     year: "numeric", month: "short", day: "numeric",
@@ -243,6 +291,16 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
         @keyframes indieMesh { 0%{transform:translate3d(0,0,0)} 50%{transform:translate3d(1%,-1%,0) scale(1.04)} 100%{transform:translate3d(0,0,0)} }
         .indie-mesh{position:absolute;inset:-10%;background:radial-gradient(45% 35% at 25% 30%,rgba(0,196,181,.10) 0%,transparent 60%),radial-gradient(40% 30% at 75% 70%,rgba(245,200,75,.06) 0%,transparent 60%);filter:blur(40px);pointer-events:none;animation:indieMesh 28s ease-in-out infinite;z-index:0}
         .indie-glow{animation:indieGlow 2.6s ease-in-out infinite}
+        .indie-section-content table{width:100%;border-collapse:collapse;font-size:12px;margin:12px 0}
+        .indie-section-content th{color:#00C4B5;text-transform:uppercase;letter-spacing:.1em;font-size:10px;padding:8px 12px;border-bottom:1px solid #1F1F1F;text-align:left;font-weight:600}
+        .indie-section-content td{padding:8px 12px;border-bottom:1px solid #1A1A1A;color:#D8D8D8;vertical-align:top;font-size:12px;line-height:1.5}
+        .indie-section-content tr:last-child td{border-bottom:none}
+        .indie-section-content ul,.indie-section-content ol{padding-left:1.25rem;margin:8px 0}
+        .indie-section-content li{color:#9A9A9A;font-size:13px;margin-bottom:6px;line-height:1.65}
+        .indie-section-content strong{color:#F5F5F5}
+        .indie-section-content p{color:#9A9A9A;font-size:13px;line-height:1.75;margin-bottom:10px}
+        .indie-section-content h3,.indie-section-content h4{color:#00C4B5;font-size:11px;text-transform:uppercase;letter-spacing:.15em;font-weight:600;margin:16px 0 8px}
+        .indie-section-content hr{border:none;border-top:1px solid #1F1F1F;margin:16px 0}
         @media print {
           @page { size: A4; margin: 12mm; }
           html, body { background: #0a0a0a !important; color: #f5f5f5 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -456,6 +514,159 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
             ))}
           </div>
         </div>
+
+        {/* ── DIGITAL HYGIENE INDEX ── */}
+        {hygieneHtml && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.6 }}
+            className="rounded-xl border p-6 sm:p-8 mb-14"
+            style={glass}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4" style={{ color: C.cyan }} />
+                <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>
+                  Digital Hygiene Index
+                </h3>
+              </div>
+              {hygieneScore !== null && (
+                <div className="flex items-baseline gap-1">
+                  <span
+                    className={`${mono} text-4xl font-bold`}
+                    style={{ color: hygieneScore < 60 ? "#FF6B6B" : C.cyan }}
+                  >
+                    {hygieneScore}
+                  </span>
+                  <span className="text-[10px] uppercase tracking-[0.15em]" style={{ color: C.grayDim }}>/100</span>
+                </div>
+              )}
+            </div>
+            {hygieneScore !== null && hygieneScore < 60 && (
+              <div
+                className="flex items-start gap-3 rounded-lg px-4 py-3 mb-5 border"
+                style={{ background: "rgba(255,107,107,0.06)", borderColor: "rgba(255,107,107,0.3)" }}
+              >
+                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "#FF6B6B" }} />
+                <p className="text-sm font-semibold leading-snug" style={{ color: "#FF6B6B" }}>
+                  Stop everything. Fix your ISRC registration first. You are losing royalty money.
+                </p>
+              </div>
+            )}
+            <div className="indie-section-content" dangerouslySetInnerHTML={{ __html: hygieneHtml }} />
+          </motion.div>
+        )}
+
+        {/* ── MICRO-INFLUENCE MAP ── */}
+        {microHtml && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12, duration: 0.6 }}
+            className="rounded-xl border p-6 sm:p-8 mb-14"
+            style={glass}
+          >
+            <div className="flex items-center gap-2 mb-5">
+              <Radio className="w-4 h-4" style={{ color: C.cyan }} />
+              <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>
+                Micro-Influence Map
+              </h3>
+            </div>
+            <div className="indie-section-content" dangerouslySetInnerHTML={{ __html: microHtml }} />
+          </motion.div>
+        )}
+
+        {/* ── NEXT STEP INVESTMENT CALCULATOR ── */}
+        {investHtml && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.14, duration: 0.6 }}
+            className="rounded-xl border p-6 sm:p-8 mb-14"
+            style={glass}
+          >
+            <div className="flex items-center gap-2 mb-5">
+              <Calculator className="w-4 h-4" style={{ color: C.warm }} />
+              <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.warm }}>
+                Next Step Investment Calculator
+              </h3>
+              <span
+                className={`${mono} ml-auto text-[10px] px-2 py-1 rounded-md`}
+                style={{ background: `${C.warm}15`, color: C.warm }}
+              >
+                $100 Budget
+              </span>
+            </div>
+            <div className="indie-section-content" dangerouslySetInnerHTML={{ __html: investHtml }} />
+          </motion.div>
+        )}
+
+        {/* ── SYNC-READINESS SCORE ── */}
+        {syncHtml && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.16, duration: 0.6 }}
+            className="rounded-xl border p-6 sm:p-8 mb-14"
+            style={glass}
+          >
+            <div className="flex items-center gap-2 mb-5">
+              <Film className="w-4 h-4" style={{ color: C.cyan }} />
+              <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>
+                Sync-Readiness Score
+              </h3>
+            </div>
+            <div className="indie-section-content" dangerouslySetInnerHTML={{ __html: syncHtml }} />
+          </motion.div>
+        )}
+
+        {/* ── PEER BENCHMARK ── */}
+        {peerHtml && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.18, duration: 0.6 }}
+            className="rounded-xl border p-6 sm:p-8 mb-14"
+            style={glass}
+          >
+            <div className="flex items-center gap-2 mb-5">
+              <Award className="w-4 h-4" style={{ color: C.warm }} />
+              <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.warm }}>
+                Peer Benchmark
+              </h3>
+            </div>
+            {/* Seed → Crown ladder */}
+            <div className="flex items-center mb-6 overflow-x-auto pb-1">
+              {GROWTH_LADDER.map((lvl, i) => {
+                const isActive = lvl === currentLevel;
+                const isPast = currentLevel
+                  ? GROWTH_LADDER.indexOf(lvl) < GROWTH_LADDER.indexOf(currentLevel)
+                  : false;
+                return (
+                  <div key={lvl} className="flex items-center flex-shrink-0">
+                    <div
+                      className="flex flex-col items-center px-3 py-2 rounded-lg"
+                      style={{
+                        background: isActive ? `${C.warm}18` : isPast ? `${C.cyan}08` : "transparent",
+                        border: isActive ? `1px solid ${C.warm}66` : "1px solid transparent",
+                      }}
+                    >
+                      <span
+                        className={`${mono} text-[10px] font-semibold uppercase tracking-[0.15em]`}
+                        style={{ color: isActive ? C.warm : isPast ? C.cyan : C.grayDim }}
+                      >
+                        {lvl}
+                      </span>
+                      {isActive && (
+                        <span className="w-1.5 h-1.5 rounded-full mt-1" style={{ background: C.warm }} />
+                      )}
+                    </div>
+                    {i < GROWTH_LADDER.length - 1 && (
+                      <div className="w-6 h-px mx-0.5 flex-shrink-0" style={{ background: C.border }} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="indie-section-content" dangerouslySetInnerHTML={{ __html: peerHtml }} />
+          </motion.div>
+        )}
 
         {/* Curator Pitch */}
         <div className="rounded-xl border p-7 sm:p-9 mb-14 relative overflow-hidden" style={glass}>
