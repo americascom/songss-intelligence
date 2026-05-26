@@ -59,6 +59,7 @@ interface ReportRow {
   revenue_economics: any;
   engagement_metrics: any;
   report_markdown: string | null;
+  report_html: string | null;
   created_at: string;
   youtube_data: { subscribers?: number; total_views?: number | string } | null;
 }
@@ -182,16 +183,54 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
     ];
   }, [em, markets]);
 
-  // Curator pitch from markdown
+  // Curator pitch from markdown — strips code-fence wrapping, converts markdown to HTML
   const curatorPitch = useMemo(() => {
-    const md = report.report_markdown || "";
-    const re1 = /##\s*Curator\s*Pitch[\s\S]*?(?=\n##\s|\n#\s|$)/i;
-    const m = md.match(re1);
-    if (m) return m[0].replace(/^##\s*Curator\s*Pitch\s*/i, "").trim();
-    // Fallback: first paragraph
-    const firstPara = md.split("\n\n").find((p) => p.trim().length > 40);
-    return firstPara || "Your sound bridges intimacy and momentum — a rare combination that resonates with playlist curators looking for authentic voices with crossover appeal.";
-  }, [report.report_markdown]);
+    const raw = report.report_markdown || report.report_html || "";
+
+    // Strip ```html ... ``` fence that the AI sometimes wraps around the output
+    let content = raw.trim();
+    if (content.startsWith("```html")) content = content.slice(7);
+    else if (content.startsWith("```")) content = content.slice(3);
+    if (content.endsWith("```")) content = content.slice(0, -3);
+    content = content.trim();
+
+    // Convert the most common markdown patterns to HTML so bold/italic render correctly
+    const mdToHtml = (text: string) =>
+      text
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*(.+?)\*/g, "<em>$1</em>")
+        .split("\n\n")
+        .filter(Boolean)
+        .map((p) => `<p>${p.trim()}</p>`)
+        .join("");
+
+    // Prefer an explicit Curator Pitch section
+    const pitchMatch = content.match(/##\s*Curator\s*Pitch\s*([\s\S]*?)(?=\n##\s|\n#\s|$)/i);
+    if (pitchMatch) return mdToHtml(pitchMatch[1].trim());
+
+    // Fall back to Executive Summary (first 2 substantive paragraphs)
+    const execMatch = content.match(/##\s*Executive\s*Summary\s*([\s\S]*?)(?=\n##\s|\n#\s|$)/i);
+    if (execMatch) {
+      const paras = execMatch[1]
+        .trim()
+        .split("\n\n")
+        .filter((p) => p.trim().length > 20)
+        .slice(0, 2)
+        .join("\n\n");
+      return mdToHtml(paras);
+    }
+
+    // Last resort: first paragraph that isn't HTML, a heading, or the code-fence artifact
+    const firstPara = content
+      .split("\n\n")
+      .find((p) => {
+        const t = p.trim();
+        return t.length > 40 && !t.startsWith("<") && !t.startsWith("#") && !t.startsWith("`");
+      });
+    if (firstPara) return mdToHtml(firstPara.trim());
+
+    return "Your sound bridges intimacy and momentum — a rare combination that resonates with playlist curators looking for authentic voices with crossover appeal.";
+  }, [report.report_markdown, report.report_html]);
 
   const reportDate = new Date(report.created_at).toLocaleDateString("en-US", {
     year: "numeric", month: "short", day: "numeric",
