@@ -1,7 +1,5 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Area, AreaChart,
@@ -431,9 +429,8 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
             <div
               className="curator-pitch-content prose prose-invert max-w-none prose-p:leading-[1.85] prose-p:text-[15px] prose-strong:text-white prose-a:text-[#00C4B5]"
               style={{ color: "#D8D8D8" }}
-            >
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{curatorPitch}</ReactMarkdown>
-            </div>
+              dangerouslySetInnerHTML={{ __html: curatorPitch }}
+            />
           </div>
         </div>
 
