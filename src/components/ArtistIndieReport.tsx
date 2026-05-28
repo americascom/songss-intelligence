@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Area, AreaChart,
+  Tooltip, ResponsiveContainer,
 } from "recharts";
 import {
   Download, Sparkles, Heart, TrendingUp, Users, DollarSign,
@@ -58,13 +58,78 @@ function stripCodeFence(raw: string): string {
   return s.trim();
 }
 
+function renderMarkdown(md: string): string {
+  if (!md) return "";
+
+  function inline(t: string): string {
+    return t
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
+  }
+
+  const lines = md.split("\n");
+  const out: string[] = [];
+  let inTable = false;
+  let tableRows = 0;
+  let inList = false;
+
+  const flushList = () => { if (inList) { out.push("</ul>"); inList = false; } };
+  const flushTable = () => {
+    if (inTable) { out.push("</tbody></table>"); inTable = false; tableRows = 0; }
+  };
+
+  for (const raw of lines) {
+    const line = raw.trim();
+
+    if (line.startsWith("|")) {
+      if (/^\|[-|\s:]+\|$/.test(line)) continue; // separator row
+      flushList();
+      if (!inTable) {
+        out.push('<table>');
+        inTable = true;
+        tableRows = 0;
+      }
+      const cells = line.split("|").slice(1, -1).map((c) => c.trim());
+      if (tableRows === 0) {
+        out.push(
+          "<thead><tr>" +
+            cells.map((c) => `<th>${inline(c)}</th>`).join("") +
+          "</tr></thead><tbody>"
+        );
+      } else {
+        out.push("<tr>" + cells.map((c) => `<td>${inline(c)}</td>`).join("") + "</tr>");
+      }
+      tableRows++;
+      continue;
+    }
+    flushTable();
+
+    if (/^[-*]\s/.test(line)) {
+      if (!inList) { out.push("<ul>"); inList = true; }
+      out.push("<li>" + inline(line.replace(/^[-*]\s/, "")) + "</li>");
+      continue;
+    }
+    if (inList && line) { flushList(); }
+
+    if (line.startsWith("> ")) {
+      out.push(`<blockquote>${inline(line.slice(2))}</blockquote>`);
+      continue;
+    }
+
+    if (!line) { flushList(); continue; }
+
+    out.push("<p>" + inline(line) + "</p>");
+  }
+  flushList();
+  flushTable();
+  return out.join("");
+}
+
 function extractSection(content: string, ...keywords: string[]): string | null {
   for (const kw of keywords) {
-    // HTML <h2> heading
     const h2 = new RegExp(`<h2[^>]*>[^<]*${kw}[^<]*<\\/h2>([\\s\\S]*?)(?=<h2|$)`, "i");
     const m2 = content.match(h2);
     if (m2) return m2[1].trim();
-    // Markdown ## heading
     const md = new RegExp(`##\\s*[^\\n]*${kw}[^\\n]*\\n([\\s\\S]*?)(?=\\n##\\s|\\n#\\s|$)`, "i");
     const mm = content.match(md);
     if (mm) return mm[1].trim();
@@ -90,6 +155,43 @@ interface ReportRow {
   youtube_data: { subscribers?: number; total_views?: number | string } | null;
 }
 
+// ── Shared section card header ───────────────────────────────────────────────
+function SectionHeader({
+  emoji,
+  icon: Icon,
+  title,
+  accent,
+  badge,
+}: {
+  emoji: string;
+  icon: React.ElementType;
+  title: string;
+  accent: string;
+  badge?: React.ReactNode;
+}) {
+  return (
+    <div
+      className="flex items-center justify-between px-6 py-4 border-b"
+      style={{
+        borderColor: `${accent}22`,
+        background: `linear-gradient(135deg, ${accent}0f 0%, transparent 70%)`,
+      }}
+    >
+      <div className="flex items-center gap-2.5">
+        <span className="text-lg leading-none">{emoji}</span>
+        <Icon className="w-4 h-4" style={{ color: accent, filter: `drop-shadow(0 0 6px ${accent}99)` }} />
+        <h3
+          className="text-[10px] font-bold uppercase tracking-[0.28em]"
+          style={{ color: accent }}
+        >
+          {title}
+        </h3>
+      </div>
+      {badge}
+    </div>
+  );
+}
+
 export default function ArtistIndieReport({ report }: { report: ReportRow }) {
   const em = report.engagement_metrics || {};
   const re = report.revenue_economics || {};
@@ -106,7 +208,6 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
   const monthlyStreams = Number(em.monthly_streams ?? em.monthlyStreams ?? 0) || 12500;
   const ltv = Number(re.ltv ?? re.ltv_projection ?? em.ltv ?? 0) || 4200;
 
-  // 6-month neural trajectory
   const trajectory = useMemo(() => {
     const raw = em.trajectory ?? em.neural_trajectory ?? [];
     if (Array.isArray(raw) && raw.length) {
@@ -121,15 +222,12 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
     }));
   }, [em, monthlyStreams]);
 
-  // Top 3 markets
   const markets = useMemo(() => {
-    // geo_hotspots is a JSONB array of { city, country, opportunity, value }
     const raw = Array.isArray(geo)
       ? geo
       : (geo.top_cities ?? geo.cities ?? geo.top ?? geo.hotspots ?? []);
     const list = Array.isArray(raw) ? raw : [];
 
-    // parse a score from possibly-string values like "1.2M", "85", 85
     const parseNum = (v: any): number | null => {
       if (v == null) return null;
       if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -142,7 +240,6 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
       return n * mult;
     };
 
-    // collect raw values to normalize stream-like numbers into a 0–100 score
     const rawScores = list.map((r: any) =>
       parseNum(r?.score ?? r?.potential ?? r?.potential_score ?? r?.velocity ?? r?.value)
     );
@@ -168,7 +265,6 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
     ];
   }, [geo]);
 
-  // Revenue snapshot
   const revenueSnapshot = useMemo(() => {
     const raw = re.streams ?? re.revenue_streams ?? [];
     if (Array.isArray(raw) && raw.length) {
@@ -185,7 +281,6 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
     ];
   }, [re, ltv]);
 
-  // Recommendations
   const recommendations = useMemo(() => {
     const raw = em.recommendations ?? em.actions ?? [];
     if (Array.isArray(raw) && raw.length >= 3) {
@@ -214,35 +309,38 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
     [report.report_markdown, report.report_html]
   );
 
-  // 5 Artist Indie exclusive sections parsed from the report
-  const hygieneHtml = useMemo(() => extractSection(cleanMd, "DIGITAL HYGIENE"), [cleanMd]);
-  const microHtml   = useMemo(() => extractSection(cleanMd, "MICRO-INFLUENCE", "MICRO INFLUENCE"), [cleanMd]);
-  const investHtml  = useMemo(() => extractSection(cleanMd, "INVESTMENT CALCULATOR", "NEXT STEP INVESTMENT"), [cleanMd]);
-  const syncHtml    = useMemo(() => extractSection(cleanMd, "SYNC-READINESS", "SYNC READINESS", "SYNC-READY"), [cleanMd]);
-  const peerHtml    = useMemo(() => extractSection(cleanMd, "PEER BENCHMARK"), [cleanMd]);
+  // Raw markdown (for score/level extraction) + rendered HTML
+  const hygieneMd = useMemo(() => extractSection(cleanMd, "DIGITAL HYGIENE"), [cleanMd]);
+  const microMd   = useMemo(() => extractSection(cleanMd, "MICRO-INFLUENCE", "MICRO INFLUENCE"), [cleanMd]);
+  const investMd  = useMemo(() => extractSection(cleanMd, "NEXT STEP INVESTMENT", "INVESTMENT CALCULATOR"), [cleanMd]);
+  const syncMd    = useMemo(() => extractSection(cleanMd, "SYNC-READINESS", "SYNC READINESS", "SYNC-READY"), [cleanMd]);
+  const peerMd    = useMemo(() => extractSection(cleanMd, "PEER BENCHMARK"), [cleanMd]);
+
+  const hygieneHtml = useMemo(() => hygieneMd ? renderMarkdown(hygieneMd) : null, [hygieneMd]);
+  const microHtml   = useMemo(() => microMd   ? renderMarkdown(microMd)   : null, [microMd]);
+  const investHtml  = useMemo(() => investMd  ? renderMarkdown(investMd)  : null, [investMd]);
+  const syncHtml    = useMemo(() => syncMd    ? renderMarkdown(syncMd)    : null, [syncMd]);
+  const peerHtml    = useMemo(() => peerMd    ? renderMarkdown(peerMd)    : null, [peerMd]);
 
   const hygieneScore = useMemo((): number | null => {
-    if (!hygieneHtml) return null;
-    const m = hygieneHtml.match(/(\d{1,3})\s*(?:\/\s*100|out\s+of\s+100)/i)
-           || hygieneHtml.match(/score[^:]*:\s*(\d{1,3})/i);
+    if (!hygieneMd) return null;
+    const m = hygieneMd.match(/(\d{1,3})\s*(?:\/\s*100|out\s+of\s+100)/i)
+           || hygieneMd.match(/score[^:]*:\s*(\d{1,3})/i);
     const n = m ? parseInt(m[1], 10) : NaN;
     return Number.isFinite(n) && n >= 0 && n <= 100 ? n : null;
-  }, [hygieneHtml]);
+  }, [hygieneMd]);
 
   const currentLevel = useMemo((): GrowthLevel | null => {
-    if (!peerHtml) return null;
+    if (!peerMd) return null;
     for (const lvl of GROWTH_LADDER) {
-      if (new RegExp(`current[^.]{0,60}\\b${lvl}\\b|\\b${lvl}\\b[^.]{0,60}current`, "i").test(peerHtml)) return lvl;
+      if (new RegExp(`current[^.]{0,60}\\b${lvl}\\b|\\b${lvl}\\b[^.]{0,60}current`, "i").test(peerMd)) return lvl;
     }
-    const m = peerHtml.match(new RegExp(`\\b(${GROWTH_LADDER.join("|")})\\b`, "i"));
+    const m = peerMd.match(new RegExp(`\\b(${GROWTH_LADDER.join("|")})\\b`, "i"));
     return m ? (m[1] as GrowthLevel) : null;
-  }, [peerHtml]);
+  }, [peerMd]);
 
-  // Curator pitch from markdown — strips code-fence wrapping, converts markdown to HTML
   const curatorPitch = useMemo(() => {
     const content = cleanMd;
-
-    // Convert the most common markdown patterns to HTML so bold/italic render correctly
     const mdToHtml = (text: string) =>
       text
         .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
@@ -252,11 +350,9 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
         .map((p) => `<p>${p.trim()}</p>`)
         .join("");
 
-    // Prefer an explicit Curator Pitch section
     const pitchMatch = content.match(/##\s*Curator\s*Pitch\s*([\s\S]*?)(?=\n##\s|\n#\s|$)/i);
     if (pitchMatch) return mdToHtml(pitchMatch[1].trim());
 
-    // Fall back to Executive Summary (first 2 substantive paragraphs)
     const execMatch = content.match(/##\s*Executive\s*Summary\s*([\s\S]*?)(?=\n##\s|\n#\s|$)/i);
     if (execMatch) {
       const paras = execMatch[1]
@@ -268,7 +364,6 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
       return mdToHtml(paras);
     }
 
-    // Last resort: first paragraph that isn't HTML, a heading, or the code-fence artifact
     const firstPara = content
       .split("\n\n")
       .find((p) => {
@@ -291,16 +386,32 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
         @keyframes indieMesh { 0%{transform:translate3d(0,0,0)} 50%{transform:translate3d(1%,-1%,0) scale(1.04)} 100%{transform:translate3d(0,0,0)} }
         .indie-mesh{position:absolute;inset:-10%;background:radial-gradient(45% 35% at 25% 30%,rgba(0,196,181,.10) 0%,transparent 60%),radial-gradient(40% 30% at 75% 70%,rgba(245,200,75,.06) 0%,transparent 60%);filter:blur(40px);pointer-events:none;animation:indieMesh 28s ease-in-out infinite;z-index:0}
         .indie-glow{animation:indieGlow 2.6s ease-in-out infinite}
-        .indie-section-content table{width:100%;border-collapse:collapse;font-size:12px;margin:12px 0}
-        .indie-section-content th{color:#00C4B5;text-transform:uppercase;letter-spacing:.1em;font-size:10px;padding:8px 12px;border-bottom:1px solid #1F1F1F;text-align:left;font-weight:600}
-        .indie-section-content td{padding:8px 12px;border-bottom:1px solid #1A1A1A;color:#D8D8D8;vertical-align:top;font-size:12px;line-height:1.5}
-        .indie-section-content tr:last-child td{border-bottom:none}
-        .indie-section-content ul,.indie-section-content ol{padding-left:1.25rem;margin:8px 0}
-        .indie-section-content li{color:#9A9A9A;font-size:13px;margin-bottom:6px;line-height:1.65}
-        .indie-section-content strong{color:#F5F5F5}
-        .indie-section-content p{color:#9A9A9A;font-size:13px;line-height:1.75;margin-bottom:10px}
-        .indie-section-content h3,.indie-section-content h4{color:#00C4B5;font-size:11px;text-transform:uppercase;letter-spacing:.15em;font-weight:600;margin:16px 0 8px}
-        .indie-section-content hr{border:none;border-top:1px solid #1F1F1F;margin:16px 0}
+
+        /* ── Section content ── */
+        .indie-section-content { font-size:13px; line-height:1.65; }
+
+        /* Tables */
+        .indie-section-content table { width:100%;border-collapse:collapse;font-size:12px;border-radius:8px;overflow:hidden }
+        .indie-section-content thead { background:rgba(0,196,181,0.07) }
+        .indie-section-content th { color:#00C4B5;text-transform:uppercase;letter-spacing:.12em;font-size:10px;padding:10px 14px;border-bottom:1px solid rgba(0,196,181,0.18);text-align:left;font-weight:700;white-space:nowrap }
+        .indie-section-content td { padding:10px 14px;border-bottom:1px solid #1A1A1A;color:#D4D4D4;vertical-align:top;font-size:12px;line-height:1.55 }
+        .indie-section-content tbody tr:last-child td { border-bottom:none }
+        .indie-section-content tbody tr:hover td { background:rgba(255,255,255,0.018);transition:background 0.15s }
+
+        /* Lists */
+        .indie-section-content ul,.indie-section-content ol { padding:0;margin:4px 0 8px;list-style:none }
+        .indie-section-content li { color:#C4C4C4;font-size:13px;margin-bottom:7px;line-height:1.65;padding-left:18px;position:relative }
+        .indie-section-content li::before { content:'›';position:absolute;left:2px;top:0;color:rgba(0,196,181,0.7);font-weight:700;font-size:15px;line-height:1.4 }
+
+        /* Inline */
+        .indie-section-content strong { color:#F0F0F0;font-weight:600 }
+        .indie-section-content em { color:#9A9A9A;font-style:italic }
+        .indie-section-content p { color:#9A9A9A;font-size:13px;line-height:1.75;margin-bottom:8px }
+
+        /* Blockquotes — Golden Insights */
+        .indie-section-content blockquote { border-left:3px solid #00C4B5;padding:10px 16px;margin:10px 0;background:rgba(0,196,181,0.06);border-radius:0 8px 8px 0;color:#D4D4D4;font-size:13px;font-style:italic }
+
+        /* Print */
         @media print {
           @page { size: A4; margin: 12mm; }
           html, body { background: #0a0a0a !important; color: #f5f5f5 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -322,7 +433,7 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
       <div className="indie-mesh" aria-hidden />
 
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* Top bar with download */}
+        {/* Top bar */}
         <div className="flex items-center justify-between mb-8 no-print">
           <div className={`${mono} text-[10px] uppercase tracking-[0.35em] flex items-center gap-2`} style={{ color: C.cyan }}>
             <span className="w-1.5 h-1.5 rounded-full indie-glow" style={{ background: C.cyan, boxShadow: `0 0 10px ${C.cyan}` }} />
@@ -363,7 +474,6 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
             {report.artist_name || "Your Artist Report"}
           </h1>
 
-          {/* Large SNIE Score */}
           <div className="inline-flex flex-col items-center">
             <div className="text-[10px] uppercase tracking-[0.3em] mb-3" style={{ color: C.cyan }}>SNIE™ Score</div>
             <div className="relative">
@@ -465,12 +575,8 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
                 style={glass}
               >
                 <div className="flex items-start justify-between mb-3">
-                  <div className={`${mono} text-[10px] uppercase tracking-[0.2em]`} style={{ color: C.gray }}>
-                    #{i + 1}
-                  </div>
-                  <div className={`${mono} text-2xl font-semibold`} style={{ color: C.cyan }}>
-                    {m.score}
-                  </div>
+                  <div className={`${mono} text-[10px] uppercase tracking-[0.2em]`} style={{ color: C.gray }}>#{i + 1}</div>
+                  <div className={`${mono} text-2xl font-semibold`} style={{ color: C.cyan }}>{m.score}</div>
                 </div>
                 <div className="text-xl font-semibold mb-1" style={{ color: C.white }}>{m.country}</div>
                 {m.city && <div className="text-sm" style={{ color: C.gray }}>{m.city}</div>}
@@ -485,7 +591,7 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
           </div>
         </div>
 
-        {/* Recommendations */}
+        {/* Three Moves That Matter */}
         <div className="mb-14">
           <div className="mb-5 flex items-center gap-2">
             <Lightbulb className="w-4 h-4" style={{ color: C.warm }} />
@@ -515,156 +621,168 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
           </div>
         </div>
 
-        {/* ── DIGITAL HYGIENE INDEX ── */}
+        {/* ── DIGITAL HYGIENE INDEX ─────────────────────────────────────── */}
         {hygieneHtml && (
           <motion.div
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.6 }}
-            className="rounded-xl border p-6 sm:p-8 mb-14"
+            className="rounded-2xl border mb-8 overflow-hidden"
             style={glass}
           >
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4" style={{ color: C.cyan }} />
-                <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>
-                  Digital Hygiene Index
-                </h3>
-              </div>
-              {hygieneScore !== null && (
-                <div className="flex items-baseline gap-1">
-                  <span
-                    className={`${mono} text-4xl font-bold`}
-                    style={{ color: hygieneScore < 60 ? "#FF6B6B" : C.cyan }}
-                  >
-                    {hygieneScore}
-                  </span>
-                  <span className="text-[10px] uppercase tracking-[0.15em]" style={{ color: C.grayDim }}>/100</span>
+            <SectionHeader
+              emoji="🛡️"
+              icon={ShieldCheck}
+              title="Digital Hygiene Index"
+              accent={C.cyan}
+              badge={
+                hygieneScore !== null ? (
+                  <div className="flex items-baseline gap-1">
+                    <span
+                      className={`${mono} text-3xl font-bold`}
+                      style={{ color: hygieneScore < 60 ? "#FF6B6B" : C.cyan }}
+                    >
+                      {hygieneScore}
+                    </span>
+                    <span className="text-[10px] uppercase tracking-[0.15em]" style={{ color: C.grayDim }}>/100</span>
+                  </div>
+                ) : undefined
+              }
+            />
+            <div className="p-6 sm:p-8">
+              {hygieneScore !== null && hygieneScore < 60 && (
+                <div
+                  className="flex items-start gap-3 rounded-xl px-4 py-3 mb-6 border"
+                  style={{ background: "rgba(255,107,107,0.07)", borderColor: "rgba(255,107,107,0.28)" }}
+                >
+                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "#FF6B6B" }} />
+                  <p className="text-sm font-semibold leading-snug" style={{ color: "#FF6B6B" }}>
+                    Stop everything. Fix your ISRC registration first. You are losing royalty money.
+                  </p>
                 </div>
               )}
+              <div className="indie-section-content" dangerouslySetInnerHTML={{ __html: hygieneHtml }} />
             </div>
-            {hygieneScore !== null && hygieneScore < 60 && (
-              <div
-                className="flex items-start gap-3 rounded-lg px-4 py-3 mb-5 border"
-                style={{ background: "rgba(255,107,107,0.06)", borderColor: "rgba(255,107,107,0.3)" }}
-              >
-                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "#FF6B6B" }} />
-                <p className="text-sm font-semibold leading-snug" style={{ color: "#FF6B6B" }}>
-                  Stop everything. Fix your ISRC registration first. You are losing royalty money.
-                </p>
-              </div>
-            )}
-            <div className="indie-section-content" dangerouslySetInnerHTML={{ __html: hygieneHtml }} />
           </motion.div>
         )}
 
-        {/* ── MICRO-INFLUENCE MAP ── */}
+        {/* ── MICRO-INFLUENCE MAP ───────────────────────────────────────── */}
         {microHtml && (
           <motion.div
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.12, duration: 0.6 }}
-            className="rounded-xl border p-6 sm:p-8 mb-14"
+            className="rounded-2xl border mb-8 overflow-hidden"
             style={glass}
           >
-            <div className="flex items-center gap-2 mb-5">
-              <Radio className="w-4 h-4" style={{ color: C.cyan }} />
-              <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>
-                Micro-Influence Map
-              </h3>
+            <SectionHeader
+              emoji="🎯"
+              icon={Radio}
+              title="Micro-Influence Map"
+              accent={C.cyan}
+            />
+            <div className="p-6 sm:p-8">
+              <div className="indie-section-content" dangerouslySetInnerHTML={{ __html: microHtml }} />
             </div>
-            <div className="indie-section-content" dangerouslySetInnerHTML={{ __html: microHtml }} />
           </motion.div>
         )}
 
-        {/* ── NEXT STEP INVESTMENT CALCULATOR ── */}
+        {/* ── NEXT STEP INVESTMENT ──────────────────────────────────────── */}
         {investHtml && (
           <motion.div
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.14, duration: 0.6 }}
-            className="rounded-xl border p-6 sm:p-8 mb-14"
+            className="rounded-2xl border mb-8 overflow-hidden"
             style={glass}
           >
-            <div className="flex items-center gap-2 mb-5">
-              <Calculator className="w-4 h-4" style={{ color: C.warm }} />
-              <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.warm }}>
-                Next Step Investment Calculator
-              </h3>
-              <span
-                className={`${mono} ml-auto text-[10px] px-2 py-1 rounded-md`}
-                style={{ background: `${C.warm}15`, color: C.warm }}
-              >
-                $100 Budget
-              </span>
+            <SectionHeader
+              emoji="💰"
+              icon={Calculator}
+              title="Next Step Investment"
+              accent={C.warm}
+              badge={
+                <span
+                  className={`${mono} text-[10px] px-2.5 py-1 rounded-md border`}
+                  style={{ background: `${C.warm}12`, color: C.warm, borderColor: `${C.warm}30` }}
+                >
+                  $100 Budget
+                </span>
+              }
+            />
+            <div className="p-6 sm:p-8">
+              <div className="indie-section-content" dangerouslySetInnerHTML={{ __html: investHtml }} />
             </div>
-            <div className="indie-section-content" dangerouslySetInnerHTML={{ __html: investHtml }} />
           </motion.div>
         )}
 
-        {/* ── SYNC-READINESS SCORE ── */}
+        {/* ── SYNC-READINESS SCORE ─────────────────────────────────────── */}
         {syncHtml && (
           <motion.div
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.16, duration: 0.6 }}
-            className="rounded-xl border p-6 sm:p-8 mb-14"
+            className="rounded-2xl border mb-8 overflow-hidden"
             style={glass}
           >
-            <div className="flex items-center gap-2 mb-5">
-              <Film className="w-4 h-4" style={{ color: C.cyan }} />
-              <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>
-                Sync-Readiness Score
-              </h3>
+            <SectionHeader
+              emoji="🎬"
+              icon={Film}
+              title="Sync-Readiness Score"
+              accent={C.cyan}
+            />
+            <div className="p-6 sm:p-8">
+              <div className="indie-section-content" dangerouslySetInnerHTML={{ __html: syncHtml }} />
             </div>
-            <div className="indie-section-content" dangerouslySetInnerHTML={{ __html: syncHtml }} />
           </motion.div>
         )}
 
-        {/* ── PEER BENCHMARK ── */}
+        {/* ── PEER BENCHMARK ───────────────────────────────────────────── */}
         {peerHtml && (
           <motion.div
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.18, duration: 0.6 }}
-            className="rounded-xl border p-6 sm:p-8 mb-14"
+            className="rounded-2xl border mb-14 overflow-hidden"
             style={glass}
           >
-            <div className="flex items-center gap-2 mb-5">
-              <Award className="w-4 h-4" style={{ color: C.warm }} />
-              <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.warm }}>
-                Peer Benchmark
-              </h3>
-            </div>
-            {/* Seed → Crown ladder */}
-            <div className="flex items-center mb-6 overflow-x-auto pb-1">
-              {GROWTH_LADDER.map((lvl, i) => {
-                const isActive = lvl === currentLevel;
-                const isPast = currentLevel
-                  ? GROWTH_LADDER.indexOf(lvl) < GROWTH_LADDER.indexOf(currentLevel)
-                  : false;
-                return (
-                  <div key={lvl} className="flex items-center flex-shrink-0">
-                    <div
-                      className="flex flex-col items-center px-3 py-2 rounded-lg"
-                      style={{
-                        background: isActive ? `${C.warm}18` : isPast ? `${C.cyan}08` : "transparent",
-                        border: isActive ? `1px solid ${C.warm}66` : "1px solid transparent",
-                      }}
-                    >
-                      <span
-                        className={`${mono} text-[10px] font-semibold uppercase tracking-[0.15em]`}
-                        style={{ color: isActive ? C.warm : isPast ? C.cyan : C.grayDim }}
+            <SectionHeader
+              emoji="🏆"
+              icon={Award}
+              title="Peer Benchmark"
+              accent={C.warm}
+            />
+            <div className="p-6 sm:p-8">
+              {/* Seed → Crown ladder */}
+              <div className="flex items-center mb-6 overflow-x-auto pb-1">
+                {GROWTH_LADDER.map((lvl, i) => {
+                  const isActive = lvl === currentLevel;
+                  const isPast = currentLevel
+                    ? GROWTH_LADDER.indexOf(lvl) < GROWTH_LADDER.indexOf(currentLevel)
+                    : false;
+                  return (
+                    <div key={lvl} className="flex items-center flex-shrink-0">
+                      <div
+                        className="flex flex-col items-center px-3 py-2 rounded-lg"
+                        style={{
+                          background: isActive ? `${C.warm}18` : isPast ? `${C.cyan}08` : "transparent",
+                          border: isActive ? `1px solid ${C.warm}66` : "1px solid transparent",
+                        }}
                       >
-                        {lvl}
-                      </span>
-                      {isActive && (
-                        <span className="w-1.5 h-1.5 rounded-full mt-1" style={{ background: C.warm }} />
+                        <span
+                          className={`${mono} text-[10px] font-semibold uppercase tracking-[0.15em]`}
+                          style={{ color: isActive ? C.warm : isPast ? C.cyan : C.grayDim }}
+                        >
+                          {lvl}
+                        </span>
+                        {isActive && (
+                          <span className="w-1.5 h-1.5 rounded-full mt-1" style={{ background: C.warm }} />
+                        )}
+                      </div>
+                      {i < GROWTH_LADDER.length - 1 && (
+                        <div className="w-6 h-px mx-0.5 flex-shrink-0" style={{ background: C.border }} />
                       )}
                     </div>
-                    {i < GROWTH_LADDER.length - 1 && (
-                      <div className="w-6 h-px mx-0.5 flex-shrink-0" style={{ background: C.border }} />
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+              <div className="indie-section-content" dangerouslySetInnerHTML={{ __html: peerHtml }} />
             </div>
-            <div className="indie-section-content" dangerouslySetInnerHTML={{ __html: peerHtml }} />
           </motion.div>
         )}
 
