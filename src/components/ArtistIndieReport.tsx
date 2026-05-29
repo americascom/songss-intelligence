@@ -6,7 +6,7 @@ import {
 } from "recharts";
 import {
   Download, Sparkles, Heart, TrendingUp, Users, DollarSign,
-  Activity, MapPin, Lightbulb, Music, ArrowUpRight, Youtube,
+  Activity, MapPin, Lightbulb, Music, ArrowUpRight, Youtube, Instagram,
   ShieldCheck, Radio, Calculator, Film, Award, AlertTriangle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -153,6 +153,7 @@ interface ReportRow {
   report_html: string | null;
   created_at: string;
   youtube_data: { subscribers?: number; total_views?: number | string } | null;
+  instagram_data: { followers?: number; following?: number; media_count?: number } | null;
 }
 
 // ── Shared section card header ───────────────────────────────────────────────
@@ -201,6 +202,11 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
   const ytSubscribers = Number(yt.subscribers ?? 0);
   const ytTotalViews = Number(yt.total_views ?? 0);
   const hasYouTubeData = ytSubscribers > 0 || ytTotalViews > 0;
+
+  const ig = report.instagram_data || {};
+  const igFollowers = Number(ig.followers ?? 0);
+  const igFollowing = Number(ig.following ?? 0);
+  const hasInstagramData = igFollowers > 0;
 
   const snie = Number(report.digital_score ?? 0) || 72;
   const engagementScore = Number(em.engagement_score ?? em.engagementScore ?? 0) || 7.4;
@@ -852,6 +858,38 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: C.gray }}>{k.label}</span>
                     <Youtube className="w-3.5 h-3.5" style={{ color: C.cyan, filter: `drop-shadow(0 0 6px ${C.cyan}AA)` }} />
+                  </div>
+                  <div className={`${mono} text-3xl font-semibold`} style={{ color: C.white }}>
+                    {fmtCompact(k.value)}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Instagram Presence */}
+        {hasInstagramData && (
+          <div className="mb-14">
+            <div className="mb-5 flex items-center gap-2">
+              <Instagram className="w-4 h-4" style={{ color: C.cyan, filter: `drop-shadow(0 0 6px ${C.cyan}AA)` }} />
+              <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>Your Instagram Presence</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { label: "Followers", value: igFollowers },
+                { label: "Following", value: igFollowing },
+              ].map((k, i) => (
+                <motion.div
+                  key={k.label}
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.08, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                  className="rounded-xl border p-5"
+                  style={glass}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: C.gray }}>{k.label}</span>
+                    <Instagram className="w-3.5 h-3.5" style={{ color: C.cyan, filter: `drop-shadow(0 0 6px ${C.cyan}AA)` }} />
                   </div>
                   <div className={`${mono} text-3xl font-semibold`} style={{ color: C.white }}>
                     {fmtCompact(k.value)}
