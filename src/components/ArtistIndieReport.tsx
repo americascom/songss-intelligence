@@ -346,13 +346,20 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
   }, [peerMd]);
 
   const curatorPitch = useMemo(() => {
-    const content = cleanMd;
+    const content = stripCodeFence(cleanMd);
+
+    const isTableParagraph = (p: string): boolean => {
+      const lines = p.split("\n");
+      const tableLines = lines.filter((l) => l.includes("|---|") || l.trimStart().startsWith("|"));
+      return tableLines.length / lines.length > 0.2;
+    };
+
     const mdToHtml = (text: string) =>
       text
         .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
         .replace(/\*(.+?)\*/g, "<em>$1</em>")
         .split("\n\n")
-        .filter(Boolean)
+        .filter((p) => p.trim().length > 0 && !isTableParagraph(p))
         .map((p) => `<p>${p.trim()}</p>`)
         .join("");
 
@@ -364,7 +371,7 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
       const paras = execMatch[1]
         .trim()
         .split("\n\n")
-        .filter((p) => p.trim().length > 20)
+        .filter((p) => p.trim().length > 20 && !isTableParagraph(p))
         .slice(0, 2)
         .join("\n\n");
       return mdToHtml(paras);
@@ -374,7 +381,7 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
       .split("\n\n")
       .find((p) => {
         const t = p.trim();
-        return t.length > 40 && !t.startsWith("<") && !t.startsWith("#") && !t.startsWith("`");
+        return t.length > 40 && !t.startsWith("<") && !t.startsWith("#") && !t.startsWith("`") && !isTableParagraph(t);
       });
     if (firstPara) return mdToHtml(firstPara.trim());
 
@@ -572,28 +579,48 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
             <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>Top 3 Markets</h3>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {markets.map((m: any, i: number) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 + i * 0.1, duration: 0.6 }}
-                className="rounded-xl border p-6"
-                style={glass}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className={`${mono} text-[10px] uppercase tracking-[0.2em]`} style={{ color: C.gray }}>#{i + 1}</div>
-                  <div className={`${mono} text-2xl font-semibold`} style={{ color: C.cyan }}>{m.score}</div>
-                </div>
-                <div className="text-xl font-semibold mb-1" style={{ color: C.white }}>{m.country}</div>
-                {m.city && <div className="text-sm" style={{ color: C.gray }}>{m.city}</div>}
-                {m.opportunity && (
-                  <div className="mt-4 pt-4 border-t text-xs leading-relaxed" style={{ color: C.gray, borderColor: C.border }}>
-                    {m.opportunity}
+            {Array.from({ length: 3 }).map((_, i) => {
+              const m = markets[i] || null;
+              if (!m) {
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 + i * 0.1, duration: 0.6 }}
+                    className="rounded-xl border p-6 opacity-30"
+                    style={glass}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className={`${mono} text-[10px] uppercase tracking-[0.2em]`} style={{ color: C.gray }}>#{i + 1}</div>
+                    </div>
+                    <div className="text-xl font-semibold mb-1" style={{ color: C.white }}>Market Pending</div>
+                    <div className="mt-3 text-[10px] uppercase tracking-[0.2em]" style={{ color: C.grayDim }}>Potential Score</div>
+                  </motion.div>
+                );
+              }
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + i * 0.1, duration: 0.6 }}
+                  className="rounded-xl border p-6"
+                  style={glass}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className={`${mono} text-[10px] uppercase tracking-[0.2em]`} style={{ color: C.gray }}>#{i + 1}</div>
+                    <div className={`${mono} text-2xl font-semibold`} style={{ color: C.cyan }}>{m.score}</div>
                   </div>
-                )}
-                <div className="mt-3 text-[10px] uppercase tracking-[0.2em]" style={{ color: C.grayDim }}>Potential Score</div>
-              </motion.div>
-            ))}
+                  <div className="text-xl font-semibold mb-1" style={{ color: C.white }}>{m.country}</div>
+                  {m.city && <div className="text-sm" style={{ color: C.gray }}>{m.city}</div>}
+                  {m.opportunity && (
+                    <div className="mt-4 pt-4 border-t text-xs leading-relaxed" style={{ color: C.gray, borderColor: C.border }}>
+                      {m.opportunity}
+                    </div>
+                  )}
+                  <div className="mt-3 text-[10px] uppercase tracking-[0.2em]" style={{ color: C.grayDim }}>Potential Score</div>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
 
