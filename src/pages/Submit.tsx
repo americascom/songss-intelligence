@@ -240,6 +240,7 @@ export default function Submit() {
                 </div>
               </form>
             </Panel>
+            <NIEBranding />
           </motion.div>
         )}
 
@@ -266,6 +267,7 @@ export default function Submit() {
                 <span style={{ color: C.white }}>{artistName}</span>.
                 You may safely close this window.
               </p>
+              <NIEBranding />
               <div className="mt-8 inline-flex items-center gap-2 font-mono text-[11px]" style={{ color: C.gray }}>
                 <span className="relative flex h-2 w-2">
                   <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ background: C.cyan }} />
@@ -277,6 +279,19 @@ export default function Submit() {
           </motion.div>
         )}
       </main>
+    </div>
+  );
+}
+
+function NIEBranding() {
+  return (
+    <div className="mt-8 text-center">
+      <div className="mx-auto" style={{ borderTop: "1px solid rgba(0,196,181,0.12)", maxWidth: "340px" }} />
+      <p className="mt-4 text-[11px] leading-relaxed px-2" style={{ color: "#484848" }}>
+        Powered by <span style={{ color: "#00C4B5" }}>NIE™</span> (Neural Intelligence Engine) — A Americascom, Inc
+        proprietary hybrid intelligence that orchestrates global data points and multi-layered neural models for
+        high-precision music business analysis.
+      </p>
     </div>
   );
 }
