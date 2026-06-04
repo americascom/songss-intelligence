@@ -89,24 +89,25 @@ export default function Submit() {
     e.preventDefault();
     if (!report || !artistName.trim()) return;
     setSubmitting(true);
-    const intake = {
-      artist_or_song_name: artistName.trim(),
-      song_name: songName.trim() || null,
-      market_focus: market || null,
-      investment_context: context || null,
-      additional_context: notes.trim() || null,
-      submitted_at: new Date().toISOString(),
-    };
-    const merged = {
-      ...(report.engagement_metrics || {}),
-      intake,
-    };
-    const { error } = await supabase
-      .from("intelligence_reports")
-      .update({ artist_name: artistName.trim(), engagement_metrics: merged })
-      .eq("id", report.id);
+    try {
+      const res = await fetch("https://n8n.songssintelligence.com/webhook/submit-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          session_id:          report.session_id,
+          artist_name:         artistName.trim(),
+          tiktok_username:     (report.engagement_metrics as Record<string, unknown>)?.tiktok_username as string ?? "",
+          youtube_channel_id:  (report.engagement_metrics as Record<string, unknown>)?.youtube_channel_id as string ?? "",
+          instagram_username:  (report.engagement_metrics as Record<string, unknown>)?.instagram_username as string ?? "",
+        }),
+      });
+      if (!res.ok) throw new Error(`Webhook error ${res.status}`);
+    } catch (err) {
+      setSubmitting(false);
+      setError(err instanceof Error ? err.message : "Submission failed");
+      return;
+    }
     setSubmitting(false);
-    if (error) { setError(error.message); return; }
     setSubmitted(true);
   };
 
