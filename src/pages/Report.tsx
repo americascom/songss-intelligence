@@ -265,17 +265,28 @@ export default function Report() {
 
   useEffect(() => {
     if (!isValidSessionId(session_id)) { setLoading(false); setError("invalid"); return; }
-    (async () => {
+
+    let stopped = false;
+    const poll = async () => {
       const { data, error } = await supabase
         .from("intelligence_reports")
         .select("*")
         .eq("session_id", session_id!)
         .maybeSingle();
-      setLoading(false);
-      if (error) { setError(error.message); return; }
-      if (!data) { setError("notfound"); return; }
-      setReport(data as unknown as ReportRow);
-    })();
+      if (stopped) return;
+      if (error) { setLoading(false); setError(error.message); return; }
+      // Row exists and report is written — show it.
+      if (data && (data.report_html || data.report_markdown)) {
+        setReport(data as unknown as ReportRow);
+        setLoading(false);
+        return;
+      }
+      // Row not yet written or report still generating — keep polling.
+      setTimeout(poll, 4000);
+    };
+
+    poll();
+    return () => { stopped = true; };
   }, [session_id]);
 
   if (loading) {
