@@ -1,5 +1,5 @@
 import { useEffect, useState, FormEvent } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Loader2, Sparkles, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +47,7 @@ const CONTEXTS = ["Catalog Acquisition", "A&R Decision", "Tour Planning", "Publi
 
 export default function Submit() {
   const { sessionId } = useParams<{ sessionId: string }>();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<ReportRow | null>(null);
@@ -80,6 +81,23 @@ export default function Submit() {
     })();
     return () => { active = false; };
   }, [sessionId]);
+
+  // Poll Supabase until the NIE writes report_html/report_markdown, then redirect.
+  useEffect(() => {
+    if (!submitted || !sessionId) return;
+    const id = setInterval(async () => {
+      const { data } = await supabase
+        .from("intelligence_reports")
+        .select("report_html, report_markdown")
+        .eq("session_id", sessionId)
+        .maybeSingle();
+      if (data?.report_html || data?.report_markdown) {
+        clearInterval(id);
+        navigate(`/report/${sessionId}`);
+      }
+    }, 4000);
+    return () => clearInterval(id);
+  }, [submitted, sessionId, navigate]);
 
   const tier = planTier(report?.plan_name);
   const showProFields = atLeast(tier, "pro");
@@ -151,8 +169,10 @@ export default function Submit() {
 
             <Panel className="mt-8">
               <form onSubmit={onSubmit} className="space-y-6">
-                <Field label="Artist or Song Name" required>
+                <Field label="Artist or Song Name" required htmlFor="artist-name">
                   <Input
+                    id="artist-name"
+                    name="artist-name"
                     value={artistName}
                     onChange={(e) => setArtistName(e.target.value)}
                     placeholder="e.g. Ivan Lins"
@@ -313,11 +333,11 @@ function Panel({ children, className = "" }: { children: React.ReactNode; classN
 }
 
 function Field({
-  label, hint, required, children,
-}: { label: string; hint?: string; required?: boolean; children: React.ReactNode }) {
+  label, hint, required, htmlFor, children,
+}: { label: string; hint?: string; required?: boolean; htmlFor?: string; children: React.ReactNode }) {
   return (
     <div>
-      <Label className="flex items-center justify-between mb-2 font-mono text-[10px] uppercase tracking-[0.25em]" style={{ color: "#B8B8B8" }}>
+      <Label htmlFor={htmlFor} className="flex items-center justify-between mb-2 font-mono text-[10px] uppercase tracking-[0.25em]" style={{ color: "#B8B8B8" }}>
         <span>{label}{required && <span style={{ color: "#00C4B5" }}> *</span>}</span>
         {hint && <span style={{ color: "#5A5A5A" }}>{hint}</span>}
       </Label>
