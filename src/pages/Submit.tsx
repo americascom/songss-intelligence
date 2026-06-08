@@ -114,6 +114,7 @@ export default function Submit() {
         body: JSON.stringify({
           session_id:          report.session_id,
           artist_name:         artistName.trim(),
+          song_name:           songName.trim(),
           tiktok_username:     (report.engagement_metrics as Record<string, unknown>)?.tiktok_username as string ?? "",
           youtube_channel_id:  (report.engagement_metrics as Record<string, unknown>)?.youtube_channel_id as string ?? "",
           instagram_username:  (report.engagement_metrics as Record<string, unknown>)?.instagram_username as string ?? "",
@@ -183,18 +184,21 @@ export default function Submit() {
                   />
                 </Field>
 
+                <Field label="Song Name" hint="Optional" htmlFor="song-name">
+                  <Input
+                    id="song-name"
+                    name="song-name"
+                    value={songName}
+                    onChange={(e) => setSongName(e.target.value)}
+                    placeholder="e.g. Polaroid"
+                    maxLength={160}
+                    className="bg-transparent border-white/10 focus-visible:ring-1"
+                    style={{ borderColor: "rgba(255,255,255,0.08)" }}
+                  />
+                </Field>
+
                 {showProFields && (
                   <>
-                    <Field label="Song Name" hint="Optional">
-                      <Input
-                        value={songName}
-                        onChange={(e) => setSongName(e.target.value)}
-                        placeholder="e.g. Madalena"
-                        maxLength={160}
-                        className="bg-transparent border-white/10"
-                      />
-                    </Field>
-
                     <Field label="Market Focus">
                       <Select value={market} onValueChange={setMarket}>
                         <SelectTrigger className="bg-transparent border-white/10">
