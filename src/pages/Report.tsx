@@ -1290,39 +1290,145 @@ function ReportInner() {
         )}
 
         {/* ── Footer CTA ───────────────────────────────────────────────────── */}
-        <Section delay={0.44}>
-          <div
-            className="rounded-2xl border p-8 sm:p-12 text-center relative overflow-hidden no-print"
-            style={{
-              background: `linear-gradient(135deg, rgba(0,196,181,0.08) 0%, rgba(14,14,14,0.9) 100%)`,
-              borderColor: C.cyan,
-            }}
-          >
-            <div className="absolute inset-0 opacity-30"
-              style={{ background: `radial-gradient(60% 80% at 50% 0%, ${C.cyan}22 0%, transparent 70%)` }} />
-            <div className="relative">
-              <div className="inline-flex items-center gap-2 mb-5 px-3 py-1.5 rounded-full"
-                style={{ background: `${C.cyan}15`, color: C.cyan }}>
-                <Sparkles className="w-3.5 h-3.5" />
-                <span className={`${mono} text-[10px] uppercase tracking-[0.25em]`}>Intelligence Active</span>
+        {(tier === "enterprise" || tier === "opus") ? (
+          <Section delay={0.44}>
+            <div
+              className="rounded-2xl border p-8 sm:p-12 text-center relative overflow-hidden no-print"
+              style={{
+                background: `linear-gradient(135deg, rgba(0,196,181,0.06) 0%, rgba(14,14,14,0.9) 100%)`,
+                borderColor: C.border,
+              }}
+            >
+              <div className="relative">
+                <div className="inline-flex items-center gap-2 mb-5 px-3 py-1.5 rounded-full"
+                  style={{ background: `${C.cyan}15`, color: C.cyan }}>
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span className={`${mono} text-[10px] uppercase tracking-[0.25em]`}>Top-Tier Access</span>
+                </div>
+                <h2 className="text-2xl sm:text-4xl font-semibold mb-4" style={{ color: C.white }}>
+                  You're on our most powerful plan.
+                </h2>
+                <p className="text-sm sm:text-base mb-8 max-w-lg mx-auto leading-relaxed" style={{ color: C.gray }}>
+                  Need something custom? Our strategy team is ready to build around your specific goals.
+                </p>
+                <a
+                  href="mailto:hello@songssintelligence.com"
+                  className="inline-flex items-center gap-2 rounded-lg px-7 py-4 text-xs font-bold uppercase tracking-[0.2em] transition-all hover:scale-[1.02]"
+                  style={{ background: C.cyan, color: C.bg, boxShadow: `0 0 30px ${C.cyan}55` }}
+                >
+                  Contact Us for Custom Solutions
+                  <ArrowUpRight className="w-4 h-4" />
+                </a>
               </div>
-              <h2 className="text-2xl sm:text-4xl font-semibold mb-4" style={{ color: C.white }}>
-                Ready to operationalize this intelligence?
-              </h2>
-              <p className="text-sm sm:text-base mb-8 max-w-lg mx-auto leading-relaxed" style={{ color: C.gray }}>
-                Book a private session with our strategy team to translate this dossier into a 90-day execution plan.
-              </p>
-              <a
-                href="mailto:hello@songssintelligence.com"
-                className="inline-flex items-center gap-2 rounded-lg px-7 py-4 text-xs font-bold uppercase tracking-[0.2em] transition-all hover:scale-[1.02]"
-                style={{ background: C.cyan, color: C.bg, boxShadow: `0 0 30px ${C.cyan}55` }}
-              >
-                Schedule Strategy Session
-                <ArrowUpRight className="w-4 h-4" />
-              </a>
             </div>
-          </div>
-        </Section>
+          </Section>
+        ) : tier === "pro" ? (
+          <Section delay={0.44}>
+            <div
+              className="rounded-2xl border p-8 sm:p-12 text-center relative overflow-hidden no-print"
+              style={{
+                background: `linear-gradient(135deg, rgba(0,196,181,0.08) 0%, rgba(14,14,14,0.9) 100%)`,
+                borderColor: C.cyan,
+              }}
+            >
+              <div className="absolute inset-0 opacity-30"
+                style={{ background: `radial-gradient(60% 80% at 50% 0%, ${C.cyan}22 0%, transparent 70%)` }} />
+              <div className="relative">
+                <div className="inline-flex items-center gap-2 mb-5 px-3 py-1.5 rounded-full"
+                  style={{ background: `${C.cyan}15`, color: C.cyan }}>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span className={`${mono} text-[10px] uppercase tracking-[0.25em]`}>Ready to Scale?</span>
+                </div>
+                <h2 className="text-2xl sm:text-4xl font-semibold mb-4" style={{ color: C.white }}>
+                  Unlock enterprise intelligence.
+                </h2>
+                <p className="text-sm sm:text-base mb-8 max-w-lg mx-auto leading-relaxed" style={{ color: C.gray }}>
+                  Get TikTok × DSP correlation, advanced NPV modeling, acquisition targets, and a dedicated strategy team.
+                </p>
+                <a
+                  href="https://buyer.americaspay.com/b/enterprise"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-lg px-7 py-4 text-xs font-bold uppercase tracking-[0.2em] transition-all hover:scale-[1.02]"
+                  style={{ background: C.cyan, color: C.bg, boxShadow: `0 0 30px ${C.cyan}55` }}
+                >
+                  Upgrade to Enterprise
+                  <ArrowUpRight className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
+          </Section>
+        ) : tier === "growth" ? (
+          <Section delay={0.44}>
+            <div
+              className="rounded-2xl border p-8 sm:p-12 text-center relative overflow-hidden no-print"
+              style={{
+                background: `linear-gradient(135deg, rgba(0,196,181,0.08) 0%, rgba(14,14,14,0.9) 100%)`,
+                borderColor: C.cyan,
+              }}
+            >
+              <div className="absolute inset-0 opacity-30"
+                style={{ background: `radial-gradient(60% 80% at 50% 0%, ${C.cyan}22 0%, transparent 70%)` }} />
+              <div className="relative">
+                <div className="inline-flex items-center gap-2 mb-5 px-3 py-1.5 rounded-full"
+                  style={{ background: `${C.cyan}15`, color: C.cyan }}>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span className={`${mono} text-[10px] uppercase tracking-[0.25em]`}>Go Deeper</span>
+                </div>
+                <h2 className="text-2xl sm:text-4xl font-semibold mb-4" style={{ color: C.white }}>
+                  Unlock deeper insights.
+                </h2>
+                <p className="text-sm sm:text-base mb-8 max-w-lg mx-auto leading-relaxed" style={{ color: C.gray }}>
+                  Artist Pro adds a 6-axis radar profile, sync-readiness scoring, peer benchmarks, and curator pitch intelligence.
+                </p>
+                <a
+                  href="https://buyer.americaspay.com/b/artistpro"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-lg px-7 py-4 text-xs font-bold uppercase tracking-[0.2em] transition-all hover:scale-[1.02]"
+                  style={{ background: C.cyan, color: C.bg, boxShadow: `0 0 30px ${C.cyan}55` }}
+                >
+                  Upgrade to Artist Pro
+                  <ArrowUpRight className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
+          </Section>
+        ) : (
+          <Section delay={0.44}>
+            <div
+              className="rounded-2xl border p-8 sm:p-12 text-center relative overflow-hidden no-print"
+              style={{
+                background: `linear-gradient(135deg, rgba(0,196,181,0.08) 0%, rgba(14,14,14,0.9) 100%)`,
+                borderColor: C.cyan,
+              }}
+            >
+              <div className="absolute inset-0 opacity-30"
+                style={{ background: `radial-gradient(60% 80% at 50% 0%, ${C.cyan}22 0%, transparent 70%)` }} />
+              <div className="relative">
+                <div className="inline-flex items-center gap-2 mb-5 px-3 py-1.5 rounded-full"
+                  style={{ background: `${C.cyan}15`, color: C.cyan }}>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span className={`${mono} text-[10px] uppercase tracking-[0.25em]`}>Intelligence Active</span>
+                </div>
+                <h2 className="text-2xl sm:text-4xl font-semibold mb-4" style={{ color: C.white }}>
+                  Ready to operationalize this intelligence?
+                </h2>
+                <p className="text-sm sm:text-base mb-8 max-w-lg mx-auto leading-relaxed" style={{ color: C.gray }}>
+                  Book a private session with our strategy team to translate this dossier into a 90-day execution plan.
+                </p>
+                <a
+                  href="mailto:hello@songssintelligence.com"
+                  className="inline-flex items-center gap-2 rounded-lg px-7 py-4 text-xs font-bold uppercase tracking-[0.2em] transition-all hover:scale-[1.02]"
+                  style={{ background: C.cyan, color: C.bg, boxShadow: `0 0 30px ${C.cyan}55` }}
+                >
+                  Schedule Strategy Session
+                  <ArrowUpRight className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
+          </Section>
+        )}
 
         <div className={`${mono} text-center mt-8 text-[10px] uppercase tracking-[0.3em]`} style={{ color: C.grayDim }}>
           CONFIDENTIAL · SONGSS Intelligence · Americascom, Inc.
