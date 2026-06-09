@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Component } from "react";
+import type { ErrorInfo, ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -193,6 +194,41 @@ function MarkdownCard({
   );
 }
 
+// ── Error boundary ────────────────────────────────────────────────────────────
+interface EBState { hasError: boolean; message: string }
+class ErrorBoundary extends Component<{ children: ReactNode }, EBState> {
+  state: EBState = { hasError: false, message: "" };
+  static getDerivedStateFromError(err: unknown): EBState {
+    return { hasError: true, message: err instanceof Error ? err.message : String(err) };
+  }
+  componentDidCatch(err: Error, info: ErrorInfo) {
+    console.error("[Report] render error", err, info.componentStack);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center px-6" style={{ background: C.bg }}>
+          <div className="text-center max-w-md">
+            <div className={`${mono} text-xs uppercase tracking-[0.4em] mb-3`} style={{ color: "#FF6B6B" }}>Render Error</div>
+            <p className="text-sm mb-4" style={{ color: C.gray }}>Something went wrong rendering this report.</p>
+            <code className="text-xs block px-4 py-3 rounded-lg text-left break-all" style={{ background: C.surface, color: "#FF9999" }}>
+              {this.state.message}
+            </code>
+            <button
+              className="mt-6 text-xs underline"
+              style={{ color: C.cyan }}
+              onClick={() => this.setState({ hasError: false, message: "" })}
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // ── Error screen ──────────────────────────────────────────────────────────────
 function Classified() {
   return (
@@ -234,6 +270,14 @@ interface ReportRow {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function Report() {
+  return (
+    <ErrorBoundary>
+      <ReportInner />
+    </ErrorBoundary>
+  );
+}
+
+function ReportInner() {
   const { session_id } = useParams<{ session_id: string }>();
   const [report, setReport]   = useState<ReportRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -293,24 +337,24 @@ export default function Report() {
   const tier = planTier(report.plan_name);
 
   // ── Base data ─────────────────────────────────────────────────────────────
-  const em  = report.engagement_metrics || {};
-  const re  = report.revenue_economics  || {};
-  const geo = report.geo_hotspots       || {};
+  const em  = report?.engagement_metrics  ?? {};
+  const re  = report?.revenue_economics   ?? {};
+  const geo = report?.geo_hotspots        ?? {};
 
-  const snie            = Number(report.digital_score         ?? 0) || 72;
-  const engagementScore = Number(em.engagement_score ?? em.engagementScore ?? 0) || 7.4;
-  const retentionRate   = Number(em.retention_rate   ?? em.retentionRate   ?? 0) || 48;
-  const monthlyStreams   = Number(em.monthly_streams  ?? em.monthlyStreams  ?? 0) || 28000;
-  const ltv             = Number(re.ltv ?? re.ltv_projection ?? em.ltv     ?? 0) || 8400;
+  const snie            = Number(report?.digital_score          ?? 0) || 72;
+  const engagementScore = Number((em as any)?.engagement_score  ?? (em as any)?.engagementScore ?? 0) || 7.4;
+  const retentionRate   = Number((em as any)?.retention_rate    ?? (em as any)?.retentionRate   ?? 0) || 48;
+  const monthlyStreams   = Number((em as any)?.monthly_streams   ?? (em as any)?.monthlyStreams  ?? 0) || 28000;
+  const ltv             = Number((re as any)?.ltv ?? (re as any)?.ltv_projection ?? (em as any)?.ltv ?? 0) || 8400;
 
-  const yt              = report.youtube_data   || {};
-  const ytSubscribers   = Number(yt.subscribers ?? 0);
-  const ytTotalViews    = Number(yt.total_views ?? 0);
+  const yt              = report?.youtube_data   ?? {};
+  const ytSubscribers   = Number(yt?.subscribers ?? 0);
+  const ytTotalViews    = Number(yt?.total_views  ?? 0);
   const hasYouTubeData  = ytSubscribers > 0 || ytTotalViews > 0;
 
-  const ig              = report.instagram_data || {};
-  const igFollowers     = Number(ig.followers   ?? 0);
-  const igFollowing     = Number(ig.following   ?? 0);
+  const ig               = report?.instagram_data ?? {};
+  const igFollowers      = Number(ig?.followers   ?? 0);
+  const igFollowing      = Number(ig?.following   ?? 0);
   const hasInstagramData = igFollowers > 0;
 
   const reportDate = new Date(report.created_at).toLocaleDateString("en-US", {
@@ -319,21 +363,21 @@ export default function Report() {
 
   // ── Memoised data ─────────────────────────────────────────────────────────
   const trajectory = useMemo(() => {
-    const raw = em.trajectory ?? em.neural_trajectory ?? [];
+    const raw = (em as any)?.trajectory ?? (em as any)?.neural_trajectory ?? [];
     if (Array.isArray(raw) && raw.length) {
       return raw.slice(0, 6).map((r: any, i: number) => ({
-        month: r.label ?? r.month ?? `M${i + 1}`,
-        streams: Number(r.streams ?? r.value ?? 0),
+        month:   r?.label   ?? r?.month ?? `M${i + 1}`,
+        streams: Number(r?.streams ?? r?.value ?? 0),
       }));
     }
     return Array.from({ length: 6 }, (_, i) => ({
-      month: `M${i + 1}`,
+      month:   `M${i + 1}`,
       streams: Math.round(monthlyStreams * (0.55 + i * 0.12)),
     }));
   }, [em, monthlyStreams]);
 
   const markets = useMemo(() => {
-    const raw  = Array.isArray(geo) ? geo : (geo.top_cities ?? geo.cities ?? geo.top ?? geo.hotspots ?? []);
+    const raw  = Array.isArray(geo) ? geo : ((geo as any)?.top_cities ?? (geo as any)?.cities ?? (geo as any)?.top ?? (geo as any)?.hotspots ?? []);
     const list = Array.isArray(raw) ? raw : [];
     const parseNum = (v: any): number | null => {
       if (v == null) return null;
@@ -347,7 +391,7 @@ export default function Report() {
       return n * mult;
     };
     const rawScores = list.map((r: any) =>
-      parseNum(r?.score ?? r?.potential ?? r?.potential_score ?? r?.velocity ?? r?.value)
+      parseNum(r?.score ?? r?.potential ?? r?.potential_score ?? r?.velocity ?? r?.value ?? null)
     );
     const maxScore  = Math.max(0, ...rawScores.filter((n): n is number => n != null));
     const normalize = (n: number | null, idx: number): number => {
@@ -371,9 +415,9 @@ export default function Report() {
   }, [geo]);
 
   const revenueSnapshot = useMemo(() => {
-    const raw = re.streams ?? re.revenue_streams ?? [];
+    const raw = (re as any)?.streams ?? (re as any)?.revenue_streams ?? [];
     if (Array.isArray(raw) && raw.length) {
-      return raw.slice(0, 5).map((r: any) => ({ source: r.source ?? r.name ?? "—", revenue: Number(r.revenue ?? r.value ?? 0) }));
+      return raw.slice(0, 5).map((r: any) => ({ source: r?.source ?? r?.name ?? "—", revenue: Number(r?.revenue ?? r?.value ?? 0) }));
     }
     return [
       { source: "Streaming", revenue: Math.round(ltv * 0.50) },
@@ -384,12 +428,12 @@ export default function Report() {
   }, [re, ltv]);
 
   const recommendations = useMemo(() => {
-    const raw = em.recommendations ?? em.actions ?? [];
+    const raw = (em as any)?.recommendations ?? (em as any)?.actions ?? [];
     if (Array.isArray(raw) && raw.length >= 3) {
       return raw.slice(0, 3).map((r: any) =>
         typeof r === "string"
           ? { title: r, body: "" }
-          : { title: r.title ?? r.action ?? "Next step", body: r.body ?? r.description ?? "" }
+          : { title: r?.title ?? r?.action ?? "Next step", body: r?.body ?? r?.description ?? "" }
       );
     }
     return [
@@ -401,11 +445,11 @@ export default function Report() {
 
   // ── Growth+: Conversion Funnel ────────────────────────────────────────────
   const funnelData = useMemo(() => {
-    const f         = em.funnel ?? em.conversion_funnel ?? {};
-    const discovery = Number(f.discovery ?? f.impressions  ?? monthlyStreams * 2.2) || 100;
-    const streams   = Number(f.streams   ?? f.plays        ?? monthlyStreams)       || Math.round(discovery * 0.45);
-    const follows   = Number(f.follows   ?? f.followers    ?? f.saves ?? 0)        || Math.round(streams   * 0.28);
-    const buys      = Number(f.purchases ?? f.buys         ?? f.conversions ?? 0)  || Math.round(follows   * 0.12);
+    const f         = (em as any)?.funnel ?? (em as any)?.conversion_funnel ?? {};
+    const discovery = Number((f as any)?.discovery ?? (f as any)?.impressions  ?? monthlyStreams * 2.2) || 100;
+    const streams   = Number((f as any)?.streams   ?? (f as any)?.plays        ?? monthlyStreams)       || Math.round(discovery * 0.45);
+    const follows   = Number((f as any)?.follows   ?? (f as any)?.followers    ?? (f as any)?.saves ?? 0) || Math.round(streams * 0.28);
+    const buys      = Number((f as any)?.purchases ?? (f as any)?.buys         ?? (f as any)?.conversions ?? 0) || Math.round(follows * 0.12);
     return [
       { stage: "Discovery", value: discovery, pct: 100,                                       color: C.cyan     },
       { stage: "Stream",    value: streams,   pct: Math.round((streams / discovery) * 100),   color: C.cyanSoft },
@@ -416,17 +460,17 @@ export default function Report() {
 
   // ── Pro+: Artist Radar ────────────────────────────────────────────────────
   const radarData = useMemo(() => [
-    { axis: "Virality",         value: Math.min(100, Number(em.virality_score   ?? em.viralityScore   ?? 65)) },
-    { axis: "Sync Potential",   value: Math.min(100, Number(em.sync_potential   ?? em.syncPotential   ?? 72)) },
-    { axis: "Live Performance", value: Math.min(100, Number(em.live_score       ?? em.liveScore       ?? 58)) },
-    { axis: "Brand Fit",        value: Math.min(100, Number(em.brand_fit        ?? em.brandFit        ?? 70)) },
-    { axis: "Streaming Growth", value: Math.min(100, Number(em.streaming_growth ?? em.streamingGrowth ?? 80)) },
-    { axis: "Community",        value: Math.min(100, Number(em.community_score  ?? em.communityScore  ?? 55)) },
+    { axis: "Virality",         value: Math.min(100, Number((em as any)?.virality_score   ?? (em as any)?.viralityScore   ?? 65)) },
+    { axis: "Sync Potential",   value: Math.min(100, Number((em as any)?.sync_potential   ?? (em as any)?.syncPotential   ?? 72)) },
+    { axis: "Live Performance", value: Math.min(100, Number((em as any)?.live_score       ?? (em as any)?.liveScore       ?? 58)) },
+    { axis: "Brand Fit",        value: Math.min(100, Number((em as any)?.brand_fit        ?? (em as any)?.brandFit        ?? 70)) },
+    { axis: "Streaming Growth", value: Math.min(100, Number((em as any)?.streaming_growth ?? (em as any)?.streamingGrowth ?? 80)) },
+    { axis: "Community",        value: Math.min(100, Number((em as any)?.community_score  ?? (em as any)?.communityScore  ?? 55)) },
   ], [em]);
 
   // ── Enterprise+: TikTok × DSP ─────────────────────────────────────────────
   const tiktokDSP = useMemo(() => {
-    const raw = em.tiktok_dsp ?? em.viral_correlation ?? [];
+    const raw = (em as any)?.tiktok_dsp ?? (em as any)?.viral_correlation ?? [];
     if (Array.isArray(raw) && raw.length) return raw;
     return Array.from({ length: 12 }, (_, i) => ({
       week:   `W${i + 1}`,
@@ -437,7 +481,7 @@ export default function Report() {
 
   // ── Enterprise+: NPV ──────────────────────────────────────────────────────
   const npv = useMemo(() => {
-    const raw = re.npv ?? re.npv_model ?? [];
+    const raw = (re as any)?.npv ?? (re as any)?.npv_model ?? [];
     if (Array.isArray(raw) && raw.length) return raw;
     let cum = 0;
     return Array.from({ length: 5 }, (_, i) => {
@@ -450,7 +494,7 @@ export default function Report() {
 
   // ── Enterprise+: Revenue Streams ──────────────────────────────────────────
   const revStreams = useMemo(() => {
-    const raw = re.streams ?? re.revenue_streams ?? [];
+    const raw = (re as any)?.streams ?? (re as any)?.revenue_streams ?? [];
     if (Array.isArray(raw) && raw.length >= 3) return raw;
     return [
       { source: "Streaming Royalties", revenue: Math.round(ltv * 0.45), growth: 18.4 },
@@ -461,7 +505,7 @@ export default function Report() {
   }, [re, ltv]);
 
   // ── Markdown sections ─────────────────────────────────────────────────────
-  const cleanMd   = useMemo(() => stripCodeFence(report.report_markdown || report.report_html || ""), [report]);
+  const cleanMd   = useMemo(() => stripCodeFence(report?.report_markdown ?? report?.report_html ?? ""), [report]);
   const hygieneMd = useMemo(() => extractSection(cleanMd, "DIGITAL HYGIENE"),                         [cleanMd]);
   const microMd   = useMemo(() => extractSection(cleanMd, "MICRO-INFLUENCE", "MICRO INFLUENCE"),       [cleanMd]);
   const investMd  = useMemo(() => extractSection(cleanMd, "NEXT STEP INVESTMENT", "INVESTMENT CALCULATOR"), [cleanMd]);
