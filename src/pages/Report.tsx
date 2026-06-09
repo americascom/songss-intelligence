@@ -1346,7 +1346,7 @@ function ReportInner() {
                   Get TikTok × DSP correlation, advanced NPV modeling, acquisition targets, and a dedicated strategy team.
                 </p>
                 <a
-                  href="https://buyer.americaspay.com/b/enterprise"
+                  href="https://buyer.americaspay.com/b/4gM8wP6h742r9tM5Q13cd0P"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 rounded-lg px-7 py-4 text-xs font-bold uppercase tracking-[0.2em] transition-all hover:scale-[1.02]"
@@ -1382,7 +1382,7 @@ function ReportInner() {
                   Artist Pro adds a 6-axis radar profile, sync-readiness scoring, peer benchmarks, and curator pitch intelligence.
                 </p>
                 <a
-                  href="https://buyer.americaspay.com/b/artistpro"
+                  href="https://buyer.americaspay.com/b/aFa4gz9tj7eD49sguF3cd0O"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 rounded-lg px-7 py-4 text-xs font-bold uppercase tracking-[0.2em] transition-all hover:scale-[1.02]"
