@@ -305,36 +305,8 @@ function ReportInner() {
     return () => { stopped = true; };
   }, [session_id]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-5 px-6" style={{ background: C.bg }}>
-        <style>{`
-          @keyframes rGlow  { 0%,100%{opacity:.55;transform:scale(1)} 50%{opacity:1;transform:scale(1.35)} }
-          @keyframes rSonar { 0%{transform:scale(1);opacity:.7} 100%{transform:scale(3.6);opacity:0} }
-          .r-glow  { animation:rGlow  2.6s ease-in-out infinite; box-shadow:0 0 12px ${C.cyan},0 0 28px ${C.cyan}80 }
-          .r-sonar { animation:rSonar 2s cubic-bezier(.22,1,.36,1) infinite }
-        `}</style>
-        <div className="relative flex w-3 h-3">
-          <span className="absolute inline-flex h-full w-full rounded-full r-sonar" style={{ background: C.cyan }} />
-          <span className="relative inline-flex rounded-full h-3 w-3 r-glow"  style={{ background: C.cyan }} />
-        </div>
-        <div className={`${mono} text-xs uppercase tracking-[0.4em]`} style={{ color: C.cyan }}>
-          Decrypting Intelligence...
-        </div>
-        <Loader2 className="w-5 h-5 animate-spin" style={{ color: C.cyan }} />
-      </div>
-    );
-  }
-
-  if (error || !report) return <Classified />;
-
-  // Artist Indie → dedicated warm template
-  if ((report.plan_name || "").trim().toLowerCase() === "artist indie") {
-    return <ArtistIndieReport report={report as any} />;
-  }
-
   // ── Tier ─────────────────────────────────────────────────────────────────
-  const tier = planTier(report.plan_name);
+  const tier = planTier(report?.plan_name);
 
   // ── Base data ─────────────────────────────────────────────────────────────
   const em  = report?.engagement_metrics  ?? {};
@@ -357,9 +329,11 @@ function ReportInner() {
   const igFollowing      = Number(ig?.following   ?? 0);
   const hasInstagramData = igFollowers > 0;
 
-  const reportDate = new Date(report.created_at).toLocaleDateString("en-US", {
-    year: "numeric", month: "short", day: "numeric",
-  });
+  const reportDate = report
+    ? new Date(report.created_at).toLocaleDateString("en-US", {
+        year: "numeric", month: "short", day: "numeric",
+      })
+    : "";
 
   // ── Memoised data ─────────────────────────────────────────────────────────
   const trajectory = useMemo(() => {
@@ -565,6 +539,34 @@ function ReportInner() {
     if (firstPara) return mdToHtml(firstPara.trim());
     return "Your sound bridges intimacy and momentum — a rare combination that resonates with playlist curators looking for authentic voices with crossover appeal.";
   }, [cleanMd]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-5 px-6" style={{ background: C.bg }}>
+        <style>{`
+          @keyframes rGlow  { 0%,100%{opacity:.55;transform:scale(1)} 50%{opacity:1;transform:scale(1.35)} }
+          @keyframes rSonar { 0%{transform:scale(1);opacity:.7} 100%{transform:scale(3.6);opacity:0} }
+          .r-glow  { animation:rGlow  2.6s ease-in-out infinite; box-shadow:0 0 12px ${C.cyan},0 0 28px ${C.cyan}80 }
+          .r-sonar { animation:rSonar 2s cubic-bezier(.22,1,.36,1) infinite }
+        `}</style>
+        <div className="relative flex w-3 h-3">
+          <span className="absolute inline-flex h-full w-full rounded-full r-sonar" style={{ background: C.cyan }} />
+          <span className="relative inline-flex rounded-full h-3 w-3 r-glow"  style={{ background: C.cyan }} />
+        </div>
+        <div className={`${mono} text-xs uppercase tracking-[0.4em]`} style={{ color: C.cyan }}>
+          Decrypting Intelligence...
+        </div>
+        <Loader2 className="w-5 h-5 animate-spin" style={{ color: C.cyan }} />
+      </div>
+    );
+  }
+
+  if (error || !report) return <Classified />;
+
+  // Artist Indie → dedicated warm template
+  if ((report.plan_name || "").trim().toLowerCase() === "artist indie") {
+    return <ArtistIndieReport report={report as any} />;
+  }
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
