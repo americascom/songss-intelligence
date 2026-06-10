@@ -176,7 +176,7 @@ export default function Submit() {
                     name="artist-name"
                     value={artistName}
                     onChange={(e) => setArtistName(e.target.value)}
-                    placeholder="e.g. Ivan Lins"
+                    placeholder="e.g. Quincy Jones"
                     required
                     maxLength={120}
                     className="bg-transparent border-white/10 focus-visible:ring-1"
