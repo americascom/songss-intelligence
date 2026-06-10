@@ -1430,6 +1430,11 @@ function ReportInner() {
           </Section>
         )}
 
+        <div style={{ textAlign: "center", padding: "24px 0 8px", borderTop: "1px solid #1a1a2e", marginTop: "32px", display: "flex", justifyContent: "center", alignItems: "center", gap: "32px" }}>
+          <img src="/logos/songss.png" alt="SONGSS Intelligence" style={{ height: "32px", opacity: 0.8 }} />
+          <img src="/logos/americascom.png" alt="Americascom" style={{ height: "32px", opacity: 0.8 }} />
+          <img src="/logos/americas-music-publishing.png" alt="Americas Music Publishing" style={{ height: "32px", opacity: 0.8, filter: "brightness(0) invert(1)" }} />
+        </div>
         <div className={`${mono} text-center mt-8 text-[10px] uppercase tracking-[0.3em]`} style={{ color: C.grayDim }}>
           CONFIDENTIAL · SONGSS Intelligence · Americascom, Inc.
         </div>
