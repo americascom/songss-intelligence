@@ -1431,15 +1431,9 @@ function ReportInner() {
         )}
 
         <div style={{ textAlign: "center", padding: "24px 0 8px", borderTop: "1px solid #1a1a2e", marginTop: "32px", display: "flex", justifyContent: "center", alignItems: "center", gap: "40px", flexWrap: "wrap" }}>
-          <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "8px", padding: "12px 24px" }}>
-            <img src="/logos/songss.png" alt="SONGSS Intelligence" style={{ height: "64px", display: "block" }} />
-          </div>
-          <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "8px", padding: "12px 24px" }}>
-            <img src="/logos/americascom.png" alt="Americascom" style={{ height: "64px", display: "block" }} />
-          </div>
-          <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "8px", padding: "12px 24px" }}>
-            <img src="/logos/americas-music-publishing.png" alt="Americas Music Publishing" style={{ height: "64px", display: "block" }} />
-          </div>
+          <img src="/logos/songss.png" alt="SONGSS Intelligence" style={{ height: "64px", display: "block", opacity: 0.9 }} />
+          <img src="/logos/americascom.png" alt="Americascom" style={{ height: "64px", display: "block", opacity: 0.9 }} />
+          <img src="/logos/americas-music-publishing.png" alt="Americas Music Publishing" style={{ height: "64px", display: "block", opacity: 0.9 }} />
         </div>
         <div className={`${mono} text-center mt-8 text-[10px] uppercase tracking-[0.3em]`} style={{ color: C.grayDim }}>
           CONFIDENTIAL · SONGSS Intelligence · Americascom, Inc.
