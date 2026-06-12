@@ -117,9 +117,9 @@ export default function Submit() {
           session_id:          report.session_id,
           artist_name:         artistName.trim(),
           song_name:           songName.trim(),
-          tiktok_username:     tiktokUsername.trim() || (report.engagement_metrics as Record<string, unknown>)?.tiktok_username as string ?? "",
-          youtube_channel_id:  (report.engagement_metrics as Record<string, unknown>)?.youtube_channel_id as string ?? "",
-          instagram_username:  instagramUsername.trim() || (report.engagement_metrics as Record<string, unknown>)?.instagram_username as string ?? "",
+          tiktok_username:     tiktokUsername.trim() || (((report.engagement_metrics as Record<string, unknown>)?.tiktok_username as string) ?? ""),
+          youtube_channel_id:  (((report.engagement_metrics as Record<string, unknown>)?.youtube_channel_id as string) ?? ""),
+          instagram_username:  instagramUsername.trim() || (((report.engagement_metrics as Record<string, unknown>)?.instagram_username as string) ?? ""),
         }),
       });
       if (!res.ok) throw new Error(`Webhook error ${res.status}`);
