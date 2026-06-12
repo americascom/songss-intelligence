@@ -57,6 +57,8 @@ export default function Submit() {
   const [market, setMarket] = useState("");
   const [context, setContext] = useState("");
   const [notes, setNotes] = useState("");
+  const [tiktokUsername, setTiktokUsername] = useState("");
+  const [instagramUsername, setInstagramUsername] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -115,9 +117,9 @@ export default function Submit() {
           session_id:          report.session_id,
           artist_name:         artistName.trim(),
           song_name:           songName.trim(),
-          tiktok_username:     (report.engagement_metrics as Record<string, unknown>)?.tiktok_username as string ?? "",
+          tiktok_username:     tiktokUsername.trim() || (report.engagement_metrics as Record<string, unknown>)?.tiktok_username as string ?? "",
           youtube_channel_id:  (report.engagement_metrics as Record<string, unknown>)?.youtube_channel_id as string ?? "",
-          instagram_username:  (report.engagement_metrics as Record<string, unknown>)?.instagram_username as string ?? "",
+          instagram_username:  instagramUsername.trim() || (report.engagement_metrics as Record<string, unknown>)?.instagram_username as string ?? "",
         }),
       });
       if (!res.ok) throw new Error(`Webhook error ${res.status}`);
@@ -195,6 +197,34 @@ export default function Submit() {
                     className="bg-transparent border-white/10 focus-visible:ring-1"
                     style={{ borderColor: "rgba(255,255,255,0.08)" }}
                   />
+                </Field>
+
+                <Field label="TikTok Username" hint="Optional" htmlFor="tiktok-username">
+                  <Input
+                    id="tiktok-username"
+                    name="tiktok-username"
+                    value={tiktokUsername}
+                    onChange={(e) => setTiktokUsername(e.target.value)}
+                    placeholder="e.g. billieeilish"
+                    maxLength={100}
+                    className="bg-transparent border-white/10 focus-visible:ring-1"
+                    style={{ borderColor: "rgba(255,255,255,0.08)" }}
+                  />
+                  <p className="mt-1 text-[11px]" style={{ color: "#5A5A5A" }}>Adding your social profiles improves report accuracy</p>
+                </Field>
+
+                <Field label="Instagram Username" hint="Optional" htmlFor="instagram-username">
+                  <Input
+                    id="instagram-username"
+                    name="instagram-username"
+                    value={instagramUsername}
+                    onChange={(e) => setInstagramUsername(e.target.value)}
+                    placeholder="e.g. billieeilish"
+                    maxLength={100}
+                    className="bg-transparent border-white/10 focus-visible:ring-1"
+                    style={{ borderColor: "rgba(255,255,255,0.08)" }}
+                  />
+                  <p className="mt-1 text-[11px]" style={{ color: "#5A5A5A" }}>Adding your social profiles improves report accuracy</p>
                 </Field>
 
                 {showProFields && (
