@@ -1,4 +1,4 @@
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useRef, useState, FormEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Loader2, Sparkles, ShieldCheck, CheckCircle2 } from "lucide-react";
@@ -20,6 +20,8 @@ const C = {
   white: "#F5F5F5",
   gray: "#7A7A7A",
 };
+
+const TURNSTILE_SITE_KEY = "0x4AAAAAADmICduLCF0eYJBa";
 
 function planTier(plan?: string | null): "indie" | "growth" | "pro" | "team" | "enterprise" | "opus" {
   const p = (plan || "").toLowerCase();
@@ -45,6 +47,16 @@ type ReportRow = {
 const MARKETS = ["Global", "Latin America", "North America", "Europe", "Asia"];
 const CONTEXTS = ["Catalog Acquisition", "A&R Decision", "Tour Planning", "Publishing Deal"];
 
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (container: string | HTMLElement, options: Record<string, unknown>) => string;
+      reset: (widgetId: string) => void;
+      remove: (widgetId: string) => void;
+    };
+  }
+}
+
 export default function Submit() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
@@ -62,6 +74,60 @@ export default function Submit() {
 
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  // Turnstile
+  const turnstileRef = useRef<HTMLDivElement>(null);
+  const turnstileWidgetId = useRef<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
+  // Load Turnstile script
+  useEffect(() => {
+    if (document.getElementById("cf-turnstile-script")) return;
+    const script = document.createElement("script");
+    script.id = "cf-turnstile-script";
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+  }, []);
+
+  // Render Turnstile widget after report loads
+  useEffect(() => {
+    if (!report || !turnstileRef.current) return;
+
+    const renderWidget = () => {
+      if (!window.turnstile || !turnstileRef.current) return;
+      if (turnstileWidgetId.current) return; // already rendered
+      turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
+        sitekey: TURNSTILE_SITE_KEY,
+        theme: "dark",
+        callback: (token: string) => setTurnstileToken(token),
+        "expired-callback": () => setTurnstileToken(null),
+        "error-callback": () => setTurnstileToken(null),
+      });
+    };
+
+    if (window.turnstile) {
+      renderWidget();
+    } else {
+      const interval = setInterval(() => {
+        if (window.turnstile) {
+          clearInterval(interval);
+          renderWidget();
+        }
+      }, 200);
+      return () => clearInterval(interval);
+    }
+  }, [report]);
+
+  // Cleanup Turnstile on unmount
+  useEffect(() => {
+    return () => {
+      if (window.turnstile && turnstileWidgetId.current) {
+        window.turnstile.remove(turnstileWidgetId.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -108,7 +174,15 @@ export default function Submit() {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!report || !artistName.trim()) return;
+
+    if (!turnstileToken) {
+      setError("Please complete the security check before submitting.");
+      return;
+    }
+
     setSubmitting(true);
+    setError(null);
+
     try {
       const res = await fetch("https://n8n.songssintelligence.com/webhook/submit-analysis", {
         method: "POST",
@@ -120,12 +194,18 @@ export default function Submit() {
           tiktok_username:     tiktokUsername.trim() || (((report.engagement_metrics as Record<string, unknown>)?.tiktok_username as string) ?? ""),
           youtube_channel_id:  (((report.engagement_metrics as Record<string, unknown>)?.youtube_channel_id as string) ?? ""),
           instagram_username:  instagramUsername.trim() || (((report.engagement_metrics as Record<string, unknown>)?.instagram_username as string) ?? ""),
+          cf_turnstile_token:  turnstileToken,
         }),
       });
       if (!res.ok) throw new Error(`Webhook error ${res.status}`);
     } catch (err) {
       setSubmitting(false);
       setError(err instanceof Error ? err.message : "Submission failed");
+      // Reset Turnstile on error
+      if (window.turnstile && turnstileWidgetId.current) {
+        window.turnstile.reset(turnstileWidgetId.current);
+        setTurnstileToken(null);
+      }
       return;
     }
     setSubmitting(false);
@@ -272,10 +352,19 @@ export default function Submit() {
                   </>
                 )}
 
+                {/* Cloudflare Turnstile */}
+                <div className="flex justify-center py-2">
+                  <div ref={turnstileRef} />
+                </div>
+
+                {error && (
+                  <p className="text-sm text-center" style={{ color: "#FF6B6B" }}>{error}</p>
+                )}
+
                 <div className="pt-2">
                   <Button
                     type="submit"
-                    disabled={submitting || !artistName.trim()}
+                    disabled={submitting || !artistName.trim() || !turnstileToken}
                     className="w-full h-12 font-mono uppercase tracking-[0.2em] text-xs"
                     style={{
                       background: `linear-gradient(180deg, ${C.cyan}, #009E92)`,
