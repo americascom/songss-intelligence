@@ -24,6 +24,12 @@ const Header = () => {
     { href: "/about", label: "About" },
   ];
 
+  const mobileNavLinks = [
+    { href: "/pricing", label: "Product" },
+    { href: "/about", label: "About" },
+    { href: "/dashboard", label: "Demo Report" },
+  ];
+
   const isActive = (path: string) => location.pathname === path;
 
   const handleSignOut = async () => {
@@ -102,29 +108,29 @@ const Header = () => {
       {/* Mobile Menu */}
       {isMenuOpen && (
         <div className="md:hidden bg-background border-b border-border animate-fade-in">
-          <nav className="container py-4 flex flex-col gap-4">
-            {navLinks.map((link) => (
+          <nav className="container py-4 flex flex-col gap-1">
+            {mobileNavLinks.map((link) => (
               <Link
                 key={link.href}
                 to={link.href}
                 onClick={() => setIsMenuOpen(false)}
-                className={`text-base font-medium py-2 ${
-                  isActive(link.href) 
-                    ? "text-primary" 
+                className={`text-base font-medium py-3 border-b border-border/40 ${
+                  isActive(link.href)
+                    ? "text-primary"
                     : "text-foreground/70"
                 }`}
               >
                 {link.label}
               </Link>
             ))}
-            <div className="flex flex-col gap-2 pt-4 border-t border-border">
+            <div className="flex flex-col gap-2 pt-4">
               {user ? (
                 <>
                   <div className="px-2 py-1 text-sm text-muted-foreground">
                     {user.email}
                   </div>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     className="justify-start gap-2"
                     onClick={() => {
                       handleSignOut();
@@ -136,11 +142,18 @@ const Header = () => {
                   </Button>
                 </>
               ) : (
-                <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
-                  <Button variant="outline" className="w-full justify-start bg-transparent border-2 border-primary text-foreground hover:bg-primary/10 hover:text-foreground">
-                    Log In
-                  </Button>
-                </Link>
+                <>
+                  <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
+                    <Button variant="outline" className="w-full bg-transparent border-2 border-primary text-foreground hover:bg-primary/10 hover:text-foreground">
+                      Login
+                    </Button>
+                  </Link>
+                  <Link to="/pricing" onClick={() => setIsMenuOpen(false)}>
+                    <Button className="w-full gradient-primary font-semibold">
+                      Get Started
+                    </Button>
+                  </Link>
+                </>
               )}
             </div>
           </nav>
