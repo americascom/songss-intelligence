@@ -56,18 +56,18 @@ const Header = () => {
           />
         </Link>
 
-        {/* Mobile: hamburger button (visible below md) */}
+        {/* Mobile/tablet: hamburger button (visible below lg) */}
         <button
           onClick={() => setIsMenuOpen((prev) => !prev)}
-          className="md:hidden p-2 text-foreground"
+          className="lg:hidden p-2 text-foreground"
           aria-label="Toggle menu"
           aria-expanded={isMenuOpen}
         >
           {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
 
-        {/* Desktop nav (visible md and up) */}
-        <nav className="hidden md:flex items-center gap-8">
+        {/* Desktop nav (visible lg and up) */}
+        <nav className="hidden lg:flex items-center gap-8">
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -82,7 +82,7 @@ const Header = () => {
         </nav>
 
         {/* Desktop auth area */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden lg:flex items-center gap-3">
           {loading ? (
             <div className="w-20 h-9 bg-muted animate-pulse rounded" />
           ) : user ? (
@@ -119,9 +119,9 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Mobile menu panel (only mounted when open, hidden on md+) */}
+      {/* Mobile menu panel (only mounted when open, hidden on lg+) */}
       {isMenuOpen && (
-        <div className="md:hidden bg-background border-b border-border animate-fade-in">
+        <div className="lg:hidden bg-background border-b border-border animate-fade-in">
           <nav className="container py-4 flex flex-col gap-1">
             {mobileNavLinks.map((link) => (
               <Link
