@@ -93,9 +93,13 @@ export function useMetricsMarkers() {
     queryKey: ["metrics-markers", "neural-engine"],
     queryFn: async (): Promise<MetricsMarker[]> => {
       try {
-        // Fetch from SONGSS Neural Intelligence Engine API
-        const response = await fetch("https://api.songssintelligence.com/metrics");
-        
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch("https://api.songssintelligence.com/metrics", {
+          headers: {
+            Authorization: `Bearer ${session?.access_token ?? ""}`,
+          },
+        });
+
         if (!response.ok) {
           console.error("Neural Engine API Error:", response.statusText);
           return [];
@@ -144,9 +148,13 @@ export function useMetricsSummary() {
     queryKey: ["metrics-summary", "neural-engine"],
     queryFn: async (): Promise<MetricsSummary> => {
       try {
-        // Fetch from SONGSS Neural Intelligence Engine API
-        const response = await fetch("https://api.songssintelligence.com/metrics");
-        
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch("https://api.songssintelligence.com/metrics", {
+          headers: {
+            Authorization: `Bearer ${session?.access_token ?? ""}`,
+          },
+        });
+
         if (!response.ok) {
           console.error("Neural Engine API Error:", response.statusText);
           return {
