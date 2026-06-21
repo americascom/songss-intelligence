@@ -37,7 +37,7 @@ const Dashboard = () => {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <Header />
-        <main className="flex-1 pt-16 md:pt-20 flex items-center justify-center">
+        <main className="flex-1 flex items-center justify-center">
           <div className="animate-pulse text-muted-foreground">Loading...</div>
         </main>
         <Footer />
@@ -49,9 +49,9 @@ const Dashboard = () => {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <Header />
-        <main className="flex-1 pt-16 md:pt-20 min-h-screen relative">
+        <main className="flex-1 min-h-screen relative">
           {/* Blurred Dashboard Preview */}
-          <div className="absolute inset-0 pt-16 md:pt-20 blur-sm pointer-events-none">
+          <div className="absolute inset-0 blur-sm pointer-events-none">
             <div className="container py-8">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 <MetricCard icon={Music} value="11,234" label="Total Streams" />
@@ -116,7 +116,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
-      <main className="flex-1 pt-16 md:pt-20">
+      <main className="flex-1">
         <div className="container py-8">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">

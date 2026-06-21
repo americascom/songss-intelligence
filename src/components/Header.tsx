@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Menu, X, LogOut, User } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import songssLogo from "@/assets/songss-logo.png";
 import {
   DropdownMenu,
@@ -11,103 +12,112 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+const navLinks = [
+  { href: "/", label: "Home" },
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/about", label: "About" },
+];
+
+const mobileNavLinks = [
+  { href: "/pricing", label: "Product" },
+  { href: "/about", label: "About" },
+  { href: "/dashboard", label: "Demo Report" },
+];
+
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut, loading } = useAuth();
-
-  const navLinks = [
-    { href: "/", label: "Home" },
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/pricing", label: "Pricing" },
-    { href: "/about", label: "About" },
-  ];
-
-  const mobileNavLinks = [
-    { href: "/pricing", label: "Product" },
-    { href: "/about", label: "About" },
-    { href: "/dashboard", label: "Demo Report" },
-  ];
+  const isMobile = useIsMobile();
 
   const isActive = (path: string) => location.pathname === path;
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/');
+    navigate("/");
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-      <div className="container flex items-center justify-between h-20 md:h-24 py-2">
+    <header
+      className="sticky top-0 w-full bg-background/80 backdrop-blur-md border-b border-border"
+      style={{ zIndex: 9999 }}
+    >
+      <div className="container flex items-center justify-between h-20 py-2">
         <Link to="/" className="flex items-center">
-          <img 
-            src={songssLogo} 
-            alt="SONGSS Intelligence" 
-            className="h-14 md:h-[65px] w-auto object-contain"
+          <img
+            src={songssLogo}
+            alt="SONGSS Intelligence"
+            className="h-14 w-auto object-contain"
           />
         </Link>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              to={link.href}
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                isActive(link.href) 
-                  ? "text-primary" 
-                  : "text-foreground/70"
-              }`}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+        {isMobile ? (
+          <button
+            onClick={() => setIsMenuOpen((prev) => !prev)}
+            className="p-2"
+            aria-label="Toggle menu"
+          >
+            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        ) : (
+          <>
+            <nav className="flex items-center gap-8">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  className={`text-sm font-medium transition-colors hover:text-primary ${
+                    isActive(link.href) ? "text-primary" : "text-foreground/70"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
 
-        {/* Desktop Auth Buttons */}
-        <div className="hidden md:flex items-center gap-3">
-          {loading ? (
-            <div className="w-20 h-9 bg-muted animate-pulse rounded" />
-          ) : user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <User className="w-4 h-4" />
-                  <span className="max-w-[120px] truncate">
-                    {user.email?.split('@')[0]}
-                  </span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleSignOut} className="gap-2 cursor-pointer">
-                  <LogOut className="w-4 h-4" />
-                  Sign Out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Link to="/auth">
-              <Button variant="outline" size="sm" className="bg-transparent border-2 border-primary text-foreground hover:bg-primary/10 hover:text-foreground">
-                Log In
-              </Button>
-            </Link>
-          )}
-        </div>
-
-        {/* Mobile Menu Button */}
-        <button
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className="md:hidden p-2"
-          aria-label="Toggle menu"
-        >
-          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+            <div className="flex items-center gap-3">
+              {loading ? (
+                <div className="w-20 h-9 bg-muted animate-pulse rounded" />
+              ) : user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <User className="w-4 h-4" />
+                      <span className="max-w-[120px] truncate">
+                        {user.email?.split("@")[0]}
+                      </span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={handleSignOut}
+                      className="gap-2 cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Link to="/auth">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-transparent border-2 border-primary text-foreground hover:bg-primary/10 hover:text-foreground"
+                  >
+                    Log In
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Mobile Menu */}
-      {isMenuOpen && (
-        <div className="md:hidden bg-background border-b border-border animate-fade-in">
+      {isMobile && isMenuOpen && (
+        <div className="bg-background border-b border-border animate-fade-in">
           <nav className="container py-4 flex flex-col gap-1">
             {mobileNavLinks.map((link) => (
               <Link
@@ -115,9 +125,7 @@ const Header = () => {
                 to={link.href}
                 onClick={() => setIsMenuOpen(false)}
                 className={`text-base font-medium py-3 border-b border-border/40 ${
-                  isActive(link.href)
-                    ? "text-primary"
-                    : "text-foreground/70"
+                  isActive(link.href) ? "text-primary" : "text-foreground/70"
                 }`}
               >
                 {link.label}
@@ -144,7 +152,10 @@ const Header = () => {
               ) : (
                 <>
                   <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
-                    <Button variant="outline" className="w-full bg-transparent border-2 border-primary text-foreground hover:bg-primary/10 hover:text-foreground">
+                    <Button
+                      variant="outline"
+                      className="w-full bg-transparent border-2 border-primary text-foreground hover:bg-primary/10 hover:text-foreground"
+                    >
                       Login
                     </Button>
                   </Link>

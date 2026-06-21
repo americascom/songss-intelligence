@@ -25,7 +25,7 @@ const Home = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background dark">
       <Header />
-      <main className="flex-1 pt-20 md:pt-24">
+      <main className="flex-1">
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-background">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(179_43%_47%_/_0.15),transparent_50%)]" />

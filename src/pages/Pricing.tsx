@@ -98,7 +98,7 @@ const Pricing = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
-      <main className="flex-1 pt-16 md:pt-20">
+      <main className="flex-1">
       {/* Header */}
       <section className="py-16 md:py-24">
         <div className="container text-center">
