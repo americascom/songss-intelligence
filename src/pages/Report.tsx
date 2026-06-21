@@ -288,14 +288,12 @@ function ReportInner() {
     let stopped = false;
     const poll = async () => {
       const { data, error } = await supabase
-        .from("intelligence_reports")
-        .select("*")
-        .eq("session_id", session_id)
-        .maybeSingle();
+        .rpc("get_report_by_session", { p_session_id: session_id });
       if (stopped) return;
       if (error) { setLoading(false); setError(error.message); return; }
-      if (data && (data.report_html || data.report_markdown)) {
-        setReport(data as unknown as ReportRow);
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row && (row.report_html || row.report_markdown)) {
+        setReport(row as unknown as ReportRow);
         setLoading(false);
         return;
       }

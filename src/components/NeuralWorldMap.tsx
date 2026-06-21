@@ -123,7 +123,7 @@ export default function NeuralWorldMap({ hotspots: hotspotsProp }: { hotspots?: 
     let alive = true;
     (async () => {
       const { data } = await supabase
-        .from("intelligence_reports")
+        .from("public_geo_hotspots")
         .select("geo_hotspots, created_at")
         .order("created_at", { ascending: false })
         .limit(1)

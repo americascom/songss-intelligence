@@ -134,15 +134,13 @@ export default function Submit() {
     (async () => {
       if (!sessionId) return;
       const { data, error } = await supabase
-        .from("intelligence_reports")
-        .select("id, session_id, plan_name, customer_email, artist_name, engagement_metrics")
-        .eq("session_id", sessionId)
-        .maybeSingle();
+        .rpc("get_report_by_session", { p_session_id: sessionId });
       if (!active) return;
+      const row = Array.isArray(data) ? data[0] : data;
       if (error) setError(error.message);
-      else if (!data) setError("Session not found.");
+      else if (!row) setError("Session not found.");
       else {
-        setReport(data as ReportRow);
+        setReport(row as ReportRow);
         if (data.artist_name) setArtistName(data.artist_name);
       }
       setLoading(false);
@@ -155,11 +153,9 @@ export default function Submit() {
     if (!submitted || !sessionId) return;
     const id = setInterval(async () => {
       const { data } = await supabase
-        .from("intelligence_reports")
-        .select("report_html, report_markdown")
-        .eq("session_id", sessionId)
-        .maybeSingle();
-      if (data?.report_html || data?.report_markdown) {
+        .rpc("get_report_by_session", { p_session_id: sessionId });
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row?.report_html || row?.report_markdown) {
         clearInterval(id);
         navigate(`/report/${sessionId}`);
       }
