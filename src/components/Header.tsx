@@ -1,9 +1,8 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, LogOut, User } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useIsMobile } from "@/hooks/use-mobile";
 import songssLogo from "@/assets/songss-logo.png";
 import {
   DropdownMenu,
@@ -30,7 +29,11 @@ const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut, loading } = useAuth();
-  const isMobile = useIsMobile();
+
+  // Close the mobile menu on route change
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location.pathname]);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -41,11 +44,11 @@ const Header = () => {
 
   return (
     <header
-      className="sticky top-0 w-full bg-background/80 backdrop-blur-md border-b border-border"
+      className="sticky top-0 left-0 right-0 w-full bg-background/80 backdrop-blur-md border-b border-border"
       style={{ zIndex: 9999 }}
     >
       <div className="container flex items-center justify-between h-20 py-2">
-        <Link to="/" className="flex items-center">
+        <Link to="/" className="flex items-center shrink-0">
           <img
             src={songssLogo}
             alt="SONGSS Intelligence"
@@ -53,71 +56,72 @@ const Header = () => {
           />
         </Link>
 
-        {isMobile ? (
-          <button
-            onClick={() => setIsMenuOpen((prev) => !prev)}
-            className="p-2"
-            aria-label="Toggle menu"
-          >
-            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-        ) : (
-          <>
-            <nav className="flex items-center gap-8">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  to={link.href}
-                  className={`text-sm font-medium transition-colors hover:text-primary ${
-                    isActive(link.href) ? "text-primary" : "text-foreground/70"
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
+        {/* Mobile: hamburger button (visible below md) */}
+        <button
+          onClick={() => setIsMenuOpen((prev) => !prev)}
+          className="md:hidden p-2 text-foreground"
+          aria-label="Toggle menu"
+          aria-expanded={isMenuOpen}
+        >
+          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
 
-            <div className="flex items-center gap-3">
-              {loading ? (
-                <div className="w-20 h-9 bg-muted animate-pulse rounded" />
-              ) : user ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <User className="w-4 h-4" />
-                      <span className="max-w-[120px] truncate">
-                        {user.email?.split("@")[0]}
-                      </span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={handleSignOut}
-                      className="gap-2 cursor-pointer"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Sign Out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : (
-                <Link to="/auth">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-transparent border-2 border-primary text-foreground hover:bg-primary/10 hover:text-foreground"
-                  >
-                    Log In
-                  </Button>
-                </Link>
-              )}
-            </div>
-          </>
-        )}
+        {/* Desktop nav (visible md and up) */}
+        <nav className="hidden md:flex items-center gap-8">
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              to={link.href}
+              className={`text-sm font-medium transition-colors hover:text-primary ${
+                isActive(link.href) ? "text-primary" : "text-foreground/70"
+              }`}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Desktop auth area */}
+        <div className="hidden md:flex items-center gap-3">
+          {loading ? (
+            <div className="w-20 h-9 bg-muted animate-pulse rounded" />
+          ) : user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <User className="w-4 h-4" />
+                  <span className="max-w-[120px] truncate">
+                    {user.email?.split("@")[0]}
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={handleSignOut}
+                  className="gap-2 cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link to="/auth">
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-transparent border-2 border-primary text-foreground hover:bg-primary/10 hover:text-foreground"
+              >
+                Log In
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
-      {isMobile && isMenuOpen && (
-        <div className="bg-background border-b border-border animate-fade-in">
+      {/* Mobile menu panel (only mounted when open, hidden on md+) */}
+      {isMenuOpen && (
+        <div className="md:hidden bg-background border-b border-border animate-fade-in">
           <nav className="container py-4 flex flex-col gap-1">
             {mobileNavLinks.map((link) => (
               <Link
