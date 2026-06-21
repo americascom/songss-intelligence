@@ -18,11 +18,6 @@ const navLinks = [
   { href: "/about", label: "About" },
 ];
 
-const mobileNavLinks = [
-  { href: "/pricing", label: "Product" },
-  { href: "/about", label: "About" },
-  { href: "/dashboard", label: "Demo Report" },
-];
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
