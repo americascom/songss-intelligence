@@ -118,7 +118,7 @@ const Header = () => {
       {isMenuOpen && (
         <div className="lg:hidden bg-background border-b border-border animate-fade-in">
           <nav className="container py-4 flex flex-col gap-1">
-            {mobileNavLinks.map((link) => (
+            {navLinks.map((link) => (
               <Link
                 key={link.href}
                 to={link.href}
