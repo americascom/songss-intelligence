@@ -287,8 +287,8 @@ function ReportInner() {
     if (!session_id?.trim()) { setLoading(false); setError("invalid"); return; }
     let stopped = false;
     const poll = async () => {
-      const { data, error } = await supabase
-        .rpc("get_report_by_session", { p_session_id: session_id });
+      const { data, error } = await (supabase
+        .rpc("get_report_by_session" as any, { p_session_id: session_id }) as any);
       if (stopped) return;
       if (error) { setLoading(false); setError(error.message); return; }
       const row = Array.isArray(data) ? data[0] : data;

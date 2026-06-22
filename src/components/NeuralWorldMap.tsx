@@ -122,12 +122,12 @@ export default function NeuralWorldMap({ hotspots: hotspotsProp }: { hotspots?: 
   useEffect(() => {
     let alive = true;
     (async () => {
-      const { data } = await supabase
-        .from("public_geo_hotspots")
+      const { data } = await (supabase
+        .from("public_geo_hotspots" as any)
         .select("geo_hotspots, created_at")
         .order("created_at", { ascending: false })
         .limit(1)
-        .maybeSingle();
+        .maybeSingle() as any);
       if (!alive) return;
       setFetched(normalizeHotspots(data?.geo_hotspots));
       setLoading(false);
