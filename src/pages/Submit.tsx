@@ -141,7 +141,7 @@ export default function Submit() {
       else if (!row) setError("Session not found.");
       else {
         setReport(row as ReportRow);
-        if (data.artist_name) setArtistName(data.artist_name);
+        if (row.artist_name) setArtistName(row.artist_name);
       }
       setLoading(false);
     })();
