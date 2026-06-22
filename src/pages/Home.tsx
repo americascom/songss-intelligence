@@ -61,27 +61,18 @@ const Home = () => {
                     Get Started
                   </Button>
                 </Link>
-                <Link to="/dashboard">
-                  <Button size="lg" variant="outline" className="font-semibold text-base px-8 bg-transparent border-2 border-primary text-foreground hover:bg-primary/10 hover:text-foreground">
-                    View Demo
-                  </Button>
-                </Link>
-              </div>
-
-              {/* CTA: Get My Artist Report */}
-              <div className="mt-10 animate-fade-in" style={{ animationDelay: "400ms" }}>
                 <Link to="/auth">
                   <Button
                     size="lg"
                     className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-base px-10 py-6 shadow-[0_0_30px_-5px_hsl(var(--primary)/0.5)] hover:shadow-[0_0_40px_-5px_hsl(var(--primary)/0.7)] transition-all"
                   >
-                    Get My Artist Report
+                    Get My Reports
                   </Button>
                 </Link>
-                <p className="text-xs text-muted-foreground/70 mt-4">
-                  AI-powered support · 24/7 · English
-                </p>
               </div>
+              <p className="text-xs text-muted-foreground/70 mt-4 animate-fade-in" style={{ animationDelay: "400ms" }}>
+                AI-powered support · 24/7 · English
+              </p>
             </div>
 
             {/* Right: 3D Globe with Icons and Chart */}
@@ -150,8 +141,7 @@ const Home = () => {
           </h2>
           <div className="space-y-5">
             {[
-              ["Spotify", "Apple Music", "YouTube Music", "Deezer", "Tidal", "Amazon Music", "Pandora", "SoundCloud"],
-              ["TikTok", "Shazam", "Last.fm", "Genius", "MusicBrainz", "Jamendo", "Instagram", "Facebook"],
+              ["Spotify", "Apple Music", "YouTube Music", "TikTok", "Instagram", "Deezer", "SoundCloud", "Shazam"],
             ].map((row, rowIdx) => (
               <div
                 key={rowIdx}
@@ -178,18 +168,18 @@ const Home = () => {
             Intelligence Infrastructure You Can Trust
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {[
+          {[
               {
-                title: "Secured by Cloudflare",
-                description: "Enterprise-grade edge security and DDoS protection.",
+                title: "Enterprise-Grade Security",
+                description: "Edge protection, DDoS mitigation and real-time threat monitoring.",
               },
               {
-                title: "Payments by Stripe",
-                description: "Secure subscription management via AmericasPay.",
+                title: "Secure Payments",
+                description: "Subscription management via AmericasPay, powered by Stripe Technology.",
               },
               {
-                title: "Built on Supabase",
-                description: "Real-time data infrastructure with full audit trail.",
+                title: "Real-Time Data Infrastructure",
+                description: "Live data pipeline with full audit trail and 99.9% uptime SLA.",
               },
             ].map((item) => (
               <div
