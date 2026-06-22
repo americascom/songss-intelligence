@@ -133,15 +133,15 @@ export default function Submit() {
     let active = true;
     (async () => {
       if (!sessionId) return;
-      const { data, error } = await supabase
-        .rpc("get_report_by_session", { p_session_id: sessionId });
+      const { data, error } = await (supabase
+        .rpc("get_report_by_session" as any, { p_session_id: sessionId }) as any);
       if (!active) return;
       const row = Array.isArray(data) ? data[0] : data;
       if (error) setError(error.message);
       else if (!row) setError("Session not found.");
       else {
         setReport(row as ReportRow);
-        if (data.artist_name) setArtistName(data.artist_name);
+        if (row.artist_name) setArtistName(row.artist_name);
       }
       setLoading(false);
     })();
@@ -152,8 +152,8 @@ export default function Submit() {
   useEffect(() => {
     if (!submitted || !sessionId) return;
     const id = setInterval(async () => {
-      const { data } = await supabase
-        .rpc("get_report_by_session", { p_session_id: sessionId });
+      const { data } = await (supabase
+        .rpc("get_report_by_session" as any, { p_session_id: sessionId }) as any);
       const row = Array.isArray(data) ? data[0] : data;
       if (row?.report_html || row?.report_markdown) {
         clearInterval(id);
