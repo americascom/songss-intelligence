@@ -1,0 +1,31 @@
+{
+  "name": "SONGSS Intelligence",
+  "short_name": "SONGSS",
+  "description": "SONGSS Intelligence - Music industry analytics and insights",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#00C4B5",
+  "background_color": "#050505",
+  "icons": [
+    {
+      "src": "/songss-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/songss-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/songss-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
