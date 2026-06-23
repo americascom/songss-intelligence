@@ -14,6 +14,7 @@ import Privacy from "./pages/Privacy";
 import NotFound from "./pages/NotFound";
 import Report from "./pages/Report";
 import Submit from "./pages/Submit";
+import Cookies from "./pages/Cookies";
 
 const queryClient = new QueryClient();
 
