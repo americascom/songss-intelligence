@@ -136,9 +136,12 @@ const Home = () => {
       {/* Social Proof Section */}
       <section className="py-12 md:py-16 border-t border-border/50">
         <div className="container max-w-5xl">
-          <h2 className="text-center text-xl md:text-2xl font-semibold text-foreground mb-10 tracking-tight">
+          <h2 className="text-center text-xl md:text-2xl font-semibold text-foreground mb-3 tracking-tight">
             Tracking Performance Across the World's Leading Platforms
           </h2>
+          <p className="text-center text-sm text-muted-foreground mb-10 max-w-2xl mx-auto">
+            Real-time intelligence across 60+ global DSPs and rights databases.
+          </p>
           <div className="space-y-5">
             {[
               ["Spotify", "Apple Music", "YouTube Music", "TikTok", "Instagram", "Deezer", "SoundCloud", "Shazam"],
