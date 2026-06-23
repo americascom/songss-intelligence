@@ -34,6 +34,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />
+              <Route path="/cookies" element={<Cookies />} />
               <Route path="/report/:session_id" element={<Report />} />
               <Route path="/submit/:sessionId" element={<Submit />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
