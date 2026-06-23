@@ -80,13 +80,12 @@ const Dashboard = () => {
                 Premium Analytics Dashboard
               </h1>
               <p className="text-muted-foreground mb-8">
-                Sign in or subscribe to access real-time streaming data, revenue reports, 
-                and advanced analytics for your music catalog.
+                Sign in or subscribe to access neural artist intelligence, global DSP analytics, revenue modeling and executive-grade reports for your music catalog.
               </p>
               <div className="flex flex-col gap-3">
                 <Link to="/pricing">
                   <Button size="lg" className="w-full gradient-primary font-semibold">
-                    View Plans & Subscribe
+                    View Plans
                   </Button>
                 </Link>
                 <Link to="/auth">
