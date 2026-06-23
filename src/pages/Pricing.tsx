@@ -90,7 +90,7 @@ const plans = [
     ],
     ctaText: "Get Started",
     ctaLink: "/opus",
-    subtext: "Taylor Made VIP — White-glove intelligence for labels, investors, and global management.",
+    subtext: "Taylor Made — Your intelligence, shaped by AI from day one.",
   },
 ];
 
@@ -277,20 +277,6 @@ const Pricing = () => {
         </div>
       </section>
 
-      {/* FAQ or CTA */}
-      <section className="py-12 md:py-16 gradient-primary">
-        <div className="container text-center">
-          <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
-            Questions? We're Here to Help
-          </h2>
-          <p className="text-foreground/80 mb-8 max-w-xl mx-auto">
-            Not sure which plan is right for you? Contact our team for a personalized recommendation.
-          </p>
-          <Button size="lg" className="bg-foreground text-background hover:bg-foreground/90 font-semibold">
-            Contact Sales
-          </Button>
-        </div>
-      </section>
     </main>
     <Footer />
     </div>

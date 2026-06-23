@@ -95,7 +95,7 @@ const About = () => {
           <div className="bg-card/60 border border-primary/20 rounded-2xl p-8 md:p-10 text-center">
             <h2 className="text-xs uppercase tracking-[0.2em] text-primary/60 mb-4 font-semibold">Customer Support</h2>
             <p className="text-foreground/90 text-lg md:text-xl leading-relaxed font-light">
-              Full customer support is available <span className="font-semibold text-foreground">24/7</span> in <span className="font-semibold text-foreground">English</span>.
+              AI-powered support available <span className="font-semibold text-foreground">24/7</span> in <span className="font-semibold text-foreground">English, Portuguese and Spanish</span>.
             </p>
           </div>
         </div>
@@ -110,16 +110,16 @@ const About = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             {[
               {
-                title: "Secured by Cloudflare",
-                description: "Enterprise-grade edge security and DDoS protection.",
+                title: "Enterprise-Grade Security",
+                description: "Edge protection, DDoS mitigation and real-time threat monitoring.",
               },
               {
-                title: "Payments by Stripe",
-                description: "Secure subscription management via AmericasPay.",
+                title: "Secure Payments",
+                description: "Subscription management via AmericasPay, powered by Stripe Technology.",
               },
               {
-                title: "Built on Supabase",
-                description: "Real-time data infrastructure with full audit trail.",
+                title: "Real-Time Data Infrastructure",
+                description: "Live data pipeline with full audit trail and 99.9% uptime SLA.",
               },
             ].map((item) => (
               <div

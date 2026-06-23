@@ -293,11 +293,11 @@ const Home = () => {
             Ready to Transform Your Music Career?
           </h2>
           <p className="text-foreground/80 mb-8 max-w-2xl mx-auto">
-            Join thousands of artists and labels using SONGSS Intelligence to make smarter decisions.
+            Trusted by artists, labels and music investors running on SONGSS Intelligence.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="bg-foreground text-background hover:bg-foreground/90 font-semibold text-base px-8">
-              Get Started Free
+              Get Started
             </Button>
             <Link to="/pricing">
               <Button size="lg" variant="outline" className="border-foreground text-foreground hover:bg-foreground/10 font-semibold text-base px-8">
