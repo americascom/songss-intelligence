@@ -138,7 +138,7 @@ const About = () => {
       <section className="py-20 border-t border-border">
         <div className="container max-w-3xl text-center">
           <h2 className="text-2xl md:text-3xl font-bold mb-6">Ready to make smarter music decisions?</h2>
-          <Link to="/pricing">
+          <Link to="/pricing" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             <Button size="lg" className="gradient-primary font-semibold">
               Get Started →
             </Button>
