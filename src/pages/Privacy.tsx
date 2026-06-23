@@ -953,6 +953,10 @@ const Privacy = () => (
             </A>
             .
           </p>
+
+          <p className="text-sm text-muted-foreground pt-4">
+            This Privacy Policy was created using Termly's Privacy Policy Generator.
+          </p>
         </article>
       </div>
     </main>
