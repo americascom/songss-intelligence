@@ -1,39 +1,67 @@
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { Lock, Music, DollarSign, Users, TrendingUp, Globe, Calendar, AlertCircle } from "lucide-react";
-import MetricCard from "@/components/MetricCard";
-import DemoChart from "@/components/DemoChart";
-import AudienceGrowthChart from "@/components/AudienceGrowthChart";
-import CuratorPitchInsight from "@/components/CuratorPitchInsight";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ExternalLink, FileText, TrendingUp, Calendar, User as UserIcon } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/hooks/useAuth";
-import { useFormattedDashboardData } from "@/hooks/useDashboardData";
+import { supabase } from "@/integrations/supabase/client";
 
-// Fallback data for demo/empty states
-const fallbackArtists = [
-  { name: "Luna Nova", streams: "2.4M", revenue: "$12,340", growth: "+24%" },
-  { name: "The Vibes", streams: "1.8M", revenue: "$9,120", growth: "+18%" },
-  { name: "DJ Pulse", streams: "1.2M", revenue: "$6,890", growth: "+15%" },
-  { name: "Starlight", streams: "890K", revenue: "$4,560", growth: "+12%" },
-  { name: "Echo Band", streams: "670K", revenue: "$3,210", growth: "+8%" },
-];
+const MANAGE_SUBSCRIPTION_URL = "https://buyer.americaspay.com/p/login/bJe4gz9tjbuTfSa1zL3cc00";
+
+const PLAN_LIMITS: Record<string, number> = {
+  Indie: 4,
+  Growth: 12,
+  Pro: 50,
+  Enterprise: 150,
+};
+
+const planLimitFor = (planName?: string | null): number => {
+  if (!planName) return 0;
+  const key = Object.keys(PLAN_LIMITS).find((k) =>
+    planName.toLowerCase().includes(k.toLowerCase())
+  );
+  return key ? PLAN_LIMITS[key] : 0;
+};
+
+interface Report {
+  id: string;
+  session_id: string;
+  artist_name: string | null;
+  plan_name: string | null;
+  created_at: string;
+  customer_email: string | null;
+}
 
 const Dashboard = () => {
   const { user, loading: authLoading } = useAuth();
-  const { 
-    isLoading: dataLoading, 
-    hasData,
-    error,
-    metrics, 
-    countryData, 
-    topArtists, 
-    chartData 
-  } = useFormattedDashboardData();
+  const navigate = useNavigate();
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const loading = authLoading;
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth", { replace: true });
+    }
+  }, [authLoading, user, navigate]);
 
-  if (loading) {
+  useEffect(() => {
+    const fetchReports = async () => {
+      if (!user?.email) return;
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("intelligence_reports")
+        .select("id, session_id, artist_name, plan_name, created_at, customer_email")
+        .eq("customer_email", user.email)
+        .order("created_at", { ascending: false });
+      if (!error && data) setReports(data as Report[]);
+      setLoading(false);
+    };
+    if (user) fetchReports();
+  }, [user]);
+
+  if (authLoading || !user) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <Header />
@@ -45,72 +73,16 @@ const Dashboard = () => {
     );
   }
 
-  if (!user) {
-    return (
-      <div className="min-h-screen flex flex-col bg-background">
-        <Header />
-        <main className="flex-1 min-h-screen relative">
-          {/* Blurred Dashboard Preview */}
-          <div className="absolute inset-0 blur-sm pointer-events-none">
-            <div className="container py-8">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <MetricCard icon={Music} value="11,234" label="Total Streams" />
-                <MetricCard icon={DollarSign} value="$5,420" label="Revenue" />
-                <MetricCard icon={Users} value="51" label="Artists" />
-                <MetricCard icon={TrendingUp} value="+12%" label="Growth" />
-              </div>
-              <div className="grid lg:grid-cols-2 gap-6">
-                <div className="bg-card p-6 rounded-2xl border border-border">
-                  <DemoChart type="area" />
-                </div>
-                <div className="bg-card p-6 rounded-2xl border border-border">
-                  <DemoChart type="bar" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Paywall Overlay */}
-          <div className="relative z-10 min-h-[80vh] flex items-center justify-center">
-            <div className="bg-card/95 backdrop-blur-sm p-8 md:p-12 rounded-2xl border border-border shadow-hero max-w-lg mx-4 text-center animate-scale-in">
-              <div className="p-4 rounded-full gradient-primary w-fit mx-auto mb-6">
-                <Lock className="w-8 h-8 text-foreground" />
-              </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
-                Premium Analytics Dashboard
-              </h1>
-              <p className="text-muted-foreground mb-8">
-                Sign in or subscribe to access neural artist intelligence, global DSP analytics, revenue modeling and executive-grade reports for your music catalog.
-              </p>
-              <div className="flex flex-col gap-3">
-                <Link to="/pricing">
-                  <Button size="lg" className="w-full gradient-primary font-semibold">
-                    View Plans
-                  </Button>
-                </Link>
-                <Link to="/auth">
-                  <Button size="lg" variant="outline" className="w-full">
-                    Sign In
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  // Use real data or fallback to demo values
-  const displayMetrics = {
-    totalStreams: hasData ? metrics.totalStreams : "11,234",
-    totalRevenue: hasData ? metrics.totalRevenue : "$5,420",
-    artistsCount: hasData ? metrics.artistsCount : "51",
-    churnRate: hasData ? metrics.churnRate : "2.4%",
-  };
-
-  const displayArtists = topArtists.length > 0 ? topArtists : fallbackArtists;
+  // Quota: reports this month
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const reportsThisMonth = reports.filter(
+    (r) => new Date(r.created_at) >= startOfMonth
+  );
+  const currentPlan = reports[0]?.plan_name ?? null;
+  const limit = planLimitFor(currentPlan);
+  const used = reportsThisMonth.length;
+  const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -118,158 +90,140 @@ const Dashboard = () => {
       <main className="flex-1">
         <div className="container py-8">
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground">Dashboard</h1>
-              <p className="text-muted-foreground">Your global music performance at a glance</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                Your Intelligence Dashboard
+              </h1>
+              <p className="text-muted-foreground flex items-center gap-2 mt-1">
+                <UserIcon className="w-4 h-4" />
+                {user.email}
+              </p>
             </div>
-            <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm">
-                <Calendar className="w-4 h-4 mr-2" />
-                Last 30 Days
+            <a
+              href={MANAGE_SUBSCRIPTION_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="outline">
+                Manage Subscription
+                <ExternalLink className="w-4 h-4 ml-2" />
               </Button>
-              <Button variant="outline" size="sm">
-                <Globe className="w-4 h-4 mr-2" />
-                All Regions
-              </Button>
-            </div>
+            </a>
           </div>
 
-          {/* Neural Intelligence Engine Banner */}
-          <div className="mb-8 p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-foreground" />
+          {/* Quota */}
+          <Card className="mb-8">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-primary" />
+                  Monthly Report Quota
+                </CardTitle>
+                <span className="text-sm text-muted-foreground">
+                  Plan: <span className="text-foreground font-semibold">{currentPlan ?? "—"}</span>
+                </span>
               </div>
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.12em] text-primary font-semibold" style={{ fontVariant: 'small-caps' }}>
-                  Powered by SONGSS Neural Intelligence Engine
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-end justify-between mb-2">
+                <span className="text-3xl font-bold text-foreground">
+                  {used}
+                  <span className="text-base font-normal text-muted-foreground">
+                    {" "}/ {limit || "—"} reports
+                  </span>
+                </span>
+                <span className="text-sm text-muted-foreground">This month</span>
+              </div>
+              <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full gradient-primary transition-all"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              {limit > 0 && used >= limit && (
+                <p className="text-sm text-destructive mt-3">
+                  Monthly quota reached. Upgrade your plan for more reports.
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">Real-time analytics • AI predictions • Global insights</p>
-              </div>
-            </div>
-            <div className="hidden sm:flex items-center gap-2 text-xs text-primary">
-              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              Live
-            </div>
-          </div>
+              )}
+            </CardContent>
+          </Card>
 
-          {/* Error State */}
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 mb-6 flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-destructive" />
-              <p className="text-sm text-destructive">Unable to load some data. Showing demo values.</p>
-            </div>
-          )}
-
-          {/* Loading State for Data */}
-          {dataLoading && (
-            <div className="text-center py-4 mb-4">
-              <div className="animate-pulse text-muted-foreground text-sm">Loading your metrics...</div>
-            </div>
-          )}
-
-          {/* No Data State */}
-          {!dataLoading && !hasData && !error && (
-            <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 mb-6 flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-primary" />
-              <p className="text-sm text-foreground">No metrics data yet. Showing demo values.</p>
-            </div>
-          )}
-
-          {/* Metrics Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <MetricCard
-              icon={Music}
-              value={displayMetrics.totalStreams}
-              label="Total Streams"
-              trend="+12%"
-              delay={0}
-            />
-            <MetricCard
-              icon={DollarSign}
-              value={displayMetrics.totalRevenue}
-              label="Monthly Revenue"
-              trend="+8%"
-              delay={100}
-            />
-            <MetricCard
-              icon={Users}
-              value={displayMetrics.artistsCount}
-              label="Active Artists"
-              trend="+3"
-              delay={200}
-            />
-            <MetricCard
-              icon={TrendingUp}
-              value={displayMetrics.churnRate}
-              label="Churn Rate"
-              trend="-0.5%"
-              delay={300}
-            />
-          </div>
-
-          {/* Charts */}
-          <div className="grid lg:grid-cols-2 gap-6 mb-8">
-            <div className="bg-card p-6 rounded-2xl border border-border shadow-card">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-foreground">Streams & Revenue</h3>
-                <span className="text-xs text-muted-foreground">Last 7 months</span>
-              </div>
-              <DemoChart type="area" data={chartData.length > 0 ? chartData : undefined} />
-            </div>
-            <div className="bg-card p-6 rounded-2xl border border-border shadow-card">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-foreground">Streams by Country</h3>
-                <span className="text-xs text-muted-foreground">Top 5</span>
-              </div>
-              <DemoChart type="bar" data={countryData.length > 0 ? countryData : undefined} />
-            </div>
-          </div>
-
-          {/* Audience Growth & Curator Pitch */}
-          <div className="grid lg:grid-cols-2 gap-6 mb-8">
-            <div className="bg-card p-6 rounded-2xl border border-border shadow-card">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-foreground">Audience Growth</h3>
-                <span className="text-xs text-muted-foreground">Last 30 days</span>
-              </div>
-              <AudienceGrowthChart />
-            </div>
-            <div className="bg-card p-6 rounded-2xl border border-border shadow-card flex flex-col justify-center">
-              <CuratorPitchInsight />
-            </div>
-          </div>
-
-          <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
-            <div className="p-6 border-b border-border">
-              <h3 className="font-semibold text-foreground">Top Artists</h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase">Artist</th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase">Streams</th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase">Revenue</th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase">Growth</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {displayArtists.map((artist, index) => (
-                    <tr key={index} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-6 py-4 font-medium text-foreground">{artist.name}</td>
-                      <td className="px-6 py-4 text-foreground/80">{artist.streams}</td>
-                      <td className="px-6 py-4 text-foreground/80">{artist.revenue}</td>
-                      <td className="px-6 py-4">
-                        <span className="text-primary font-medium">{artist.growth}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {/* Reports list */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                Your Reports
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="py-12 text-center text-muted-foreground animate-pulse">
+                  Loading reports...
+                </div>
+              ) : reports.length === 0 ? (
+                <div className="py-12 text-center">
+                  <p className="text-muted-foreground mb-4">
+                    No reports yet. Reports generated after checkout will appear here.
+                  </p>
+                  <Link to="/pricing">
+                    <Button className="gradient-primary">View Plans</Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase">
+                          Artist
+                        </th>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase">
+                          Plan
+                        </th>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase">
+                          Date
+                        </th>
+                        <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground uppercase">
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {reports.map((r) => (
+                        <tr key={r.id} className="hover:bg-muted/30 transition-colors">
+                          <td className="px-4 py-4 font-medium text-foreground">
+                            {r.artist_name ?? "Untitled"}
+                          </td>
+                          <td className="px-4 py-4 text-foreground/80">
+                            {r.plan_name ?? "—"}
+                          </td>
+                          <td className="px-4 py-4 text-foreground/80">
+                            <span className="flex items-center gap-2">
+                              <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                              {new Date(r.created_at).toLocaleDateString(undefined, {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-right">
+                            <Link to={`/report/${r.session_id}`}>
+                              <Button size="sm" variant="outline">
+                                View Report
+                              </Button>
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </main>
       <Footer />
