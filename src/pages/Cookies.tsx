@@ -25,7 +25,7 @@ const Cookies = () => (
               Cookie Policy
             </h1>
             <p className="text-sm text-muted-foreground">
-              Effective Date: July 4, 2026
+              Last updated July 04, 2026
             </p>
             <p className="text-sm">
               This Cookie Policy is maintained by{" "}
@@ -226,6 +226,12 @@ const Cookies = () => (
               If you have any questions about our use of cookies, please contact
               us:
             </p>
+            <div className="mt-4 space-y-1">
+              <p>Americascom, Inc</p>
+              <p>1111B S Governors Ave # 34617</p>
+              <p>Dover, DE 19904</p>
+              <p>United States</p>
+            </div>
             <div className="flex items-start gap-3 pt-2">
               <Mail className="w-5 h-5 text-primary mt-0.5 shrink-0" />
               <div>
