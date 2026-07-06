@@ -32,7 +32,10 @@
 
 /docker/n8n/          → n8n (docker-compose)
 /docker/n8n/.n8n/     → n8n SQLite database + encryptionKey
-/docker/supabase/     → Supabase (docker-compose)
+/root/supabase/       → Supabase (docker-compose) — THE REAL, ACTIVE STACK
+/docker/supabase/     → ORPHANED/STALE stack, do not use — confirmed 2026-07-06 during
+                         auth debugging that its secrets no longer match; the live
+                         supabase-auth container reads its .env from /root/supabase/
 
 n8n containers:
 - n8n_songss — n8n v2.28.3 (stable), port 5678
@@ -64,7 +67,14 @@ Submit Trigger (POST /webhook/submit-analysis)
   → Validate session_id → Update Artist Name → Fetch Session → continue NIE flow
 
 Active workflow: Songss | NIE V4.2 SEQUENTIAL (05-05) — Published
-ID: QH6GH3i8TQD75Glp
+ID: 8SRNZDEpZKu88qFz (corrected 2026-07-06 — the previously recorded ID
+    QH6GH3i8TQD75Glp is stale/wrong, confirmed via `docker exec n8n_songss
+    n8n list:workflow`; verify against that command if it drifts again)
+
+Note: this same workflow also has a second webhook trigger, "Submit Trigger"
+at POST /webhook/submit-analysis, used by the app's /submit page after checkout
+to kick off the actual NIE report generation (Update Artist Name → Fetch
+Session Data → Submit Context → Plan Router → NIE engine).
 
 ---
 
