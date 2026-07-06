@@ -15,7 +15,10 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const { signIn, signUp, isPasswordRecovery, updatePassword } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,6 +49,93 @@ export default function Auth() {
       setLoading(false);
     }
   };
+
+  const handleSetNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    setRecoveryLoading(true);
+    try {
+      const { error } = await updatePassword(newPassword);
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success('Password set! Welcome to Songss Intelligence.');
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      toast.error('An unexpected error occurred');
+    } finally {
+      setRecoveryLoading(false);
+    }
+  };
+
+  if (isPasswordRecovery) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+
+        <main className="flex-1 flex items-center justify-center px-4 py-12">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold">Set New Password</CardTitle>
+              <CardDescription>
+                Choose a password to finish setting up your account
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent>
+              <form onSubmit={handleSetNewPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">New Password</Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    placeholder="••••••••"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    minLength={6}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={6}
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full bg-primary hover:bg-primary/90"
+                  disabled={recoveryLoading}
+                >
+                  {recoveryLoading ? 'Setting Password...' : 'Set Password & Continue'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </main>
+
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
