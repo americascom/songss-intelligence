@@ -103,6 +103,34 @@ creation, real welcome email, real intelligence_reports row) — Stripe's own
 signature is not required or checked. Not fixed yet; flagged for a future
 dedicated session, same category as the Check Duplicate Session gap above.
 
+RESOLVED BUG (found and fixed 2026-07-14): the "Spotify Search" node
+(`httpRequest` → Apify `automation-lab~spotify-scraper`, `mode:"search"`) read
+its search term as bare `{{ $json.artist_name }}` — i.e. from its immediate
+predecessor node's output only. That predecessor is "YouTube" (an
+`httpRequest` call to yt-api.p.rapidapi.com), which replaces `$json` entirely
+with the RapidAPI response and carries no `artist_name` field. So the actual
+search term sent to Apify was always empty/undefined, Apify correctly
+returned zero matches, and `alwaysOutputData: true` silently emitted `{}`
+instead of erroring — meaning Spotify data (and everything downstream that
+depends on it, including the Peer Benchmark feature added the same day) had
+never worked, for any artist, including historically-"successful" runs.
+Confirmed via an isolated Apify call outside n8n (same URL/params, real data
+returned) that Apify itself was never the problem. Every sibling data-source
+node (Deezer, Last.fm, MusicBrainz, Shazam, Genius, Jamendo, SoundCloud)
+already used the correct pattern — a fallback chain reading
+`$('Extract Metadata').first().json.artist_name` then
+`$('Submit Context').first().json.artist_name` — "Spotify Search" was the
+only node using the bare, wrong reference. Fixed by applying the same
+fallback-chain expression, deployed across all 3 DB locations
+(`workflow_entity.nodes` + both `workflow_history` rows), restarted, and
+export-diff confirmed only this node's `jsonBody` changed. Live-tested via
+an isolated Submit Trigger run (artist "Clairo"): real Spotify data and a
+real, non-empty Peer Benchmark peer list both confirmed working end-to-end.
+The 4 public landing-page sample reports (see `src/lib/sampleReports.ts`)
+predated this fix and had empty/zero Spotify data and `NULL`
+`peer_benchmark_data`; all 4 were regenerated in place the same day and now
+show real data.
+
 ---
 
 ## 5. SUPABASE DATABASE
