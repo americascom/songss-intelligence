@@ -76,6 +76,33 @@ at POST /webhook/submit-analysis, used by the app's /submit page after checkout
 to kick off the actual NIE report generation (Update Artist Name → Fetch
 Session Data → Submit Context → Plan Router → NIE engine).
 
+KNOWN DOC GAP: the "Insert Intelligence Report → Check Duplicate Session → If"
+step above does not reflect live wiring. The "Check Duplicate Session" node
+exists in the workflow but has zero inbound connections — confirmed disconnected
+in every backup on file, including the earliest one predating all remediation
+work (2026-07-07 14:05, before any Claude Code session touched this workflow).
+Its original purpose is unknown (Gilberto doesn't recall it either); by its
+query shape (filters processed_sessions by Extract Metadata's session_id, on
+the Stripe-webhook Phase 1 path) it looks like it was meant to catch duplicate
+Stripe webhook deliveries, but this is inferred, not confirmed. As of
+2026-07-09 its hardcoded Supabase JWT was migrated to the shared
+"Supabase Service Role Auth" credential for security, but it was deliberately
+left disconnected rather than rewired — not confident enough in intent to
+reconnect without risking a behavior change. Live duplicate-Stripe-webhook
+protection may not currently exist at all; worth deciding whether that's a
+real gap to fix or dead code to remove.
+
+KNOWN SECURITY GAP (found 2026-07-09, not yet fixed): the "Stripe Webhook"
+node has no signature verification. The "Filter" node immediately downstream
+only checks `body.type === "checkout.session.completed"` — a plain string
+match on the JSON body, not an HMAC/signature check. No `stripeApi` credential
+exists anywhere in this n8n instance and no `STRIPE_WEBHOOK_SECRET` env var is
+set. Practical effect: anything that can reach POST /webhook/stripe-webhook
+with the right JSON shape triggers the full chain (real Supabase Auth user
+creation, real welcome email, real intelligence_reports row) — Stripe's own
+signature is not required or checked. Not fixed yet; flagged for a future
+dedicated session, same category as the Check Duplicate Session gap above.
+
 ---
 
 ## 5. SUPABASE DATABASE
