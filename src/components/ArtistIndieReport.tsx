@@ -10,6 +10,7 @@ import {
   ShieldCheck, Radio, Calculator, Film, Award, AlertTriangle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import PeerBenchmarkChart, { type PeerBenchmarkData } from "@/components/PeerBenchmarkChart";
 
 const C = {
   bg: "#070707",
@@ -137,9 +138,6 @@ function extractSection(content: string, ...keywords: string[]): string | null {
   return null;
 }
 
-const GROWTH_LADDER = ["Seed", "Sprout", "Root", "Branch", "Crown"] as const;
-type GrowthLevel = (typeof GROWTH_LADDER)[number];
-
 interface ReportRow {
   id: string;
   session_id: string;
@@ -154,6 +152,7 @@ interface ReportRow {
   created_at: string;
   youtube_data: { subscribers?: number; total_views?: number | string } | null;
   instagram_data: { followers?: number; following?: number; media_count?: number } | null;
+  peer_benchmark_data: PeerBenchmarkData | null;
 }
 
 // ── Shared section card header ───────────────────────────────────────────────
@@ -193,7 +192,7 @@ function SectionHeader({
   );
 }
 
-export default function ArtistIndieReport({ report }: { report: ReportRow }) {
+export default function ArtistIndieReport({ report, isSample = false }: { report: ReportRow; isSample?: boolean }) {
   const em = report.engagement_metrics || {};
   const re = report.revenue_economics || {};
   const geo = report.geo_hotspots || {};
@@ -328,6 +327,11 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
   const syncHtml    = useMemo(() => syncMd    ? renderMarkdown(syncMd)    : null, [syncMd]);
   const peerHtml    = useMemo(() => peerMd    ? renderMarkdown(peerMd)    : null, [peerMd]);
 
+  // Grounded peer_benchmark_data can exist independent of whether the AI's
+  // markdown happened to include a parseable "## PEER BENCHMARK" section —
+  // the section must not disappear just because peerHtml extraction failed.
+  const hasPeerBenchmarkData = !!(report.peer_benchmark_data?.peer_benchmark?.length);
+
   const hygieneScore = useMemo((): number | null => {
     if (!hygieneMd) return null;
     const m = hygieneMd.match(/(\d{1,3})\s*(?:\/\s*100|out\s+of\s+100)/i)
@@ -335,15 +339,6 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
     const n = m ? parseInt(m[1], 10) : NaN;
     return Number.isFinite(n) && n >= 0 && n <= 100 ? n : null;
   }, [hygieneMd]);
-
-  const currentLevel = useMemo((): GrowthLevel | null => {
-    if (!peerMd) return null;
-    for (const lvl of GROWTH_LADDER) {
-      if (new RegExp(`current[^.]{0,60}\\b${lvl}\\b|\\b${lvl}\\b[^.]{0,60}current`, "i").test(peerMd)) return lvl;
-    }
-    const m = peerMd.match(new RegExp(`\\b(${GROWTH_LADDER.join("|")})\\b`, "i"));
-    return m ? (m[1] as GrowthLevel) : null;
-  }, [peerMd]);
 
   const curatorPitch = useMemo(() => {
     const content = stripCodeFence(cleanMd);
@@ -452,6 +447,7 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
             <span className="w-1.5 h-1.5 rounded-full indie-glow" style={{ background: C.cyan, boxShadow: `0 0 10px ${C.cyan}` }} />
             SONGSS Intelligence · Artist Indie
           </div>
+          {!isSample && (
           <button
             onClick={() => {
               const prev = document.title;
@@ -470,6 +466,7 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
             <Download className="w-3.5 h-3.5" />
             Download PDF
           </button>
+          )}
         </div>
 
         {/* Hero */}
@@ -574,9 +571,15 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
 
         {/* Top 3 Markets */}
         <div className="mb-14">
-          <div className="mb-5 flex items-center gap-2">
+          <div className="mb-5 flex items-center gap-2 flex-wrap">
             <MapPin className="w-4 h-4" style={{ color: C.cyan }} />
             <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>Top 3 Markets</h3>
+            <span
+              className={`${mono} text-[9px] px-2.5 py-1 rounded-md border normal-case tracking-normal`}
+              style={{ background: "rgba(154,154,154,0.08)", color: C.gray, borderColor: "rgba(154,154,154,0.25)" }}
+            >
+              AI-generated directional insight — not verified market data
+            </span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {Array.from({ length: 3 }).map((_, i) => {
@@ -767,7 +770,7 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
         )}
 
         {/* ── PEER BENCHMARK ───────────────────────────────────────────── */}
-        {peerHtml && (
+        {(peerHtml || hasPeerBenchmarkData) && (
           <motion.div
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.18, duration: 0.6 }}
@@ -781,40 +784,16 @@ export default function ArtistIndieReport({ report }: { report: ReportRow }) {
               accent={C.warm}
             />
             <div className="p-6 sm:p-8">
-              {/* Seed → Crown ladder */}
-              <div className="flex items-center mb-6 overflow-x-auto pb-1">
-                {GROWTH_LADDER.map((lvl, i) => {
-                  const isActive = lvl === currentLevel;
-                  const isPast = currentLevel
-                    ? GROWTH_LADDER.indexOf(lvl) < GROWTH_LADDER.indexOf(currentLevel)
-                    : false;
-                  return (
-                    <div key={lvl} className="flex items-center flex-shrink-0">
-                      <div
-                        className="flex flex-col items-center px-3 py-2 rounded-lg"
-                        style={{
-                          background: isActive ? `${C.warm}18` : isPast ? `${C.cyan}08` : "transparent",
-                          border: isActive ? `1px solid ${C.warm}66` : "1px solid transparent",
-                        }}
-                      >
-                        <span
-                          className={`${mono} text-[10px] font-semibold uppercase tracking-[0.15em]`}
-                          style={{ color: isActive ? C.warm : isPast ? C.cyan : C.grayDim }}
-                        >
-                          {lvl}
-                        </span>
-                        {isActive && (
-                          <span className="w-1.5 h-1.5 rounded-full mt-1" style={{ background: C.warm }} />
-                        )}
-                      </div>
-                      {i < GROWTH_LADDER.length - 1 && (
-                        <div className="w-6 h-px mx-0.5 flex-shrink-0" style={{ background: C.border }} />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="indie-section-content" dangerouslySetInnerHTML={{ __html: peerHtml }} />
+              <PeerBenchmarkChart
+                data={report.peer_benchmark_data}
+                accentColor={C.warm}
+                peerColor={`${C.cyan}55`}
+                gridColor={C.border}
+                textColor={C.gray}
+              />
+              {peerHtml && (
+                <div className="indie-section-content" dangerouslySetInnerHTML={{ __html: peerHtml }} />
+              )}
             </div>
           </motion.div>
         )}
