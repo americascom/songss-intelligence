@@ -131,6 +131,34 @@ predated this fix and had empty/zero Spotify data and `NULL`
 `peer_benchmark_data`; all 4 were regenerated in place the same day and now
 show real data.
 
+RESOLVED (verified 2026-07-17): the TikTok/Instagram username-resolution
+fallback fix from 2026-07-07 (try/catch chain reading Config Haiku then
+Config Opus for `tiktok_username`/`instagram_username`) is confirmed live and
+working — real Instagram data (real follower counts) now flows through end
+to end via an isolated Submit Trigger test.
+
+KNOWN BUG (found 2026-07-17, not fixed): n8n intermittently fails to write
+the final `execution_entity.status`/`stoppedAt` for this workflow, even when
+every node — including the last one — records `executionStatus: success` and
+real downstream Postgres writes (the `intelligence_reports` row,
+`processed_sessions` row) demonstrably happened. Reproduced twice in one
+session, once with no client response ever arriving and once with a normal
+fast `{"status":"ok"}` response — the finalization gap happens either way.
+This is very likely the true nature of the older "hanging execution" bug
+tracked during the 2026-07-07 to 2026-07-09 JWT credential migration (see
+memory `project_n8n_hanging_execution_bug` / `EXECUTIONS_TIMEOUT=300` and
+`EXECUTIONS_DATA_SAVE_ON_PROGRESS=true`, both still deployed in
+docker-compose.yml but confirmed not to fix this): those incidents were only
+ever checked at the `execution_entity` level, never cross-checked against
+actual Postgres state, so it's unknown whether they were true stalls or the
+same finalization bug. Practical impact so far: real work completes and
+persists correctly; only n8n's own execution history/status tracking is
+wrong. Root cause not yet investigated (candidate: something in the
+`EXECUTIONS_DATA_SAVE_ON_PROGRESS` write path — the only log line ever seen
+near a hang is a "Custom data value over 512 characters long. Truncating..."
+warning, timestamped right around when the real DB write happens — this is a
+correlation, not a proven cause). Flagged for a future dedicated session.
+
 ---
 
 ## 5. SUPABASE DATABASE
