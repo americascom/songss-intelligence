@@ -306,6 +306,55 @@ changes affect every future report, not just a frontend read) and needs its
 own dedicated session per the "no n8n workflow changes without confirmation"
 rule — not bundled into unrelated work.
 
+RESOLVED BUG (found and fixed 2026-07-18): `digital_score` (the headline
+"SNIE™ Score" — the largest single number on every report) had the exact
+same unprotected shape that let `retention_rate` hit 211 on 2026-07-16: a
+prompt-level range instruction (`"digital_score": [Integer 0-100]`) with
+zero code-level enforcement — `Code in JavaScript` did
+`digital_score: aiData.digital_score || 0` with no clamp. No live violation
+had been caught yet for this field specifically (all 10 sampled reports were
+in-range), but the belt-and-suspenders logic from the retention_rate
+precedent applied: a prompt-level bound alone has already been proven
+unreliable in this exact pipeline, so waiting for a live breach before
+protecting the most visible number in the product wasn't worth the risk.
+
+**Fix applied, same pattern as retention_rate**: 1) `Edit Fields` node
+prompt strengthened to `"digital_score": [Integer, strictly 0-100 — this is
+a score out of 100 and must never be below 0 or above 100]`. 2)
+`Code in JavaScript` node: added
+`const digital_score = Math.min(Math.max(Number(aiData.digital_score) || 0, 0), 100);`
+right after the existing `retention_rate` clamp, and changed the PATCH body
+to reference the clamped local `digital_score` instead of
+`aiData.digital_score` directly.
+
+**Deployed** via the established 3-DB-location method (`workflow_entity.nodes`
++ both `workflow_history` rows for `versionId` `92b861cc-a31a-49af-91a7-147808498ca8`
+and `activeVersionId` `a09c4898-47db-4a22-970e-25d86ff6a9dd`), backup
+`manual_20260718_213611_pre_digital_score_clamp.sqlite`, clean restart,
+export-diff confirmed only the `Edit Fields` and `Code in JavaScript` nodes
+changed and connections were byte-identical to the pre-change export.
+
+**Verified**: isolated logic test (145→100, -20→0, 72→72, `"78"`→78,
+0→0, missing→0 — all correct) plus a live end-to-end test — disposable
+test session `cs_test_digital_score_clamp_verify_20260718` inserted
+directly into `intelligence_reports` (bypassing the real Stripe-webhook
+path to avoid triggering a real Supabase Auth user + welcome email), fired
+via an internal `POST /webhook/submit-analysis` call (artist "Clairo",
+Artist Pro tier) from inside the `n8n_songss` container. Clean
+`{"status":"ok"}` response, real report generated end-to-end,
+`digital_score` came back `63` (in-range, correctly unaffected by the
+clamp — same "normal case passes through unchanged" behavior confirmed for
+`retention_rate`). Test session and its `processed_sessions` row deleted
+after verification.
+
+**Also observed while testing (not fixed, not this bug)**: the Clairo test
+report's `digital_score` and `engagement_metrics.engagement_score` came back
+identical (63/63) — consistent with the pattern already documented above
+(`engagement_score` duplicated `digital_score` in 7 of 10 real reports
+sampled during the investigation). `engagement_score` was deliberately left
+un-clamped this session — see the note in §11 Active Tasks; whether it
+should even remain a separate field is a product question, not a pure bug.
+
 ---
 
 ## 5. SUPABASE DATABASE
@@ -396,6 +445,20 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
       2026-07-18, not fixed, scoped as its own dedicated future session)":
       needs a real LTV formula plus fixing the extraction step to stop
       always reading the premium report regardless of tier
+- [ ] Product decision: should `engagement_score` remain a separate field
+      from `digital_score`? It duplicated `digital_score` exactly in 7 of 10
+      real reports sampled 2026-07-18 (plus the Clairo test case), has no
+      distinct definition anywhere in the NIE prompt, and the UI presents
+      both as independently-meaningful metrics ("SNIE™ Score" hero number
+      vs. a separate "Engagement Score" tile). Either give it a real,
+      distinct definition the AI can actually differentiate on (e.g. tie it
+      explicitly to comments/shares/saves rather than the same "tone" the
+      digital score comes from), or drop the separate UI tile if there's no
+      meaningful distinction intended — leaving two prominently-displayed
+      "different" numbers that are secretly the same ~70% of the time is a
+      trust risk for a premium product. Deliberately left un-clamped in the
+      2026-07-18 session (see §4) since a numeric-range clamp doesn't fix a
+      field that may not need to exist as currently scoped.
 
 ---
 
