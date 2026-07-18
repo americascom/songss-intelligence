@@ -206,7 +206,8 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
   const hasInstagramData = igFollowers > 0;
 
   const snie = Number(report.digital_score ?? 0) || 72;
-  const engagementScore = Number(em.engagement_score ?? em.engagementScore ?? 0) || 7.4;
+  const rawSEI = em.social_engagement_index;
+  const engagementScore: number | null = rawSEI == null ? null : Number(rawSEI);
   const retentionRate = Number(em.retention_rate ?? em.retentionRate ?? 0) || 48;
   const monthlyStreams = Number(em.monthly_streams ?? em.monthlyStreams ?? 0) || 12500;
   const ltv = Number(em.ltv_projection ?? em.ltv ?? 0) || 4200;
@@ -502,7 +503,7 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
         {/* 4 Key Metrics */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-14">
           {[
-            { label: "Engagement Score", value: engagementScore.toFixed(1), icon: Activity },
+            { label: "Social Engagement Index", value: engagementScore === null ? "—" : engagementScore.toFixed(0), icon: Activity, title: engagementScore === null ? "Not enough TikTok data yet to compute this" : "Cumulative engagement relative to audience size" },
             { label: "Retention Rate", value: `${retentionRate.toFixed(0)}%`, icon: Users },
             { label: "Monthly Streams", value: fmtCompact(monthlyStreams), icon: TrendingUp },
             { label: "LTV Projection", value: fmtUSD(ltv), icon: DollarSign },
@@ -513,6 +514,7 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
               transition={{ delay: 0.1 + i * 0.08, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
               className="rounded-xl border p-5"
               style={glass}
+              title={(k as any).title}
             >
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: C.gray }}>{k.label}</span>

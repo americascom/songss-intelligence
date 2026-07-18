@@ -355,6 +355,98 @@ sampled during the investigation). `engagement_score` was deliberately left
 un-clamped this session — see the note in §11 Active Tasks; whether it
 should even remain a separate field is a product question, not a pure bug.
 
+FEATURE ADDED (2026-07-18): **Social Engagement Index**
+(`engagement_metrics.social_engagement_index`) — Gilberto's resolution to
+the `engagement_score` product question above: rather than remove the
+field, define it as a real, code-computed metric instead of an AI free-text
+guess. Audited real per-platform data availability first: only TikTok
+exposes a genuine interaction-rate signal today
+(`tiktok_data.engagement_rate` = `heartCount ÷ followerCount`, already
+computed but previously unused). Instagram's current call
+(`fetch_user_info_by_username`) is profile-only — no likes/comments;
+YouTube's `channel/about` call is channel-level totals only — no
+likes/comments either. Both would need a new API call (posts/media
+endpoint) to contribute real engagement data — not done, scoped as a future
+decision, not bundled into this fix.
+
+**Formula** (computed in `Code in JavaScript`, NOT AI-estimated):
+```js
+engagement_metrics.social_engagement_index = tiktok_data.followers > 0
+  ? Math.min(100, Math.round(tiktok_data.engagement_rate * 100 / 20))
+  : null;
+```
+`CAP=20` is a starting calibration (only 5 real non-zero TikTok
+data points existed to tune against at the time), adjustable as more data
+accumulates. Returns `null` (not `0`) when TikTok data wasn't resolved —
+missing data must never render as a fabricated "0% engagement." Note for
+report copy/labels: this is **cumulative lifetime engagement relative to
+current followers**, not a recent-activity rate — `heartCount` is
+all-time, `followerCount` is a snapshot — avoid language implying
+"recent" engagement.
+
+**Deployed**: patched only the `Code in JavaScript` node (no prompt change
+needed — this isn't AI-derived) across all 3 DB locations, backup
+`manual_20260718_225649_pre_social_engagement_index.sqlite`, clean restart,
+export-diff confirmed only that node's `parameters` changed and connections
+were identical.
+
+**Mid-deployment anomaly, investigated and resolved as benign**: between
+the dry-run and the live patch, `workflow_entity.versionId` changed
+underneath the change (`92b861cc` → `c8a04b97`) with 5 rapid saves logged
+under "Gilberto Georg" (22:48:18–22:49:04) — Gilberto confirmed he'd
+briefly opened the n8n UI to check the `Perplexity — Web Intelligence`
+node's name, not intentionally editing anything. Diffed all 5 saves
+node-by-node against the pre-open baseline: every one of the 59 nodes only
+had its canvas `position` changed (pure layout, e.g. autosave-on-open
+behavior), except one — `Check Peer Cache` lost an explicit
+`"method": "GET"` parameter, which is n8n's httpRequest node default
+anyway (a no-op). Connections were byte-identical throughout. Confirmed
+nothing substantive changed before proceeding.
+
+**Tooling note for future sessions**: the dry-run validation step (`cp` the
+live `.sqlite` file to a throwaway copy, patch the copy, verify) read a
+**stale, WAL-inconsistent snapshot** during this fix — a plain `cp` of just
+the main `.sqlite` file misses recent commits still sitting in the
+`-wal` sidecar file that n8n's own live connection reads through fine. The
+actual live patch (via `sqlite3.connect()` against the real path) and every
+CLI `n8n export:workflow` call were accurate throughout — only the
+`cp`-based dry-run copy was affected, and only as an extra safety check,
+not the real change. If a future dry-run needs to be trustworthy, `cp` all
+three files (`database.sqlite`, `-wal`, `-shm`) together, or better, use
+`sqlite3 <db> ".backup <copy>"` (an online backup that flushes WAL
+correctly) instead of a plain file `cp`.
+
+**Verified**: 1) isolated logic test against real historical values
+(grentperez 32.82→100, Fred again.. 17.33→87, Chappell Roan 12.59→63,
+Billie Eilish 7.43→37, no-TikTok-data→`null`) all correct. 2) Live test
+— disposable session for Clairo hit the `null` path (TikTok didn't resolve
+that run) — a valid confirmation of the missing-data path, but not of the
+positive-number path. 3) A second live test for Chappell Roan (known to
+have resolved real TikTok data 2026-07-16) *also* came back with no TikTok
+data — flagged as suspicious rather than assumed transient. 4) A third live
+test, this time passing her known TikTok handle (`chappellroan`) explicitly
+in the Submit Trigger body to bypass the AI username-resolution step,
+succeeded completely: real TikTok data returned (5,100,000 followers, 12.59
+engagement rate — matching the historical values exactly) and
+`social_engagement_index` came back `63`, exactly matching the formula
+(`12.59 × 100 ÷ 20 = 62.95 → round → 63`). All 3 test sessions cleaned up
+after verification.
+
+**Open observation, not investigated further this session**: TikTok
+username auto-resolution (the Config Haiku/Opus AI fallback used when a
+customer doesn't supply a handle at signup) failed on 2 of 3 test attempts
+this session for artists known to resolve successfully in the past
+(Clairo, and Chappell Roan without an explicit handle) — worth a dedicated
+look in a future session to see if this is a live reliability regression or
+just this session's bad luck; not blocking, since the `null`-when-missing
+behavior handles it gracefully either way.
+
+**Frontend**: `src/pages/Report.tsx` and `src/components/ArtistIndieReport.tsx`
+now read `em.social_engagement_index` (nullable) instead of the old
+AI-estimated `em.engagement_score`. KPI tile relabeled "Social Engagement
+Index"; renders `—` with a "Not enough TikTok data yet" tooltip when null,
+instead of falling back to a fabricated default number.
+
 ---
 
 ## 5. SUPABASE DATABASE
@@ -445,20 +537,13 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
       2026-07-18, not fixed, scoped as its own dedicated future session)":
       needs a real LTV formula plus fixing the extraction step to stop
       always reading the premium report regardless of tier
-- [ ] Product decision: should `engagement_score` remain a separate field
-      from `digital_score`? It duplicated `digital_score` exactly in 7 of 10
-      real reports sampled 2026-07-18 (plus the Clairo test case), has no
-      distinct definition anywhere in the NIE prompt, and the UI presents
-      both as independently-meaningful metrics ("SNIE™ Score" hero number
-      vs. a separate "Engagement Score" tile). Either give it a real,
-      distinct definition the AI can actually differentiate on (e.g. tie it
-      explicitly to comments/shares/saves rather than the same "tone" the
-      digital score comes from), or drop the separate UI tile if there's no
-      meaningful distinction intended — leaving two prominently-displayed
-      "different" numbers that are secretly the same ~70% of the time is a
-      trust risk for a premium product. Deliberately left un-clamped in the
-      2026-07-18 session (see §4) since a numeric-range clamp doesn't fix a
-      field that may not need to exist as currently scoped.
+- [x] ~~Product decision: should `engagement_score` remain a separate field
+      from `digital_score`?~~ RESOLVED 2026-07-18 — see §4 "FEATURE ADDED
+      (2026-07-18): Social Engagement Index". Kept as a real, distinct
+      metric, now computed from real TikTok data instead of AI free-text
+      ("tone") estimation. Follow-up: expanding this to Instagram/YouTube
+      needs new API calls (posts/media endpoints) to get real interaction
+      data from those platforms — not done, a separate future decision.
 
 ---
 
