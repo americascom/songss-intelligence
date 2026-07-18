@@ -145,7 +145,6 @@ interface ReportRow {
   plan_name: string | null;
   digital_score: number | null;
   geo_hotspots: any;
-  revenue_economics: any;
   engagement_metrics: any;
   report_markdown: string | null;
   report_html: string | null;
@@ -194,7 +193,6 @@ function SectionHeader({
 
 export default function ArtistIndieReport({ report, isSample = false }: { report: ReportRow; isSample?: boolean }) {
   const em = report.engagement_metrics || {};
-  const re = report.revenue_economics || {};
   const geo = report.geo_hotspots || {};
 
   const yt = report.youtube_data || {};
@@ -211,10 +209,10 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
   const engagementScore = Number(em.engagement_score ?? em.engagementScore ?? 0) || 7.4;
   const retentionRate = Number(em.retention_rate ?? em.retentionRate ?? 0) || 48;
   const monthlyStreams = Number(em.monthly_streams ?? em.monthlyStreams ?? 0) || 12500;
-  const ltv = Number(re.ltv ?? re.ltv_projection ?? em.ltv ?? 0) || 4200;
+  const ltv = Number(em.ltv_projection ?? em.ltv ?? 0) || 4200;
 
   const trajectory = useMemo(() => {
-    const raw = em.trajectory ?? em.neural_trajectory ?? [];
+    const raw = em.growth_trajectory ?? em.trajectory ?? em.neural_trajectory ?? [];
     if (Array.isArray(raw) && raw.length) {
       return raw.slice(0, 6).map((r: any, i: number) => ({
         month: r.label ?? r.month ?? `M${i + 1}`,
@@ -270,21 +268,12 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
     ];
   }, [geo]);
 
-  const revenueSnapshot = useMemo(() => {
-    const raw = re.streams ?? re.revenue_streams ?? [];
-    if (Array.isArray(raw) && raw.length) {
-      return raw.slice(0, 5).map((r: any) => ({
-        source: r.source ?? r.name ?? "—",
-        revenue: Number(r.revenue ?? r.value ?? 0),
-      }));
-    }
-    return [
-      { source: "Streaming", revenue: Math.round(ltv * 0.55) },
-      { source: "Merch", revenue: Math.round(ltv * 0.18) },
-      { source: "Sync", revenue: Math.round(ltv * 0.15) },
-      { source: "Live", revenue: Math.round(ltv * 0.12) },
-    ];
-  }, [re, ltv]);
+  const revenueSnapshot = useMemo(() => [
+    { source: "Streaming", revenue: Math.round(ltv * 0.55) },
+    { source: "Merch", revenue: Math.round(ltv * 0.18) },
+    { source: "Sync", revenue: Math.round(ltv * 0.15) },
+    { source: "Live", revenue: Math.round(ltv * 0.12) },
+  ], [ltv]);
 
   const recommendations = useMemo(() => {
     const raw = em.recommendations ?? em.actions ?? [];

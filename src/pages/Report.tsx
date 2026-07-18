@@ -257,7 +257,6 @@ interface ReportRow {
   plan_name: string | null;
   digital_score: number | null;
   geo_hotspots: any;
-  revenue_economics: any;
   engagement_metrics: any;
   report_markdown: string | null;
   report_html: string | null;
@@ -310,14 +309,13 @@ function ReportInner() {
 
   // ── Base data ─────────────────────────────────────────────────────────────
   const em  = report?.engagement_metrics  ?? {};
-  const re  = report?.revenue_economics   ?? {};
   const geo = report?.geo_hotspots        ?? {};
 
   const snie            = Number(report?.digital_score          ?? 0) || 72;
   const engagementScore = Number((em as any)?.engagement_score  ?? (em as any)?.engagementScore ?? 0) || 7.4;
   const retentionRate   = Number((em as any)?.retention_rate    ?? (em as any)?.retentionRate   ?? 0) || 48;
   const monthlyStreams   = Number((em as any)?.monthly_streams   ?? (em as any)?.monthlyStreams  ?? 0) || 28000;
-  const ltv             = Number((re as any)?.ltv ?? (re as any)?.ltv_projection ?? (em as any)?.ltv ?? 0) || 8400;
+  const ltv             = Number((em as any)?.ltv_projection ?? (em as any)?.ltv ?? 0) || 8400;
 
   const yt              = report?.youtube_data   ?? {};
   const ytSubscribers   = Number(yt?.subscribers ?? 0);
@@ -337,7 +335,7 @@ function ReportInner() {
 
   // ── Memoised data ─────────────────────────────────────────────────────────
   const trajectory = useMemo(() => {
-    const raw = (em as any)?.trajectory ?? (em as any)?.neural_trajectory ?? [];
+    const raw = (em as any)?.growth_trajectory ?? (em as any)?.trajectory ?? (em as any)?.neural_trajectory ?? [];
     if (Array.isArray(raw) && raw.length) {
       return raw.slice(0, 6).map((r: any, i: number) => ({
         month:   r?.label   ?? r?.month ?? `M${i + 1}`,
@@ -388,18 +386,12 @@ function ReportInner() {
     ];
   }, [geo]);
 
-  const revenueSnapshot = useMemo(() => {
-    const raw = (re as any)?.streams ?? (re as any)?.revenue_streams ?? [];
-    if (Array.isArray(raw) && raw.length) {
-      return raw.slice(0, 5).map((r: any) => ({ source: r?.source ?? r?.name ?? "—", revenue: Number(r?.revenue ?? r?.value ?? 0) }));
-    }
-    return [
-      { source: "Streaming", revenue: Math.round(ltv * 0.50) },
-      { source: "Merch",     revenue: Math.round(ltv * 0.20) },
-      { source: "Sync",      revenue: Math.round(ltv * 0.16) },
-      { source: "Live",      revenue: Math.round(ltv * 0.14) },
-    ];
-  }, [re, ltv]);
+  const revenueSnapshot = useMemo(() => [
+    { source: "Streaming", revenue: Math.round(ltv * 0.50) },
+    { source: "Merch",     revenue: Math.round(ltv * 0.20) },
+    { source: "Sync",      revenue: Math.round(ltv * 0.16) },
+    { source: "Live",      revenue: Math.round(ltv * 0.14) },
+  ], [ltv]);
 
   const recommendations = useMemo(() => {
     const raw = (em as any)?.recommendations ?? (em as any)?.actions ?? [];
@@ -455,8 +447,6 @@ function ReportInner() {
 
   // ── Enterprise+: NPV ──────────────────────────────────────────────────────
   const npv = useMemo(() => {
-    const raw = (re as any)?.npv ?? (re as any)?.npv_model ?? [];
-    if (Array.isArray(raw) && raw.length) return raw;
     let cum = 0;
     return Array.from({ length: 5 }, (_, i) => {
       const cf   = Math.round((ltv || 25000) * (1 + i * 0.18));
@@ -464,19 +454,15 @@ function ReportInner() {
       cum += disc;
       return { year: `Y${i + 1}`, cashflow: cf, discounted: disc, cumulative: cum };
     });
-  }, [re, ltv]);
+  }, [ltv]);
 
   // ── Enterprise+: Revenue Streams ──────────────────────────────────────────
-  const revStreams = useMemo(() => {
-    const raw = (re as any)?.streams ?? (re as any)?.revenue_streams ?? [];
-    if (Array.isArray(raw) && raw.length >= 3) return raw;
-    return [
-      { source: "Streaming Royalties", revenue: Math.round(ltv * 0.45), growth: 18.4 },
-      { source: "Sync & Licensing",    revenue: Math.round(ltv * 0.18), growth: 32.1 },
-      { source: "Merch & D2C",         revenue: Math.round(ltv * 0.16), growth: 11.7 },
-      { source: "Live & Touring",      revenue: Math.round(ltv * 0.21), growth: 24.6 },
-    ];
-  }, [re, ltv]);
+  const revStreams = useMemo(() => [
+    { source: "Streaming Royalties", revenue: Math.round(ltv * 0.45), growth: 18.4 },
+    { source: "Sync & Licensing",    revenue: Math.round(ltv * 0.18), growth: 32.1 },
+    { source: "Merch & D2C",         revenue: Math.round(ltv * 0.16), growth: 11.7 },
+    { source: "Live & Touring",      revenue: Math.round(ltv * 0.21), growth: 24.6 },
+  ], [ltv]);
 
   // ── Markdown sections ─────────────────────────────────────────────────────
   const cleanMd   = useMemo(() => stripCodeFence(report?.report_markdown ?? report?.report_html ?? ""), [report]);

@@ -153,11 +153,76 @@ ever checked at the `execution_entity` level, never cross-checked against
 actual Postgres state, so it's unknown whether they were true stalls or the
 same finalization bug. Practical impact so far: real work completes and
 persists correctly; only n8n's own execution history/status tracking is
-wrong. Root cause not yet investigated (candidate: something in the
-`EXECUTIONS_DATA_SAVE_ON_PROGRESS` write path — the only log line ever seen
-near a hang is a "Custom data value over 512 characters long. Truncating..."
-warning, timestamped right around when the real DB write happens — this is a
-correlation, not a proven cause). Flagged for a future dedicated session.
+wrong.
+
+TIME-BOXED INVESTIGATION (2026-07-17, inconclusive, stopped early — see
+memory `project_execution_entity_finalization_investigation_2026-07-17`):
+(1) Can't test workflow-specificity — "SONGSS Lead Magnet" is active but has
+zero executions ever recorded, so no comparison data exists. (2) As of this
+session the bug is NOT reproducible: every retained `execution_entity` row
+(ids 10-76, none missing/deleted) is fully finalized, and n8n's own event log
+(`n8n.workflow.success`) timestamps match `stoppedAt` to the millisecond for
+every case checked, including the two runs from the prior session that were
+directly observed stuck at the time — meaning finalization is most likely
+**delayed**, not permanently lost, and self-resolves after the observation
+window. (3) No matching n8n GitHub issue found for this exact symptom (real
+completion + real side effects, only `execution_entity` lagging); closest
+are #22281 (different mechanism — no node executes at all) and #22380 (a
+`"crashed"`-row boot loop, confirms `execution.repository.ts` is the right
+area to search further). (4) DEAD END, ruled out: the "Custom data value
+over 512 characters long. Truncating..." log line is unrelated to
+`EXECUTIONS_DATA_SAVE_ON_PROGRESS` — traced to source; it's from n8n's
+separate Execution Custom Data feature (`$execution.customData.set()`), and
+its timing near the hang is coincidental, not a shared code path. Root cause
+still unresolved. Flagged for a future dedicated session; next attempt
+should poll `execution_entity` in a tight loop right after firing a test
+rather than checking once, to catch the transient window before it
+self-resolves.
+
+RESOLVED BUG (found and fixed 2026-07-18): the "Predictive Elements" audit
+(LTV Projection, Neural Trajectory, Revenue Model Advanced / 5-Year NPV)
+found these three report sections had never shown a real, artist-specific
+number to any customer, on any tier, in the product's history — despite the
+NIE Engine (Gemini) genuinely computing distinct per-artist values. Root
+cause was a field-path mismatch in the frontend, not fabrication by the AI:
+(1) the NIE prompt schema only ever writes `ltv_projection` and
+`growth_trajectory` nested inside `engagement_metrics` — it never produces a
+top-level `revenue_economics` object, so the Save-to-Supabase node's
+`revenue_economics: aiData.revenue_economics || {}` has written an empty
+`{}` for every report ever generated; (2) `src/pages/Report.tsx` and
+`src/components/ArtistIndieReport.tsx` computed `ltv` from
+`re.ltv ?? re.ltv_projection ?? em.ltv` — checking the always-empty
+`revenue_economics` object and a field name (`em.ltv`) the AI never writes,
+never the real `em.ltv_projection` — so `ltv` always fell through to a
+hardcoded constant ($8,400 in `Report.tsx` for Growth/Pro/Enterprise, $4,200
+in `ArtistIndieReport.tsx` for Indie) regardless of the real value (confirmed
+range across live reports: $85 for Dua Lipa up to $1,000,000,000 for
+Chappell Roan); (3) the "Neural Trajectory" chart read
+`em.trajectory ?? em.neural_trajectory`, never the real `em.growth_trajectory`,
+so it always fell back to a client-synthesized curve
+(`monthlyStreams * (0.55 + i*0.12)`) instead of the real AI-computed
+trajectory; (4) "Revenue Model Advanced" (and its "5-Year NPV" badge) checked
+`re.streams`/`re.npv` — permanently unreachable dead code since
+`revenue_economics` is always `{}` — so it always rendered a fixed
+percentage-split template, only ever scaled by the broken constant `ltv`
+above. Fixed by reading `em.ltv_projection` and `em.growth_trajectory`
+directly in both components, removing the dead `revenue_economics`
+read/write from both `ReportRow` interfaces, and simplifying the
+Revenue-Model/NPV/revenue-snapshot memos to drop their unreachable
+`re`-based branches (they still use the same percentage-split template, now
+correctly scaled by the real `ltv`). Live-verified by calling the real
+`get_report_by_session` RPC for Dua Lipa (Artist Indie) and Chappell Roan
+(Artist Growth) and running the fixed logic against the actual response:
+LTV now correctly renders $85 vs. $1,000,000,000 (previously both showed the
+identical $8,400 fallback), and the trajectory/revenue tables scale
+accordingly. The n8n workflow's dead `revenue_economics: aiData.revenue_economics
+|| {}` write and the `revenue_economics` column itself were deliberately left
+in place — untouched per the "no n8n workflow changes without confirmation"
+rule — so this is a frontend-only fix; the column is now simply unread.
+Separately noted, not fixed: Dua Lipa's own real `ltv_projection` of $85 is
+itself an implausible AI output for a global superstar, suggesting the NIE
+prompt's LTV computation may need its own review in a future session — this
+is a distinct issue from the display bug fixed here.
 
 ---
 
@@ -245,6 +310,14 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
 - [ ] RTK (Redux Toolkit) — incremental adoption: auth, report, artist, ui slices
 - [ ] USPTO — trademark SONGSS Intelligence (Class 42) and NIE
 - [ ] MFA on Supabase Studio
+- [ ] Review NIE prompt's LTV calculation formula — real `ltv_projection` values
+      are implausible at the extremes (e.g. Dua Lipa returned $85, a global
+      superstar valued lower than an unknown indie artist); found 2026-07-18
+      while live-verifying the predictive-elements field-path fix (see
+      CLAUDE.md §4 "RESOLVED BUG (found and fixed 2026-07-18)"). The display
+      bug is fixed and real per-artist values now reach the frontend — this
+      is about whether the AI's own math is sound, a separate, not-yet-started
+      investigation
 
 ---
 
