@@ -224,6 +224,88 @@ itself an implausible AI output for a global superstar, suggesting the NIE
 prompt's LTV computation may need its own review in a future session — this
 is a distinct issue from the display bug fixed here.
 
+KNOWN ISSUE (found 2026-07-18, not fixed, scoped as its own dedicated future
+session — bigger than a field-path bug): `ltv_projection` (and by extension
+`growth_trajectory`, `digital_score`, `geo_hotspots`) is not computed from
+any formula — it's free-text AI estimation, same root-cause family as the
+2026-07-14 Peer Benchmark bug, but one layer more removed from real data.
+Two distinct findings from this investigation:
+
+1. **No formula, explicit license to invent.** The pipeline is two sequential
+   LLM calls, both Gemini 2.5 Flash. First, `NIE — Neural Intelligence Engine`
+   writes the premium markdown report, including a
+   `## Revenue Economics & Break-Even Analysis` section with zero
+   methodology instructions (no formula, no reference to `monthly_streams`,
+   no per-stream rate — just "use markdown tables"). Second, a separate node
+   (`AI Agent`, fed by the `Edit Fields` node's "STRATEGIC DATA EXTRACTION
+   PROTOCOL" prompt) re-reads that already-generated prose and extracts
+   `ltv_projection` as JSON, with this exact instruction for anything not
+   explicitly stated: *"If a specific numeric value is not mentioned,
+   provide a professional estimate based on the report's tone."* So the
+   number isn't computed from streams/retention/anything — it's a
+   second-order guess about a figure that was itself never grounded in the
+   first pass, with explicit permission to invent by "tone."
+
+   Cross-artist evidence (10 real reports pulled from `intelligence_reports`,
+   2026-07-18): implied $/stream (`ltv_projection` ÷ `monthly_streams`)
+   spans **~7 orders of magnitude** with no correlation to tier, fame, or
+   genre:
+
+   | Artist | Tier | `monthly_streams` | `ltv_projection` | Implied $/stream |
+   |---|---|---|---|---|
+   | Dua Lipa | Indie | 833,000,000 | $85 | 0.0000001 |
+   | Billie Eilish | Enterprise | 2,500,000,000 | $300,000,000 | 0.12 |
+   | Billie Eilish | Growth | 1,200,000,000 | $750,000,000 | 0.625 |
+   | grentperez | Indie | 15,000,000 | $6,000,000 | 0.40 |
+   | (unnamed) | Growth | 500,000,000 | $150,000,000 | 0.30 |
+   | Billie Eilish | Indie | 392,000,000 | $120,000,000 | 0.306 |
+   | Luan Carbonari | Indie | 7,000,000 | $5,000,000 | 0.714 |
+   | Billie Eilish | Pro | 1,000,000,000 | $2,000,000,000 | 2.0 |
+   | Fred again.. | Pro | 18,441,820 | $80,000,000 | 4.34 |
+   | Chappell Roan | Growth | 215,000,000 | $1,000,000,000 | 4.65 |
+
+   Most damning: Billie Eilish (the same real artist) appears 4 times across
+   different tier-tests within a single day (2026-06-12 to 2026-06-13) and
+   gets four unrelated `monthly_streams` values (392M–2.5B) and four
+   unrelated LTVs ($120M–$2B) with no consistent ratio between them —
+   confirming these are independent per-session guesses, not reproducible
+   computed values, even for the identical artist.
+
+2. **The extraction step always reads the premium report, regardless of
+   tier.** The `Edit Fields` prompt's "Input Material" is hardcoded to
+   `$node["NIE — Neural Intelligence Engine"].json["output"]` only — it
+   never references `NIE — Indie Coach`. Tracing the workflow: both
+   report-writer nodes (`NIE — Neural Intelligence Engine` and
+   `NIE — Indie Coach`) actually run in parallel for *every* session
+   regardless of plan tier — confirmed by a code comment on the
+   `Combine NIE Outputs` node itself: "Collapse the 2 parallel NIE items
+   into 1 so Edit Fields runs exactly once. Edit Fields and Code in
+   JavaScript reference both NIE nodes by name — that still works because
+   n8n keeps the full execution context." The final `report_markdown` saved
+   to the customer is correctly tier-aware (Indie gets only the lean
+   `NIE — Indie Coach` text, which has no Revenue Economics section at all;
+   all other tiers get Indie Coach's sections prefixed to the premium NIE
+   report) — that logic lives in the `Code in JavaScript` node and is fine.
+   But the *extracted structured metrics* (`ltv_projection`,
+   `growth_trajectory`, `digital_score`, `geo_hotspots` — everything shown
+   in the LTV/trajectory/digital-score UI tiles) are extracted exclusively
+   from the premium `NIE — Neural Intelligence Engine` report on every tier,
+   including Indie. So Indie-tier customers see structured numbers derived
+   from a report variant they never actually receive, with zero relationship
+   to the lean Indie Coach text they do read.
+
+**Fix scope (deliberately not attempted 2026-07-18)**: this needs real
+prompt engineering — a defined LTV formula (likely `monthly_streams` ×
+`retention_rate` × an industry-standard per-stream/subscriber rate, computed
+explicitly rather than "estimated by tone") plus fixing the extraction step
+to read the tier-appropriate report (or, more simply, to compute structured
+metrics directly from `structured_data` — the real fetched Spotify/Deezer/
+etc. data — rather than re-extracting from already-generated prose at all).
+This is a bigger, riskier change than the field-path bug above (prompt
+changes affect every future report, not just a frontend read) and needs its
+own dedicated session per the "no n8n workflow changes without confirmation"
+rule — not bundled into unrelated work.
+
 ---
 
 ## 5. SUPABASE DATABASE
@@ -310,14 +392,10 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
 - [ ] RTK (Redux Toolkit) — incremental adoption: auth, report, artist, ui slices
 - [ ] USPTO — trademark SONGSS Intelligence (Class 42) and NIE
 - [ ] MFA on Supabase Studio
-- [ ] Review NIE prompt's LTV calculation formula — real `ltv_projection` values
-      are implausible at the extremes (e.g. Dua Lipa returned $85, a global
-      superstar valued lower than an unknown indie artist); found 2026-07-18
-      while live-verifying the predictive-elements field-path fix (see
-      CLAUDE.md §4 "RESOLVED BUG (found and fixed 2026-07-18)"). The display
-      bug is fixed and real per-artist values now reach the frontend — this
-      is about whether the AI's own math is sound, a separate, not-yet-started
-      investigation
+- [ ] NIE prompt LTV/predictive-metrics rework — see §4 "KNOWN ISSUE (found
+      2026-07-18, not fixed, scoped as its own dedicated future session)":
+      needs a real LTV formula plus fixing the extraction step to stop
+      always reading the premium report regardless of tier
 
 ---
 
