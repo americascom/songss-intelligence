@@ -275,7 +275,7 @@ export default function Submit() {
                   />
                 </Field>
 
-                <Field label="TikTok Username" hint="Optional" htmlFor="tiktok-username">
+                <Field label="TikTok Username" hint="Recommended" recommended htmlFor="tiktok-username">
                   <Input
                     id="tiktok-username"
                     name="tiktok-username"
@@ -286,10 +286,10 @@ export default function Submit() {
                     className="bg-transparent border-white/10 focus-visible:ring-1"
                     style={{ borderColor: "rgba(255,255,255,0.08)" }}
                   />
-                  <p className="mt-1 text-[11px]" style={{ color: "#5A5A5A" }}>Adding your social profiles improves report accuracy</p>
+                  <p className="mt-1 text-[11px]" style={{ color: "#5A5A5A" }}>Without it, your report's Social Engagement Index can't be calculated</p>
                 </Field>
 
-                <Field label="Instagram Username" hint="Optional" htmlFor="instagram-username">
+                <Field label="Instagram Username" hint="Recommended" recommended htmlFor="instagram-username">
                   <Input
                     id="instagram-username"
                     name="instagram-username"
@@ -300,7 +300,7 @@ export default function Submit() {
                     className="bg-transparent border-white/10 focus-visible:ring-1"
                     style={{ borderColor: "rgba(255,255,255,0.08)" }}
                   />
-                  <p className="mt-1 text-[11px]" style={{ color: "#5A5A5A" }}>Adding your social profiles improves report accuracy</p>
+                  <p className="mt-1 text-[11px]" style={{ color: "#5A5A5A" }}>Adds real follower and profile data to your report</p>
                 </Field>
 
                 {showProFields && (
@@ -452,13 +452,13 @@ function Panel({ children, className = "" }: { children: React.ReactNode; classN
 }
 
 function Field({
-  label, hint, required, htmlFor, children,
-}: { label: string; hint?: string; required?: boolean; htmlFor?: string; children: React.ReactNode }) {
+  label, hint, recommended, required, htmlFor, children,
+}: { label: string; hint?: string; recommended?: boolean; required?: boolean; htmlFor?: string; children: React.ReactNode }) {
   return (
     <div>
       <Label htmlFor={htmlFor} className="flex items-center justify-between mb-2 font-mono text-[10px] uppercase tracking-[0.25em]" style={{ color: "#B8B8B8" }}>
         <span>{label}{required && <span style={{ color: "#00C4B5" }}> *</span>}</span>
-        {hint && <span style={{ color: "#5A5A5A" }}>{hint}</span>}
+        {hint && <span style={{ color: recommended ? C.cyan : "#5A5A5A" }}>{hint}</span>}
       </Label>
       {children}
     </div>
