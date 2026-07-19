@@ -432,20 +432,88 @@ engagement rate — matching the historical values exactly) and
 (`12.59 × 100 ÷ 20 = 62.95 → round → 63`). All 3 test sessions cleaned up
 after verification.
 
-**Open observation, not investigated further this session**: TikTok
-username auto-resolution (the Config Haiku/Opus AI fallback used when a
-customer doesn't supply a handle at signup) failed on 2 of 3 test attempts
-this session for artists known to resolve successfully in the past
-(Clairo, and Chappell Roan without an explicit handle) — worth a dedicated
-look in a future session to see if this is a live reliability regression or
-just this session's bad luck; not blocking, since the `null`-when-missing
-behavior handles it gracefully either way.
+RESOLVED (investigated 2026-07-19): the "TikTok username auto-resolution"
+framing above was wrong — there is no AI-based username resolution anywhere
+in this workflow, so there was nothing "failing intermittently." Traced the
+full field lineage for `tiktok_username`: `Extract Metadata` reads it
+verbatim from Stripe checkout metadata; `Config Haiku`/`Config Opus` are a
+pure try/catch passthrough between `Extract Metadata` and `Submit Context`
+(no LLM call, no artist-name-to-handle guessing); the `TikTok` node's
+`uniqueId` query param is itself just
+`try Config Haiku.tiktok_username → try Config Opus.tiktok_username → ''`.
+No node anywhere attempts to derive a handle from `artist_name`.
+
+Confirmed via decoded real execution data (n8n's own `flatted` library,
+executions 78/79/80, 2026-07-18): whenever `tiktok_username` isn't supplied,
+the real outbound call to `api.tikhub.io` is
+`GET .../fetch_user_profile?uniqueId=""`, which TikHub deterministically
+rejects with `400` (`"params":{"uniqueId":""}` in the error body) — same
+exact failure for both Clairo (exec 78) and Chappell Roan without a handle
+(exec 79). Exec 80 (Chappell Roan, handle passed explicitly) got a real
+`200` with real data. This is not rate limiting, not an intermittent API
+issue, and not a regression — it is a **guaranteed, 100%-reproducible**
+failure any time a customer doesn't type a TikTok handle into the Submit
+form, which is the common case. `alwaysOutputData` catches the 400 cleanly
+and `social_engagement_index` correctly renders `null` (not a fabricated
+number) — that part was never broken.
+
+**Product decision (Gilberto, 2026-07-19)**: no auto-lookup feature — this
+is expected/acceptable behavior given the target user profile (industry
+professionals who already know their own or their artist's handles).
+Follow-up scoped instead as a UX nudge, not a data-pipeline fix — see §11
+"Submit form — add helper text near TikTok/Instagram/YouTube fields."
 
 **Frontend**: `src/pages/Report.tsx` and `src/components/ArtistIndieReport.tsx`
 now read `em.social_engagement_index` (nullable) instead of the old
 AI-estimated `em.engagement_score`. KPI tile relabeled "Social Engagement
 Index"; renders `—` with a "Not enough TikTok data yet" tooltip when null,
 instead of falling back to a fabricated default number.
+
+KNOWN GAP (investigated 2026-07-19, not fixed): Submit.tsx / Submit Trigger
+have no code path for "authenticated user, no `session_id`" — confirmed this
+is the same underlying gap as the planned "Request New Report" button; the
+two former separate pending items are merged into one scoped item (see §11).
+
+**Frontend**: the route is `/submit/:sessionId` (`App.tsx`) — `sessionId` is
+a required URL segment, there is no bare `/submit` route, so hitting it with
+no ID falls through to the catch-all `*` → `NotFound`. Even if a route
+existed that rendered `Submit` with no `sessionId`, its data-fetch effect
+(`Submit.tsx` ~line 132) does `if (!sessionId) return;` and never calls
+`setLoading(false)` on that path — the page would spin on "Loading intake…"
+forever, no error, no form, no way forward.
+
+**Backend**: live-tested via a real POST to `/webhook/submit-analysis` with
+`artist_name` but no `session_id` (fired from inside the `n8n_songss`
+container to bypass the WAF's Managed Challenge on this endpoint — direct
+external calls to it are correctly blocked, confirmed as a side effect of
+this test). Traced execution id 82: `HTTP Request1`'s duplicate-check query
+became `session_id=eq.undefined` (0 rows) → `If1` false → `Update Artist
+Name` PATCHes `session_id=eq.undefined` (0 rows, silent no-op) → `Fetch
+Session Data` GETs `session_id=eq.undefined` → returns `[]`. Because the
+HTTP Request node splits a JSON array response into one item per element, an
+empty array produces **zero output items**, so the branch simply stops —
+`lastNodeExecuted` was `Fetch Session Data`. `Submit Context`, `Plan
+Router`, and `Respond to Submit` (the node that would send `{"status":"ok"}`
+or the existing `409` "already generated" error) never run. n8n still closes
+out the workflow as `status: success` and returns a bare, empty-body
+`HTTP 200` — no error surfaced, no NIE run, no email, nothing written to
+`processed_sessions`. Confirmed no real data was touched (0 rows in
+`intelligence_reports` matching `session_id` containing "undefined" or the
+diagnostic artist name used in the test).
+
+**Why this isn't a quick fix**: the whole chain assumes a `session_id`
+pre-created by the Stripe webhook (Phase 1). A "Request New Report" flow for
+an already-authenticated user needs real new work on both ends, not a
+validation tweak:
+1. Backend — a new path that creates a fresh `intelligence_reports` row for
+   the authenticated user (checking their plan's remaining query quota and
+   decrementing it) instead of relying on Stripe checkout having created the
+   row first. Just returning a clear error instead of a silent empty 200
+   (mirroring the existing 409 pattern) would only patch the *current*
+   no-session_id symptom — it would not deliver the actual "Request New
+   Report" feature.
+2. Frontend — a new entry point/UI (e.g. a dashboard button) since
+   `Submit.tsx` has no no-ID UI state at all today.
 
 ---
 
@@ -537,6 +605,22 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
       2026-07-18, not fixed, scoped as its own dedicated future session)":
       needs a real LTV formula plus fixing the extraction step to stop
       always reading the premium report regardless of tier
+- [x] ~~Submit form — add helper text/recommended indicators near the
+      TikTok/Instagram/YouTube fields to encourage customers to fill them
+      in~~ IMPLEMENTED 2026-07-19 — TikTok/Instagram fields in
+      `src/pages/Submit.tsx` now show a cyan "Recommended" indicator (new
+      `Field` `recommended` prop) with field-specific helper copy (TikTok:
+      "Without it, your report's Social Engagement Index can't be
+      calculated"; Instagram: "Adds real follower and profile data to your
+      report"). YouTube skipped — no input field exists for it in the form
+      today (Gilberto's call, scoped out rather than adding a new field).
+- [ ] "Request New Report" flow for authenticated users with no session_id
+      (merged 2026-07-19 from two formerly separate list items — confirmed
+      to be the same gap) — see §4 "KNOWN GAP (investigated 2026-07-19, not
+      fixed)": needs a new backend path to create a fresh
+      intelligence_reports row with a plan-quota check, plus a new frontend
+      entry point; Submit.tsx / Submit Trigger have no code path for this
+      today
 - [x] ~~Product decision: should `engagement_score` remain a separate field
       from `digital_score`?~~ RESOLVED 2026-07-18 — see §4 "FEATURE ADDED
       (2026-07-18): Social Engagement Index". Kept as a real, distinct
