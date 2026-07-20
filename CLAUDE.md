@@ -614,13 +614,102 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
       calculated"; Instagram: "Adds real follower and profile data to your
       report"). YouTube skipped — no input field exists for it in the form
       today (Gilberto's call, scoped out rather than adding a new field).
-- [ ] "Request New Report" flow for authenticated users with no session_id
-      (merged 2026-07-19 from two formerly separate list items — confirmed
-      to be the same gap) — see §4 "KNOWN GAP (investigated 2026-07-19, not
-      fixed)": needs a new backend path to create a fresh
-      intelligence_reports row with a plan-quota check, plus a new frontend
-      entry point; Submit.tsx / Submit Trigger have no code path for this
-      today
+- [x] ~~"Request New Report" flow for authenticated users with no
+      session_id~~ IMPLEMENTED 2026-07-20 (merged 2026-07-19 from two
+      formerly separate list items — confirmed to be the same gap; see §4
+      "KNOWN GAP (investigated 2026-07-19, not fixed)"). 6-task
+      implementation plan, all done:
+      1. [x] Backup before schema change
+      2. [x] Create `plan_limits` table with quota values (including Opus
+             tiers) — deployed to `supabase-db`, all 6 plan_keys populated
+      3. [x] Create `request_new_report()` SECURITY DEFINER RPC — deployed;
+             `EXECUTE` granted to `authenticated`/`service_role` only, no
+             `anon`/`PUBLIC` grant (confirmed via `\df+`/`aclexplode` on
+             2026-07-20 after an unclean VS Code restart raised doubt about
+             whether the anon revoke had completed — it had)
+      4. [x] Verify RPC end-to-end (quota allow, quota block, no-plan error)
+             via live curl/psql tests — done 2026-07-20, all in
+             `SET LOCAL role`/`request.jwt.claims`-simulated transactions
+             that were rolled back (zero persistent side effects, confirmed
+             0 leaked rows after). No-plan: fresh uuid with zero
+             `intelligence_reports` rows → "No active plan found for this
+             account". Quota allow: seeded 1 row for a real test account on
+             `Growth` (limit 12) → RPC returned a new `session_id`, used
+             count went 1→2. Quota block: seeded 4 rows for a real test
+             account on `Artist Indie` (limit 4) → "Monthly quota reached
+             (4 / 4)". Also confirmed `SET LOCAL role = anon` gets
+             "permission denied for function request_new_report" at the
+             function level, not just visible in ACL introspection.
+      5. [x] Update `Dashboard.tsx`: read limits from `plan_limits` table,
+             add "Request New Report" button — done 2026-07-20. Replaced the
+             hardcoded, incomplete `PLAN_LIMITS` map (was missing both Opus
+             tiers) with a live fetch from `plan_limits` (public
+             `anon`/`authenticated` SELECT policy, no auth call needed);
+             matching logic mirrors the RPC's own longest-matching-`plan_key`
+             substring rule exactly, so frontend display and backend
+             enforcement can't drift apart. Button added inside the Quota
+             card: calls `supabase.rpc("request_new_report", {
+             p_artist_name: null })`, navigates to `/submit/${session_id}`
+             on success (confirmed `Submit.tsx` already fetches by
+             `session_id` via `get_report_by_session`, so the new row works
+             with zero other changes needed), shows the RPC's raw error
+             message inline on failure, disabled once quota is reached.
+             Follows the same `.rpc(name as any, {...}) as any` cast pattern
+             already used for `get_report_by_session` in `Report.tsx`/
+             `Submit.tsx`, since neither `plan_limits` nor
+             `request_new_report` are in the generated `types.ts`.
+             **Verified**: `tsc --noEmit` (exit 0, clean) and `vite build`
+             (succeeded) — both run via `/snap/bin/node
+             node_modules/.bin/tsc` / `node_modules/vite/bin/vite.js`
+             directly, because this VPS's default `node`/`npx` in PATH is
+             v12.22.9, too old for this project's toolchain (fails with
+             `Cannot find module 'node:path'` / `Unexpected token '?'` on
+             `??`).
+
+             **Live browser visual test (2026-07-20)**: real disposable
+             Supabase Auth user created via the GoTrue admin API, seeded
+             with 3 real `intelligence_reports` rows (`plan_name='Growth'`,
+             limit 12), dev server run locally (bound to `127.0.0.1` only —
+             `vite.config.ts` defaults to `host: "::"`/all-interfaces with
+             `ufw` inactive on this VPS, so the first launch was briefly
+             reachable from the public internet before being restarted
+             bound to localhost; accessed afterward via SSH tunnel only).
+             Found and fixed one real bug this way: the Quota card rendered
+             the limit as `—` instead of `12` — `plan_limits` had been
+             created via direct SQL (task 2) and PostgREST's schema cache
+             never learned about it, so `Dashboard.tsx`'s new
+             `.from("plan_limits")` REST call 404'd with `PGRST205`
+             ("Could not find the table ... in the schema cache"). The
+             `request_new_report()` RPC never showed this symptom because
+             SECURITY DEFINER `plpgsql` bodies run as raw SQL and bypass
+             PostgREST entirely — only the frontend's direct table read was
+             affected. Fixed live with
+             `NOTIFY pgrst, 'reload schema';` (no container restart needed,
+             confirmed via REST curl going 404→200 within ~2s). **General
+             rule for future direct-SQL schema changes that the frontend
+             will query directly (not just through an RPC): always send
+             this NOTIFY as part of the change, not as a troubleshooting
+             afterthought** — see
+             `feedback_postgrest_schema_cache_reload` in memory. After the
+             fix, full re-test passed: Quota card showed the correct
+             `3 / 12 reports`, and clicking "Request New Report" correctly
+             navigated to a new blank `/submit/:sessionId` form (Cloudflare
+             challenge on that form's actual submit is expected/unrelated —
+             the local test bypasses the normal Cloudflare-fronted path).
+             All test data cleaned up after: 3 seeded rows + 2 RPC-created
+             rows (button was clicked twice during testing) deleted, the
+             disposable Auth user deleted via GoTrue admin API (confirmed 0
+             rows left in `auth.users`), dev server stopped.
+      6. [x] Document in CLAUDE.md: feature shipped + the known
+             pre-launch-blocking team-pooling gap — this entry.
+
+      **Known pre-launch-blocking limitation, unchanged by this work**: the
+      RPC resolves plan/quota from `intelligence_reports.user_id` only —
+      `public.teams` (`owner_user_id`/`member_user_id`) is never consulted,
+      so a team's combined usage is not pooled under its owner. This is a
+      real quota leak on unlimited-seat/team plans (e.g. Opus Maximus) —
+      do not launch team seats on this RPC unchanged (see the RPC's own
+      inline comment in the DB).
 - [x] ~~Product decision: should `engagement_score` remain a separate field
       from `digital_score`?~~ RESOLVED 2026-07-18 — see §4 "FEATURE ADDED
       (2026-07-18): Social Engagement Index". Kept as a real, distinct

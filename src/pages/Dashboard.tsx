@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ExternalLink, FileText, TrendingUp, Calendar, User as UserIcon } from "lucide-react";
+import { ExternalLink, FileText, TrendingUp, Calendar, User as UserIcon, Plus } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,19 +10,13 @@ import { supabase } from "@/integrations/supabase/client";
 
 const MANAGE_SUBSCRIPTION_URL = "https://buyer.americaspay.com/p/login/bJe4gz9tjbuTfSa1zL3cc00";
 
-const PLAN_LIMITS: Record<string, number> = {
-  Indie: 4,
-  Growth: 12,
-  Pro: 50,
-  Enterprise: 150,
-};
-
-const planLimitFor = (planName?: string | null): number => {
+const planLimitFor = (planName: string | null | undefined, limits: Record<string, number>): number => {
   if (!planName) return 0;
-  const key = Object.keys(PLAN_LIMITS).find((k) =>
-    planName.toLowerCase().includes(k.toLowerCase())
-  );
-  return key ? PLAN_LIMITS[key] : 0;
+  const lower = planName.toLowerCase();
+  const key = Object.keys(limits)
+    .filter((k) => lower.includes(k))
+    .sort((a, b) => b.length - a.length)[0];
+  return key ? limits[key] : 0;
 };
 
 interface Report {
@@ -39,6 +33,9 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
+  const [planLimits, setPlanLimits] = useState<Record<string, number>>({});
+  const [requesting, setRequesting] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -61,6 +58,35 @@ const Dashboard = () => {
     if (user) fetchReports();
   }, [user]);
 
+  useEffect(() => {
+    const fetchPlanLimits = async () => {
+      const { data, error } = await (supabase
+        .from("plan_limits" as any)
+        .select("plan_key, monthly_limit") as any);
+      if (!error && data) {
+        const limits: Record<string, number> = {};
+        for (const row of data as { plan_key: string; monthly_limit: number }[]) {
+          limits[row.plan_key] = row.monthly_limit;
+        }
+        setPlanLimits(limits);
+      }
+    };
+    fetchPlanLimits();
+  }, []);
+
+  const handleRequestNewReport = async () => {
+    setRequesting(true);
+    setRequestError(null);
+    const { data, error } = await (supabase
+      .rpc("request_new_report" as any, { p_artist_name: null }) as any);
+    if (error) {
+      setRequestError(error.message);
+      setRequesting(false);
+      return;
+    }
+    navigate(`/submit/${data}`);
+  };
+
   if (authLoading || !user) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
@@ -80,7 +106,7 @@ const Dashboard = () => {
     (r) => new Date(r.created_at) >= startOfMonth
   );
   const currentPlan = reports[0]?.plan_name ?? null;
-  const limit = planLimitFor(currentPlan);
+  const limit = planLimitFor(currentPlan, planLimits);
   const used = reportsThisMonth.length;
   const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
 
@@ -146,6 +172,17 @@ const Dashboard = () => {
                   Monthly quota reached. Upgrade your plan for more reports.
                 </p>
               )}
+              {requestError && (
+                <p className="text-sm text-destructive mt-3">{requestError}</p>
+              )}
+              <Button
+                className="gradient-primary mt-4"
+                onClick={handleRequestNewReport}
+                disabled={requesting || (limit > 0 && used >= limit)}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {requesting ? "Requesting..." : "Request New Report"}
+              </Button>
             </CardContent>
           </Card>
 
