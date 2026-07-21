@@ -710,6 +710,112 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
       real quota leak on unlimited-seat/team plans (e.g. Opus Maximus) —
       do not launch team seats on this RPC unchanged (see the RPC's own
       inline comment in the DB).
+- [x] **Team quota pooling — IMPLEMENTED and live-verified 2026-07-21.**
+      Was the highest-priority pre-launch blocker (see item above). Full
+      detail in memory `project_team_quota_pooling_design_2026-07-21`;
+      design summary (as agreed, then built exactly as designed):
+
+      **Current state confirmed 2026-07-21**: `public.teams`
+      (`owner_user_id`, `member_user_id`, `plan_name`, UNIQUE on the pair)
+      has **0 rows** and RLS enabled with **zero policies** (unreadable via
+      PostgREST today — only `postgres`/`service_role` can touch it). No
+      code anywhere reads or writes it — no invite/team-management UI
+      exists in `src/pages` or `src/components`, and it's absent from the
+      n8n workflow export. This isn't a pooling bug to patch, it's the
+      first piece of a seat-assignment feature that doesn't exist yet.
+
+      **Design** — one concept, `pool_owner(u)`: if `u` appears as a
+      `teams.member_user_id`, the pool owner is that row's
+      `owner_user_id`; otherwise `u` is its own pool owner (solo user or a
+      team owner). Then:
+      - `plan_name` (which plan/limit governs) always comes from the pool
+        owner's latest `intelligence_reports` row — whoever actually pays.
+      - `used` (quota consumed) counts `intelligence_reports` rows across
+        the whole pool (`owner + all its members`) for the current month —
+        one shared counter, not per-person.
+      - New report rows still insert under the *actual requester's own*
+        `user_id`/email (so "who on the team used it" stays traceable) —
+        only the quota check spans the pool.
+      - Avoid duplicating "find my team" logic in two places (RPC +
+        Dashboard JS, the same drift risk already called out for
+        `plan_limits` matching): add one SQL helper
+        `public.pool_member_ids(uuid) RETURNS SETOF uuid`, used by
+        `request_new_report()`; add a new `get_quota_status()` SECURITY
+        DEFINER RPC using the same helper, and have `Dashboard.tsx` call
+        *that* instead of re-deriving quota client-side from raw report
+        rows + `plan_limits` — removes frontend/backend drift risk
+        entirely rather than mirroring the logic twice.
+      - Leave `teams` RLS closed (no anon/authenticated policies) — all
+        resolution happens server-side in SECURITY DEFINER functions, so
+        the frontend never needs direct table access.
+
+      **Edge cases, flagged not blocking**: (1) the UNIQUE constraint is
+      per `(owner, member)` pair, not per member, so a member could in
+      principle belong to more than one owner's team — no invite flow
+      exists yet to actually create that, so left unhandled (arbitrary/first
+      match) rather than designed against a scenario that can't happen
+      today. (2) Unlimited-*seat* tiers (Opus Maximus / Opus+Compliance)
+      still have a real query cap (1,500/mo) — "unlimited seats" only means
+      no cap on team size, the shared pool itself stays bounded.
+
+      **Scope decision (Gilberto, 2026-07-21)**: this round covers pooling
+      logic only (RPC + `pool_member_ids` + `get_quota_status()` +
+      Dashboard). No invite/assign UI — `teams` rows will be seeded
+      manually for testing, same pattern as `plan_limits` was seeded
+      directly via SQL. A real invite flow for owners to add members is
+      separate future work, not yet scheduled.
+
+      **Dashboard display — resolved (Gilberto, 2026-07-21)**: team members
+      see the shared team quota (not a personal view) — the same pooled
+      number the owner sees. Reasoning: transparency, avoids a member
+      thinking they have their own separate quota when it's actually
+      shared, reinforces the product's collaborative positioning.
+
+      **Deployed, 2026-07-21**: backup (`pg_dump` →
+      `/root/supabase/backups/manual_20260721_222610_pre_team_quota_pooling.sql`),
+      then `public.pool_owner_id(uuid)` + `public.pool_member_ids(uuid)`
+      (internal-only helpers), `public.get_quota_status()` (new
+      `authenticated`/`service_role`-only RPC returning
+      `{plan_name, used, monthly_limit}`), `request_new_report()` updated to
+      resolve `plan_name`/`used` through those same helpers instead of the
+      raw `user_id`, and `Dashboard.tsx` updated to call
+      `get_quota_status()` instead of deriving quota client-side from
+      `plan_limits` + raw report rows (the old `planLimitFor()` helper and
+      its `plan_limits` fetch were removed entirely). `tsc --noEmit` clean,
+      `vite build` succeeded.
+
+      **Verified**: 1) rolled-back-transaction test (real FK-anchor test
+      accounts, `SET LOCAL role`/`request.jwt.claims`, same pattern as the
+      original RPC verification) — pooled quota identical for owner and
+      member, owner's plan correctly wins over a deliberately different
+      plan_name tagged on the member's row, member's new report correctly
+      attributed to their own `user_id`, pool correctly blocks at capacity,
+      solo user with no `teams` row unaffected, 0 rows leaked. 2) Real live
+      test via two disposable GoTrue users + real (non-rolled-back) seed
+      data, called through actual Kong/PostgREST with real JWTs (browser
+      automation wasn't available this session) — this **caught a real
+      bug**: `get_quota_status()` 404'd (`PGRST202`) through the real REST
+      path because PostgREST's schema cache didn't know the new function
+      existed, same root cause as the 2026-07-20 `plan_limits` table 404 but
+      this time on a function — the psql-simulated test alone had NOT
+      caught this. Fixed with `NOTIFY pgrst, 'reload schema';`, re-tested
+      clean: owner and member both got the identical pooled result via real
+      HTTP, `anon` got a real `42501 permission denied`. All test data +
+      both disposable users deleted after.
+
+      **Also caught while deploying the helpers**: `REVOKE ALL ... FROM
+      PUBLIC` alone did not fully lock down `pool_owner_id`/
+      `pool_member_ids` as internal-only — this Supabase instance's default
+      schema privileges auto-grant `anon`/`authenticated` EXECUTE on every
+      new `public` function regardless of the PUBLIC revoke. Caught by
+      checking `pg_proc.proacl` directly rather than assuming the revoke
+      worked; fixed with an explicit `REVOKE EXECUTE ... FROM anon,
+      authenticated`. See memory `feedback_supabase_default_function_grants`.
+
+      **Not done**: no invite/team-management UI — `teams` rows still
+      require manual SQL insertion until that separate feature is built
+      (deliberately out of scope this round, Gilberto's call). Not yet
+      committed to git.
 - [x] ~~Product decision: should `engagement_score` remain a separate field
       from `digital_score`?~~ RESOLVED 2026-07-18 — see §4 "FEATURE ADDED
       (2026-07-18): Social Engagement Index". Kept as a real, distinct

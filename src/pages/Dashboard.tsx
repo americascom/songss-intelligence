@@ -10,14 +10,11 @@ import { supabase } from "@/integrations/supabase/client";
 
 const MANAGE_SUBSCRIPTION_URL = "https://buyer.americaspay.com/p/login/bJe4gz9tjbuTfSa1zL3cc00";
 
-const planLimitFor = (planName: string | null | undefined, limits: Record<string, number>): number => {
-  if (!planName) return 0;
-  const lower = planName.toLowerCase();
-  const key = Object.keys(limits)
-    .filter((k) => lower.includes(k))
-    .sort((a, b) => b.length - a.length)[0];
-  return key ? limits[key] : 0;
-};
+interface QuotaStatus {
+  plan_name: string;
+  used: number;
+  monthly_limit: number;
+}
 
 interface Report {
   id: string;
@@ -33,7 +30,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
-  const [planLimits, setPlanLimits] = useState<Record<string, number>>({});
+  const [quota, setQuota] = useState<QuotaStatus | null>(null);
   const [requesting, setRequesting] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
 
@@ -59,20 +56,18 @@ const Dashboard = () => {
   }, [user]);
 
   useEffect(() => {
-    const fetchPlanLimits = async () => {
-      const { data, error } = await (supabase
-        .from("plan_limits" as any)
-        .select("plan_key, monthly_limit") as any);
-      if (!error && data) {
-        const limits: Record<string, number> = {};
-        for (const row of data as { plan_key: string; monthly_limit: number }[]) {
-          limits[row.plan_key] = row.monthly_limit;
-        }
-        setPlanLimits(limits);
+    const fetchQuota = async () => {
+      const { data, error } = await (supabase.rpc("get_quota_status" as any) as any);
+      if (error) {
+        // Expected for a brand-new user with no plan/reports yet -- fall
+        // back to the "—" empty state below rather than showing an error.
+        console.error("get_quota_status:", error.message);
+        return;
       }
+      setQuota((data as QuotaStatus[])?.[0] ?? null);
     };
-    fetchPlanLimits();
-  }, []);
+    if (user) fetchQuota();
+  }, [user]);
 
   const handleRequestNewReport = async () => {
     setRequesting(true);
@@ -99,15 +94,11 @@ const Dashboard = () => {
     );
   }
 
-  // Quota: reports this month
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const reportsThisMonth = reports.filter(
-    (r) => new Date(r.created_at) >= startOfMonth
-  );
-  const currentPlan = reports[0]?.plan_name ?? null;
-  const limit = planLimitFor(currentPlan, planLimits);
-  const used = reportsThisMonth.length;
+  // Quota: pooled team-wide usage/limit for this month (get_quota_status
+  // resolves the whole team's pool, not just this individual user)
+  const currentPlan = quota?.plan_name ?? null;
+  const limit = quota?.monthly_limit ?? 0;
+  const used = quota?.used ?? 0;
   const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
 
   return (
