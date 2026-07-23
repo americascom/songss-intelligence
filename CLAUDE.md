@@ -92,16 +92,71 @@ reconnect without risking a behavior change. Live duplicate-Stripe-webhook
 protection may not currently exist at all; worth deciding whether that's a
 real gap to fix or dead code to remove.
 
-KNOWN SECURITY GAP (found 2026-07-09, not yet fixed): the "Stripe Webhook"
-node has no signature verification. The "Filter" node immediately downstream
-only checks `body.type === "checkout.session.completed"` — a plain string
-match on the JSON body, not an HMAC/signature check. No `stripeApi` credential
-exists anywhere in this n8n instance and no `STRIPE_WEBHOOK_SECRET` env var is
-set. Practical effect: anything that can reach POST /webhook/stripe-webhook
-with the right JSON shape triggers the full chain (real Supabase Auth user
-creation, real welcome email, real intelligence_reports row) — Stripe's own
-signature is not required or checked. Not fixed yet; flagged for a future
-dedicated session, same category as the Check Duplicate Session gap above.
+RESOLVED SECURITY GAP (found 2026-07-09, fixed 2026-07-23): the "Stripe
+Webhook" node had no signature verification. The "Filter" node immediately
+downstream only checked `body.type === "checkout.session.completed"` — a
+plain string match on the JSON body, not an HMAC/signature check. Practical
+effect: anything that could reach POST /webhook/stripe-webhook with the right
+JSON shape triggered the full chain (real Supabase Auth user creation, real
+welcome email, real intelligence_reports row) — Stripe's own signature was
+not required or checked.
+
+**Fix**: `STRIPE_WEBHOOK_SECRET` added to `/docker/n8n/secrets.env`
+(env_file-loaded, not committed anywhere). "Stripe Webhook" node's
+`options.rawBody` set to `true` (so the real, unparsed request body is
+available alongside the already-parsed `body` the existing Filter node
+relies on — that node's `$json.body.type` check needed to keep working
+unchanged). Two new nodes inserted between "Stripe Webhook" and "Filter":
+1) "Verify Stripe Signature" (Code node) — parses the `Stripe-Signature`
+header (`t=...,v1=...`), recomputes HMAC-SHA256 over `{timestamp}.{rawBody}`
+using `STRIPE_WEBHOOK_SECRET`, compares against `v1` with
+`crypto.timingSafeEqual` (length-checked first to avoid a throw on
+mismatched lengths), and separately enforces a 5-minute timestamp tolerance
+for replay protection — sets `stripe_signature_valid`/
+`stripe_signature_reason` on the item rather than throwing. 2) "Signature
+Valid?" (IF node) checking `stripe_signature_valid === true`: true branch
+continues to the existing "Filter" node unchanged; false branch is
+unconnected, so an invalid request simply ends the execution with no further
+processing (no behavior change to the Stripe Webhook node's own auto-response
+in `onReceived` mode, which still returns 200 regardless — same as before).
+
+**Blocker hit mid-implementation**: the Code node's `require('crypto')`
+failed on every single test (valid and invalid alike) — n8n's Code-node
+sandbox denies `require()` of any module, including built-ins, unless
+explicitly allowlisted. Fixed by adding
+`NODE_FUNCTION_ALLOW_BUILTIN=crypto` to `/docker/n8n/docker-compose.yml`.
+Separately relearned, same category as the WAL-snapshot tooling note in the
+Social Engagement Index entry above: `docker compose restart` does **not**
+reload `environment`/`env_file` changes for an already-created container — confirmed
+`STRIPE_WEBHOOK_SECRET` and later `NODE_FUNCTION_ALLOW_BUILTIN` both stayed
+empty in the running container after a plain `restart`, and only appeared
+after `docker compose up -d --force-recreate n8n`.
+
+**Deployed**: backup
+(`manual_20260723_114608_pre_stripe_signature_verification.sqlite`), patched
+all 3 DB locations (`workflow_entity.nodes`/`connections` +
+both `workflow_history` rows, `versionId` `c8a04b97-49dc-4146-8921-7f4835f2df9d`
+and `activeVersionId` `a09c4898-47db-4a22-970e-25d86ff6a9dd`), container
+force-recreated twice (once for the secret, once for the builtin allowlist),
+export-diff confirmed scope: exactly 2 nodes added ("Verify Stripe
+Signature", "Signature Valid?"), 1 node changed ("Stripe Webhook" — options +
+its outgoing connection to "Filter" redirected through the new nodes), 0
+nodes removed, all other 58 nodes byte-identical.
+
+**Verified**: signed and sent 4 test requests to the live webhook endpoint
+from inside the `n8n_songss` container (so the real `STRIPE_WEBHOOK_SECRET`
+never left the container) using a disposable fake `checkout.session.completed`
+event (`cs_test_diagnostic_sig_verify` / artist `__SIG_TEST__DO_NOT_PROCESS__`):
+valid signature reached the real pipeline and ran ~5.3s before erroring
+further downstream on the intentionally-incomplete fake payload (expected —
+proves the gate passed it through); missing signature, a tampered `v1`
+value, and a signature with a timestamp 1 hour old were all blocked
+immediately (~160-170ms, execution ended cleanly right after the IF node
+with nothing downstream executing). Confirmed via direct Supabase query that
+the valid-signature test run, despite running deep enough to potentially
+reach real side-effecting nodes, left no trace in `auth.users`,
+`intelligence_reports`, or `processed_sessions` — it errored out before any
+real write occurred.
 
 RESOLVED BUG (found and fixed 2026-07-14): the "Spotify Search" node
 (`httpRequest` → Apify `automation-lab~spotify-scraper`, `mode:"search"`) read
