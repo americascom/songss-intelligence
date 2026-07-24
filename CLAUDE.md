@@ -39,7 +39,14 @@
 
 n8n containers:
 - n8n_songss — n8n v2.28.3 (stable), port 5678
-- n8n-tunnel-n8n-1 — Cloudflare tunnel
+- n8n-tunnel-n8n-1 — Cloudflare tunnel. Its token is `CF_TUNNEL_TOKEN`,
+  referenced as `${CF_TUNNEL_TOKEN}` in `docker-compose.yml`'s `command:`
+  line — rotated 2026-07-23 (was hardcoded in plaintext before). Lives in
+  `/docker/n8n/.env` (600 perms), NOT `/docker/n8n/secrets.env` — compose's
+  `${VAR}` substitution inside the compose file itself only reads the
+  project's `.env`, not `env_file:` entries (those only reach a container's
+  own runtime env). Recreate with `docker compose up -d --force-recreate
+  tunnel-n8n` after any token change — `restart` won't pick it up.
 
 Docker networks:
 - n8n is connected to supabase_default (to reach supabase-auth:9999)
@@ -410,6 +417,106 @@ sampled during the investigation). `engagement_score` was deliberately left
 un-clamped this session — see the note in §11 Active Tasks; whether it
 should even remain a separate field is a product question, not a pure bug.
 
+RESOLVED (implemented 2026-07-23): **`retention_rate` replaced with a real,
+code-computed formula — first step of the pre-launch LTV/predictive-metrics
+rework (see the "NIE prompt LTV/predictive-metrics rework" active task).**
+Gilberto's call: fix `retention_rate` on real data before building LTV on
+top of it, rather than layering a real calculation on an ungrounded one.
+Previously `retention_rate` was, like `ltv_projection`, purely AI-extracted
+in the `Edit Fields`/`AI Agent` step with the same "estimate by tone if not
+stated" license — the 2026-07-16 fix only clamped its range, it never
+grounded the value. Investigation also found `monthly_streams` (the
+denominator used in the original LTV cross-artist analysis) is **equally
+AI-fabricated**, requested in the identical `Edit Fields` JSON schema — so
+the original "implied $/stream" spread was comparing two independently
+hallucinated numbers, not one real anchor against one fake one. No code
+anywhere computes `monthly_streams` from any real fetched field.
+
+**Formula — "Multi-Platform Loyalty Index"**, computed in `Code in
+JavaScript` from real `structured_data` only, no AI involved:
+```
+SFC_score = min(100, round(followers / monthlyListeners × 100))       // Spotify Follow-Conversion, weight 0.50
+LRD_score = min(100, round((playcount / listeners) / 200 × 100))      // Last.fm Repeat-Listen Depth, weight 0.30
+TED_score = followerCount > 1000
+  ? min(100, round((heartCount / followerCount) × 100 / 20))          // TikTok Engagement Depth, weight 0.20
+  : excluded
+retention_rate = round(Σ(available signal × its weight) / Σ(available weights))
+// null if Spotify itself doesn't resolve — never fabricated
+```
+Missing signals drop out and the rest renormalize (never zero-filled).
+SoundCloud was evaluated and excluded as a core signal — near-zero/unused
+for all 4 real artists sampled (major-label artists don't actively use it),
+which would penalize platform non-usage rather than measure real retention.
+The TikTok `followerCount > 1000` floor exists specifically because a real
+sample (Clairo) returned an obviously-wrong resolved account
+(`followers: 6, heart: 0`) — same known TikTok-handle-resolution
+reliability gap already documented for `social_engagement_index`, not new
+to this fix. `LRD`'s `/200` and `TED`'s `/20` caps are starting
+calibrations against a small real sample (4 distinct artists — grentperez,
+Clairo, Chappell Roan, Billie Eilish, pulled from real successful n8n
+executions), same honest caveat as `social_engagement_index`'s `CAP=20`.
+
+**Validated against real data before deploying**: computed both candidate
+ratios (Spotify follow-conversion, Last.fm repeat-listen depth) across the
+4 real artists first. Billie Eilish's Spotify ratio came back **164%**
+(legacy superstar — cumulative followers exceed current monthly listeners),
+disproving the initial hypothesis that this ratio self-bounds under 100% —
+confirmed a clamp is required, same pattern as every other real metric in
+this pipeline. Final formula logic-tested against all 4 real artists plus
+a synthetic no-Spotify case (5/5 pass, matching hand-computed values:
+grentperez 50, Chappell Roan 46, Billie Eilish 100, Clairo 47-with-floor,
+no-Spotify → `null`).
+
+**Deployed**: backup
+(`manual_20260723_233230_pre_retention_rate_real_formula.sqlite`), patched
+`workflow_entity.nodes` + both `workflow_history` rows (`versionId`
+`c8a04b97-49dc-4146-8921-7f4835f2df9d` and `a09c4898-47db-4a22-970e-25d86ff6a9dd`)
+via a Python script with an online-backup dry run first (`sqlite3 ...
+".backup"`, not a plain `cp`, per the earlier WAL-consistency lesson),
+syntax-checked with `/snap/bin/node --check` (host's default `node` is v12,
+too old for the file's `?.` optional chaining — false-alarmed once, resolved
+per the known node-version workaround), clean restart, export-diff
+confirmed only `Code in JavaScript` changed (61 nodes before and after,
+connections byte-identical).
+
+**Live-verified**: two disposable test sessions inserted directly into
+`intelligence_reports` (bypassing Stripe webhook), fired via internal
+`POST /webhook/submit-analysis` from inside `n8n_songss` (artist "Chappell
+Roan", real TikTok handle `chappellroan` to bypass the known
+no-auto-lookup gap). Both runs returned `retention_rate: 46` with
+byte-identical real Spotify/TikTok inputs (followers 8,381,215 /
+monthlyListeners 30,409,031 / TikTok engagement_rate 12.59 both times) —
+confirmed fully deterministic in production, not just in the isolated unit
+test, unlike the old AI approach where the same real artist (Billie
+Eilish) previously produced 4 unrelated values across sessions. Both test
+sessions and their `processed_sessions` rows deleted after verification.
+
+**Not done, deliberately out of scope this round**: `ltv_projection`,
+`growth_trajectory`, `digital_score`'s relationship to real data are
+unchanged — this fix covers `retention_rate` only, as the deliberate first
+step before the LTV formula work. `Edit Fields`'s AI extraction schema
+still asks for `retention_rate` in its JSON (now simply unread/discarded,
+same "leave the dead AI field in place, don't touch the prompt" pattern
+already used for `revenue_economics`) — not touched, to keep this change's
+diff to exactly one node.
+
+**Also found, not part of this fix — flagged for its own session**: while
+inspecting `Update Artist Name`'s node parameters for the live test, found
+its `apikey` header still contains a hardcoded Supabase `service_role` JWT
+in cleartext, not routed through an n8n Credential (Golden Rule 4). Checked
+all 7 nodes migrated to the shared `Supabase Service Role Auth` credential
+back on 2026-07-09 ([[project_n8n_hanging_execution_bug]]) — **all 7 have
+the same pattern**: the `Authorization` header was migrated to the shared
+credential, but a separate `apikey` header (which Supabase/Kong requires
+alongside it) was left hardcoded on every one, since n8n's `httpHeaderAuth`
+credential type only covers a single header. This matches that memory's own
+2026-07-09 wording ("left `apikey` header untouched") — a known, deliberate
+scope decision at the time, just never carried forward as an explicit open
+item since. Same class of key already sits in cleartext across all 7 nodes
+today; not rotated or touched this session — flag and defer to its own
+dedicated session, same as the encryptionKey and Cloudflare tunnel token
+precedents, rather than fix reactively mid-unrelated-task.
+
 FEATURE ADDED (2026-07-18): **Social Engagement Index**
 (`engagement_metrics.social_engagement_index`) — Gilberto's resolution to
 the `engagement_score` product question above: rather than remove the
@@ -660,6 +767,25 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
       2026-07-18, not fixed, scoped as its own dedicated future session)":
       needs a real LTV formula plus fixing the extraction step to stop
       always reading the premium report regardless of tier
+      - [x] ~~Step 1: retention_rate real formula~~ DONE 2026-07-23 — see §4
+            "RESOLVED (implemented 2026-07-23): retention_rate replaced...".
+            Real, deterministic Multi-Platform Loyalty Index
+            (Spotify/Last.fm/TikTok), live-verified. Also found
+            `monthly_streams` is equally AI-fabricated (no real formula
+            anywhere) — relevant context for the remaining LTV/growth_trajectory/
+            digital_score work below.
+      - [ ] Remaining: `ltv_projection` real formula (now that `monthly_streams`
+            is confirmed fake too, needs its own real anchor — likely derived
+            from Spotify `monthlyListeners`, not the AI-invented field),
+            `growth_trajectory`, and fixing the extraction step to stop always
+            reading the premium report regardless of tier
+- [ ] Hardcoded `apikey` header (Supabase `service_role` JWT) on all 7 nodes
+      migrated to the shared credential 2026-07-09 — see §4 "Also found, not
+      part of this fix" (2026-07-23) and
+      `feedback_hardcoded_apikey_header_all_7_migrated_nodes` in memory.
+      Known since the original migration, never tracked as an open item
+      since; needs its own session, same as the encryptionKey/tunnel-token
+      rotations
 - [x] ~~Submit form — add helper text/recommended indicators near the
       TikTok/Instagram/YouTube fields to encourage customers to fill them
       in~~ IMPLEMENTED 2026-07-19 — TikTok/Instagram fields in
