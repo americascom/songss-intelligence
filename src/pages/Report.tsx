@@ -649,7 +649,7 @@ function ReportInner() {
             { label: "Social Engagement Index", value: engagementScore === null ? "—" : engagementScore.toFixed(0), icon: Activity, title: engagementScore === null ? "Not enough TikTok data yet to compute this" : "Cumulative engagement relative to audience size" },
             { label: "Retention Rate",   value: `${retentionRate.toFixed(0)}%`,   icon: Users      },
             { label: "Monthly Streams",  value: fmtCompact(monthlyStreams),       icon: TrendingUp },
-            { label: "LTV Projection",   value: fmtUSD(ltv),                     icon: DollarSign },
+            { label: "LTV Projection",   value: fmtUSD(ltv),                     icon: DollarSign, title: "Estimated using a global blended benchmark ($0.012/listener/month). Real values vary by geographic distribution and audience retention." },
           ].map((k, i) => (
             <motion.div
               key={k.label}

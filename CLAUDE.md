@@ -517,6 +517,90 @@ today; not rotated or touched this session — flag and defer to its own
 dedicated session, same as the encryptionKey and Cloudflare tunnel token
 precedents, rather than fix reactively mid-unrelated-task.
 
+RESOLVED (implemented 2026-07-25): **`ltv_projection` replaced with a real,
+code-computed formula — second step of the pre-launch LTV/predictive-metrics
+rework, after `retention_rate`.** Investigation first confirmed
+`monthly_streams` (the field the original AI-guessed `ltv_projection` was
+implicitly anchored to) is itself equally AI-fabricated — same "STRATEGIC
+DATA EXTRACTION PROTOCOL" JSON schema in `Edit Fields`, same "if not
+mentioned, provide a professional estimate based on the report's tone"
+license, no formula anywhere. Checked `GPT-4o — Financial Analysis` too, in
+case it offered a real monetary anchor instead — it doesn't; its prompt
+("Analyze revenue potential, catalog valuation... Return structured JSON")
+is pure free-text LLM guessing with no real inputs. So no real $/stream or
+$/listener figure exists anywhere in this pipeline; any formula needs at
+least one external calibration constant, same category of assumption as
+`retention_rate`'s `/200`/`/20` caps but this one drives a dollar figure
+shown directly to customers.
+
+Gilberto's call: anchor on real `spotify_data.monthly_listeners` (already
+real, Apify-scraped, already the dominant signal in `retention_rate`)
+rather than inventing a `monthly_streams` proxy — honest about measuring
+unique monthly listeners, not literal stream count.
+
+**Formula — approved by Gilberto 2026-07-25**:
+```
+ltv_projection = round(monthly_listeners × 0.012 × 24 × (0.5 + retention_rate/100))
+```
+`0.012` (assumed $/listener/month blended benchmark) and `24` (assumed
+baseline fan-engagement horizon in months) are external business constants,
+not derived from any real data in this pipeline. The `(0.5 + retention/100)`
+term is a bounded 0.5x–1.5x linear multiplier, not a literal churn
+probability — a naive textbook `1/(1-retention)` subscription-LTV formula
+was considered and rejected: sanity-checked against Chappell Roan's real
+`retention_rate: 46`, it implies an ~1.85-month expected fan lifetime, which
+misreads `retention_rate`'s actual meaning (a 0-100 cross-platform loyalty
+index, not a literal monthly-return probability). `null` (never a fallback
+constant) when `monthly_listeners` is 0 or `retention_rate` is `null` — same
+"missing data must never render as a fabricated number" rule as
+`retention_rate`/`social_engagement_index`.
+
+**Deployed**: backup
+(`manual_20260725_230115_pre_ltv_projection_formula.sqlite`), patched
+`workflow_entity.nodes` + both `workflow_history` rows (`versionId`
+`c8a04b97-49dc-4146-8921-7f4835f2df9d` and `a09c4898-47db-4a22-970e-25d86ff6a9dd`,
+same two rows as every fix since 2026-07-18) via a Python script, online
+`sqlite3 ... ".backup"` dry run first, syntax-checked with `/snap/bin/node
+--check`, clean restart, export-diff confirmed only `Code in JavaScript`
+changed (61 nodes before and after, connections byte-identical). `Edit
+Fields`'s AI schema still asks for `ltv_projection` (now simply
+unread/discarded, same dead-field pattern as `retention_rate`/
+`revenue_economics`) — not touched, to keep the diff to exactly one node.
+
+**Live-verified**: two disposable test sessions inserted directly into
+`intelligence_reports` (bypassing Stripe webhook), fired via internal `POST
+/webhook/submit-analysis` from inside `n8n_songss`. Chappell Roan (real
+TikTok handle `chappellroan`): real run returned `monthly_listeners:
+30354635`, `retention_rate: 46`, `ltv_projection: 8392449` — matches
+`round(30354635 × 0.012 × 24 × 0.96) = 8392449` exactly (compare to the old
+AI-guessed figure for this same artist/tier: $1,000,000,000 — two orders of
+magnitude off). A second test tried to exercise the `monthly_listeners = 0`
+null path with a nonsense artist name, but Apify's Spotify search still
+fuzzy-matched a real low-listener result (`364219`) rather than returning
+empty — not a bug, the formula math still checked out exactly
+(`round(364219 × 0.012 × 24 × 0.69) = 72378`), it just didn't exercise the
+null branch. Verified the null branch instead with an isolated logic test
+(6/6 cases pass: both real runs' numbers, `monthly_listeners=0`,
+`retention_rate=null`, both null, and the prior retention_rate memory's
+Chappell Roan numbers). Both test sessions and their `processed_sessions`
+rows deleted after verification, 0 rows left.
+
+**Frontend**: `src/pages/Report.tsx` and `src/components/ArtistIndieReport.tsx`
+LTV Projection KPI tiles now carry a `title` tooltip (same native-tooltip
+pattern already used for Social Engagement Index's null-state hint):
+"Estimated using a global blended benchmark ($0.012/listener/month). Real
+values vary by geographic distribution and audience retention." `tsc
+--noEmit` clean, `vite build` succeeded (both via the `/snap/bin/node`
+workaround).
+
+**Not done, deliberately out of scope this round**: `growth_trajectory` is
+unchanged (still AI-guessed) — the remaining piece of the LTV/predictive-metrics
+rework, along with fixing the extraction step's tier-blindness (always reads
+the premium `NIE — Neural Intelligence Engine` report regardless of
+customer plan). `monthly_streams` also remains unchanged, still AI-fabricated
+and now confirmed fully unused by anything real — a candidate for removal
+in a future session, not touched here to keep this diff scoped.
+
 FEATURE ADDED (2026-07-18): **Social Engagement Index**
 (`engagement_metrics.social_engagement_index`) — Gilberto's resolution to
 the `engagement_score` product question above: rather than remove the
@@ -774,11 +858,15 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
             `monthly_streams` is equally AI-fabricated (no real formula
             anywhere) — relevant context for the remaining LTV/growth_trajectory/
             digital_score work below.
-      - [ ] Remaining: `ltv_projection` real formula (now that `monthly_streams`
-            is confirmed fake too, needs its own real anchor — likely derived
-            from Spotify `monthlyListeners`, not the AI-invented field),
-            `growth_trajectory`, and fixing the extraction step to stop always
-            reading the premium report regardless of tier
+      - [x] ~~Step 2: ltv_projection real formula~~ DONE 2026-07-25 — see §4
+            "RESOLVED (implemented 2026-07-25): ltv_projection replaced...".
+            `round(monthly_listeners × 0.012 × 24 × (0.5 + retention_rate/100))`,
+            anchored on real `spotify_data.monthly_listeners` (not a fabricated
+            `monthly_streams` proxy), approved by Gilberto, live-verified
+            deterministic. Frontend tooltip added to both report components.
+      - [ ] Remaining: `growth_trajectory` real formula, and fixing the
+            extraction step to stop always reading the premium report
+            regardless of tier
 - [ ] Hardcoded `apikey` header (Supabase `service_role` JWT) on all 7 nodes
       migrated to the shared credential 2026-07-09 — see §4 "Also found, not
       part of this fix" (2026-07-23) and
