@@ -675,6 +675,9 @@ function ReportInner() {
               <div>
                 <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>Neural Trajectory</h3>
                 <p className="text-xs mt-1" style={{ color: C.gray }}>Stream momentum over the next 6 months</p>
+                <p className="text-[10px] mt-1 italic" style={{ color: C.grayDim }} title="Projected using a baseline 2%/month growth assumption, scaled by audience loyalty.">
+                  Projected using a baseline 2%/month growth assumption, scaled by audience loyalty.
+                </p>
               </div>
               <Music className="w-4 h-4" style={{ color: C.cyan }} />
             </div>

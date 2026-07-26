@@ -601,6 +601,95 @@ customer plan). `monthly_streams` also remains unchanged, still AI-fabricated
 and now confirmed fully unused by anything real — a candidate for removal
 in a future session, not touched here to keep this diff scoped.
 
+RESOLVED (implemented 2026-07-26): **`growth_trajectory` replaced with a
+real, code-computed 6-month projection — third and final step of the
+LTV/predictive-metrics rework, after `retention_rate` and `ltv_projection`.**
+
+**Investigation before implementing**: `growth_trajectory` lived in the same
+`Edit Fields` "STRATEGIC DATA EXTRACTION PROTOCOL" JSON schema as the old
+`ltv_projection`/`digital_score`, same "estimate by tone" license, same
+premium-report-only tier-blindness. Unlike its siblings it also had zero
+code-level handling at all — `Code in JavaScript` did
+`const engagement_metrics = aiData.engagement_metrics || {};` and never
+touched `growth_trajectory` again (no clamp, no unit check), so it reached
+the frontend exactly as invented. Pulled 10 real reports and found this was
+worse than the old `ltv_projection` bug: not just wrong magnitude, but no
+consistent *unit* at all. The same real artist (Billie Eilish, identical
+real `monthly_listeners` of 78,447,683 across 4 tier-tests on
+2026-06-12/13) got four unrelated scales — raw listener counts on one run,
+a ~70-110 "index" on two others, a 100,000-scale on a fourth. Dua Lipa's
+Growth-tier trajectory was even non-monotonic (75 → 72 → 78), an artifact of
+free-text "growth" invention, not a real trend. Where Spotify hadn't
+resolved (`monthly_listeners: 0`), the AI still invented a full 6-month
+curve anyway rather than reflecting the missing data.
+
+**Formula, approved by Gilberto 2026-07-26** — reuses the same real anchor
+(`spotify_data.monthly_listeners`) and the same bounded 0.5x–1.5x
+retention-based multiplier pattern as `ltv_projection`, rather than
+inventing a second unrelated assumption:
+```
+BASE_MONTHLY_GROWTH_RATE = 0.02   // 2%/month baseline organic growth assumption
+effectiveRate = BASE_MONTHLY_GROWTH_RATE × (0.5 + retention_rate / 100)   // 1%-3%/month
+growth_trajectory[i] = round(monthly_listeners × (1 + effectiveRate)^i)   // i = 0..5, months M1..M6
+```
+M1 (`i=0`) is the real current value, not a projection — the curve starts
+from truth and only compounds forward from there. Curve is monotonic
+non-decreasing by construction (multiplier floors at 0.5x, so
+`effectiveRate` is always positive) — deliberate, since this chart is
+literally named "growth trajectory," not a general two-way forecast.
+`BASE_MONTHLY_GROWTH_RATE = 0.02` (24%/year baseline) is the one external
+business assumption, same category as `ltv_projection`'s `$0.012`/`24` —
+required Gilberto's sign-off, not derivable from the pipeline. `null`
+(never a fallback constant) when `monthly_listeners` is 0 or
+`retention_rate` is `null` — same guard as `ltv_projection`, and in
+practice `retention_rate` is never null when `monthly_listeners > 0` since
+its Spotify signal shares the same guard with a fixed 0.50 weight.
+
+**Deployed**: same 3-DB-location method as every fix since 2026-07-18
+(backup `manual_20260726_101500_pre_growth_trajectory_formula.sqlite`,
+`workflow_entity.nodes` + both `workflow_history` rows, `versionId`
+`c8a04b97-49dc-4146-8921-7f4835f2df9d`/`a09c4898-47db-4a22-970e-25d86ff6a9dd`
+— same two rows, unchanged since 2026-07-18), dry run against an online
+`sqlite3 ... ".backup"` copy first, syntax-checked with `/snap/bin/node
+--check`, clean restart, export-diff confirmed only `Code in JavaScript`
+changed (61 nodes before and after, connections byte-identical).
+
+**Live-verified**: disposable test session inserted directly into
+`intelligence_reports` (bypassing Stripe webhook — seeded with `artist_name
+IS NULL`, not a placeholder string, after an empty-artist-name placeholder
+tripped the real `HTTP Request1` duplicate-check on the first attempt —
+that check queries for `artist_name=not.is.null&artist_name=neq.`, so a
+non-empty placeholder looked like an already-completed report and returned
+a false 409), fired via internal `POST /webhook/submit-analysis` from
+inside `n8n_songss` (Chappell Roan, real TikTok handle `chappellroan`).
+Real run returned `monthly_listeners: 30340623`, `retention_rate: 46`,
+`growth_trajectory: [30340623, 30923163, 31516888, 32122012, 32738755,
+33367339]` — exact match to `round(30340623 × 1.0192^i)` for `i=0..5`.
+Cross-checked against an isolated 6-case logic test (the live result,
+`monthly_listeners=0`, `retention_rate=null`, both null/zero, and two
+synthetic cases) — all pass, including both null paths. Test session and
+its `processed_sessions` row deleted after, 0 rows left.
+
+**Frontend**: `src/pages/Report.tsx` and `src/components/ArtistIndieReport.tsx`
+Neural Trajectory chart sections now carry a small italic caption (visible,
+not just a hover tooltip, since this is a full chart section rather than a
+KPI tile): "Projected using a baseline 2%/month growth assumption, scaled
+by audience loyalty." `tsc --noEmit` clean, `vite build` succeeded (both
+via the `/snap/bin/node` workaround).
+
+**Not done, deliberately out of scope this round**: the extraction step's
+tier-blindness (`Edit Fields`'s Input Material is hardcoded to the premium
+`NIE — Neural Intelligence Engine` node only, regardless of customer plan)
+is unchanged — now moot for `retention_rate`/`ltv_projection`/`growth_trajectory`
+themselves since all three are code-computed from real data and no longer
+read from that extraction step at all, but the `Edit Fields` AI schema still
+asks for all three (now simply unread/discarded, same dead-field pattern as
+`revenue_economics`) plus `digital_score`/`geo_hotspots`, which remain
+genuinely AI-extracted from the premium-only report on every tier — not
+touched here. `monthly_streams` also remains unchanged, still
+AI-fabricated and confirmed fully unused by anything real — a candidate for
+removal in a future session.
+
 FEATURE ADDED (2026-07-18): **Social Engagement Index**
 (`engagement_metrics.social_engagement_index`) — Gilberto's resolution to
 the `engagement_score` product question above: rather than remove the
@@ -864,9 +953,18 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
             anchored on real `spotify_data.monthly_listeners` (not a fabricated
             `monthly_streams` proxy), approved by Gilberto, live-verified
             deterministic. Frontend tooltip added to both report components.
-      - [ ] Remaining: `growth_trajectory` real formula, and fixing the
-            extraction step to stop always reading the premium report
-            regardless of tier
+      - [x] ~~Step 3: growth_trajectory real formula~~ DONE 2026-07-26 — see
+            §4 "RESOLVED (implemented 2026-07-26): growth_trajectory
+            replaced...". `round(monthly_listeners × (1 + 0.02×(0.5 +
+            retention_rate/100))^i)` for i=0..5, same real anchor + bounded
+            retention multiplier pattern as ltv_projection, live-verified
+            deterministic. Frontend caption added to both report components.
+      - [ ] Remaining: the extraction step's tier-blindness (`Edit Fields`
+            always reads the premium `NIE — Neural Intelligence Engine`
+            report regardless of tier) — now only affects `digital_score`
+            and `geo_hotspots`, since retention_rate/ltv_projection/
+            growth_trajectory are all code-computed and no longer read from
+            that extraction step at all
 - [ ] Hardcoded `apikey` header (Supabase `service_role` JWT) on all 7 nodes
       migrated to the shared credential 2026-07-09 — see §4 "Also found, not
       part of this fix" (2026-07-23) and
