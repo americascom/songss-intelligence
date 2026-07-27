@@ -410,30 +410,65 @@ function ReportInner() {
     ];
   }, [em, markets]);
 
-  // ── Growth+: Conversion Funnel ────────────────────────────────────────────
-  const funnelData = useMemo(() => {
-    const f         = (em as any)?.funnel ?? (em as any)?.conversion_funnel ?? {};
-    const discovery = Number((f as any)?.discovery ?? (f as any)?.impressions  ?? monthlyStreams * 2.2) || 100;
-    const streams   = Number((f as any)?.streams   ?? (f as any)?.plays        ?? monthlyStreams)       || Math.round(discovery * 0.45);
-    const follows   = Number((f as any)?.follows   ?? (f as any)?.followers    ?? (f as any)?.saves ?? 0) || Math.round(streams * 0.28);
-    const buys      = Number((f as any)?.purchases ?? (f as any)?.buys         ?? (f as any)?.conversions ?? 0) || Math.round(follows * 0.12);
+  // ── Growth+: Engagement Pyramid (replaces Conversion Funnel) ────────────────
+  // Real, grounded 3-tier depth model. Tier widths below are static visual
+  // chrome (100/78/56%), not derived from the tiers' own values -- the old
+  // Conversion Funnel bug was implying a fake per-artist conversion rate
+  // between stages built off an AI-fabricated monthly_streams field with no
+  // real funnel data anywhere in the pipeline; this replaces it rather than
+  // repeating the pattern with different labels.
+  const engagementPyramid = useMemo(() => {
+    const spotify          = report?.spotify_data ?? {};
+    const monthlyListeners = Number(spotify?.monthly_listeners ?? 0);
+    const spotifyFollowers = Number(spotify?.followers ?? 0);
+    const rawRatio         = monthlyListeners > 0 ? (spotifyFollowers / monthlyListeners) * 100 : 0;
+    const clampedRatio     = Math.min(100, Math.max(0, rawRatio));
+
     return [
-      { stage: "Discovery", value: discovery, pct: 100,                                       color: C.cyan     },
-      { stage: "Stream",    value: streams,   pct: Math.round((streams / discovery) * 100),   color: C.cyanSoft },
-      { stage: "Follow",    value: follows,   pct: Math.round((follows / discovery) * 100),   color: "#4ECDC4"  },
-      { stage: "Buy",       value: buys,      pct: Math.round((buys    / discovery) * 100),   color: C.warm     },
+      {
+        tier: "Passive Reach",
+        value: `${fmtCompact(monthlyListeners)} Listeners`,
+        color: C.cyan,
+      },
+      {
+        tier: "Retained Audience",
+        value: `${fmtCompact(spotifyFollowers)} Followers`,
+        badge: `${clampedRatio.toFixed(1)}%`,
+        badgeTitle: "Follower-to-Listener Ratio, capped at 100% for index purposes — legacy/superstar artists can have raw follower counts that exceed current monthly listeners.",
+        color: C.cyanSoft,
+      },
+      {
+        tier: "Active Superfans",
+        value: `${retentionRate.toFixed(0)}% Retention`,
+        badge: engagementScore === null ? undefined : `${engagementScore.toFixed(0)} SEI`,
+        color: "#4ECDC4",
+      },
     ];
-  }, [em, monthlyStreams]);
+  }, [report, retentionRate, engagementScore]);
 
   // ── Pro+: Artist Radar ────────────────────────────────────────────────────
-  const radarData = useMemo(() => [
-    { axis: "Virality",         value: Math.min(100, Number((em as any)?.virality_score   ?? (em as any)?.viralityScore   ?? 65)) },
-    { axis: "Sync Potential",   value: Math.min(100, Number((em as any)?.sync_potential   ?? (em as any)?.syncPotential   ?? 72)) },
-    { axis: "Live Performance", value: Math.min(100, Number((em as any)?.live_score       ?? (em as any)?.liveScore       ?? 58)) },
-    { axis: "Brand Fit",        value: Math.min(100, Number((em as any)?.brand_fit        ?? (em as any)?.brandFit        ?? 70)) },
-    { axis: "Streaming Growth", value: Math.min(100, Number((em as any)?.streaming_growth ?? (em as any)?.streamingGrowth ?? 80)) },
-    { axis: "Community",        value: Math.min(100, Number((em as any)?.community_score  ?? (em as any)?.communityScore  ?? 55)) },
-  ], [em]);
+  // 3 axes grounded in already-computed real data; 3 axes with no real data
+  // source yet marked pending rather than shown with a fake number (these
+  // were previously static fallback constants — 65/72/58/70/80/55 for every
+  // artist, every session, never AI- or code-derived at all).
+  const radarData = useMemo(() => {
+    const gt = Array.isArray((em as any)?.growth_trajectory) ? (em as any).growth_trajectory : null;
+    let growthPct: number | null = null;
+    if (gt && gt.length >= 2) {
+      const m1 = Number(gt[0]?.value ?? 0);
+      const m6 = Number(gt[gt.length - 1]?.value ?? 0);
+      if (m1 > 0) growthPct = Math.min(100, Math.max(0, ((m6 / m1) - 1) * 100));
+    }
+
+    return [
+      { axis: "Streaming Growth", value: growthPct ?? 0,      pending: growthPct === null },
+      { axis: "Community",        value: retentionRate,        pending: false },
+      { axis: "Virality",         value: engagementScore ?? 0, pending: engagementScore === null },
+      { axis: "Sync Potential",   value: 0,                    pending: true },
+      { axis: "Live Performance", value: 0,                    pending: true },
+      { axis: "Brand Fit",        value: 0,                    pending: true },
+    ];
+  }, [em, retentionRate, engagementScore]);
 
   // ── Enterprise+: TikTok × DSP ─────────────────────────────────────────────
   const tiktokDSP = useMemo(() => {
@@ -992,56 +1027,46 @@ function ReportInner() {
           <Section delay={0.34}>
             <div className="rounded-2xl border mb-8 overflow-hidden" style={glass}>
               <SectionHeader
-                emoji="🚀"
+                emoji="🔺"
                 icon={TrendingUp}
-                title="Conversion Funnel"
+                title="Engagement Pyramid"
                 accent={C.cyan}
                 badge={
                   <span className={`${mono} text-[10px] px-2.5 py-1 rounded-md border`}
                     style={{ background: `${C.cyan}12`, color: C.cyan, borderColor: `${C.cyan}30` }}>
-                    Fan Journey
+                    Audience Depth
                   </span>
                 }
               />
-              <div className="p-6 sm:p-8 space-y-5">
-                {funnelData.map((stage, i) => (
-                  <div key={stage.stage}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
+              <div className="p-6 sm:p-8 space-y-4">
+                {engagementPyramid.map((t, i) => (
+                  <motion.div
+                    key={t.tier}
+                    initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.6, delay: 0.34 + i * 0.12, ease: [0.22, 1, 0.36, 1] }}
+                    className="mx-auto rounded-xl border p-4 sm:p-5"
+                    style={{
+                      width: `${100 - i * 22}%`,
+                      borderColor: `${t.color}30`,
+                      background: `${t.color}0C`,
+                    }}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.2em] mb-1" style={{ color: C.gray }}>{t.tier}</div>
+                        <div className={`${mono} text-lg sm:text-xl font-bold`} style={{ color: C.white }}>{t.value}</div>
+                      </div>
+                      {t.badge && (
                         <span
-                          className={`${mono} text-[10px] font-bold uppercase tracking-[0.2em]`}
-                          style={{ color: C.gray, minWidth: "6rem" }}
+                          className={`${mono} text-xs font-semibold px-2.5 py-1 rounded-md border shrink-0`}
+                          style={{ color: t.color, borderColor: `${t.color}40`, background: `${t.color}14` }}
+                          title={t.badgeTitle}
                         >
-                          {stage.stage}
+                          {t.badge}
                         </span>
-                        <span className={`${mono} text-sm font-semibold`} style={{ color: C.white }}>
-                          {fmtCompact(stage.value)}
-                        </span>
-                      </div>
-                      <span className={`${mono} text-sm font-bold`} style={{ color: stage.color }}>
-                        {stage.pct}%
-                      </span>
+                      )}
                     </div>
-                    <div className="h-3 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.05)" }}>
-                      <motion.div
-                        className="h-full rounded-full"
-                        style={{
-                          background: `linear-gradient(90deg, ${stage.color}CC, ${stage.color})`,
-                          boxShadow: `0 0 12px ${stage.color}66`,
-                        }}
-                        initial={{ width: 0 }}
-                        animate={{ width: `${stage.pct}%` }}
-                        transition={{ duration: 1.2, delay: 0.34 + i * 0.15, ease: [0.22, 1, 0.36, 1] }}
-                      />
-                    </div>
-                    {i < funnelData.length - 1 && (
-                      <div className="flex justify-start mt-1.5 pl-[6.5rem]">
-                        <span className="text-[10px]" style={{ color: C.grayDim }}>
-                          ↓ {Math.round((funnelData[i + 1].value / stage.value) * 100)}% convert to {funnelData[i + 1].stage.toLowerCase()}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             </div>
@@ -1093,7 +1118,10 @@ function ReportInner() {
                       />
                       <Tooltip
                         contentStyle={tooltipStyle}
-                        formatter={(v: any) => [`${Number(v).toFixed(0)} / 100`, ""]}
+                        formatter={(v: any, _n: any, props: any) => [
+                          props?.payload?.pending ? "Pending Data" : `${Number(v).toFixed(0)} / 100`,
+                          "",
+                        ]}
                       />
                     </RadarChart>
                   </ResponsiveContainer>
@@ -1106,12 +1134,22 @@ function ReportInner() {
                       style={{ borderColor: "rgba(0,196,181,0.12)", background: "rgba(0,196,181,0.04)" }}
                     >
                       <div className="text-[10px] uppercase tracking-[0.15em] mb-1" style={{ color: C.gray }}>{d.axis}</div>
-                      <div
-                        className={`${mono} text-xl font-bold`}
-                        style={{ color: d.value >= 70 ? C.cyan : d.value >= 50 ? C.cyanSoft : C.gray }}
-                      >
-                        {d.value}
-                      </div>
+                      {d.pending ? (
+                        <span
+                          className={`${mono} text-[10px] font-semibold px-2 py-0.5 rounded-md border`}
+                          style={{ color: C.grayDim, borderColor: "rgba(154,154,154,0.25)", background: "rgba(154,154,154,0.06)" }}
+                          title="No data source yet for this axis — coming in a future release"
+                        >
+                          Pending Data
+                        </span>
+                      ) : (
+                        <div
+                          className={`${mono} text-xl font-bold`}
+                          style={{ color: d.value >= 70 ? C.cyan : d.value >= 50 ? C.cyanSoft : C.gray }}
+                        >
+                          {d.value.toFixed(0)}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

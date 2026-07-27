@@ -1190,6 +1190,54 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
       ("tone") estimation. Follow-up: expanding this to Instagram/YouTube
       needs new API calls (posts/media endpoints) to get real interaction
       data from those platforms — not done, a separate future decision.
+- [x] ~~Artist Radar Profile & Conversion Funnel — ground in real data~~
+      RESOLVED 2026-07-27 (frontend-only, `src/pages/Report.tsx`). These
+      were the last belt-and-suspenders pre-launch fields: investigation
+      found `virality_score`/`sync_potential`/`live_score`/`brand_fit`/
+      `streaming_growth`/`community_score` and `funnel`/`conversion_funnel`
+      never existed anywhere in the n8n workflow or in any real report —
+      not AI-guessed like `ltv_projection`/`growth_trajectory`, but pure
+      static frontend fallback constants (e.g. radar always showed
+      65/72/58/70/80/55 for every artist, every session, confirmed via
+      `git log -p` to predate this investigation entirely). Fixed:
+      - **Conversion Funnel → Engagement Pyramid**: 3 real tiers — Passive
+        Reach (`spotify_data.monthly_listeners`), Retained Audience
+        (`spotify_data.followers` + a clamped 0-100%
+        Follower-to-Listener-Ratio badge, `min(100, max(0,
+        followers/monthly_listeners×100))` — legacy/superstar artists can
+        exceed 100% raw), Active Superfans (`retention_rate` +
+        `social_engagement_index` badge). Tier widths in the UI are static
+        visual chrome, not derived from the tiers' own values — deliberately
+        avoids the old bug's fake per-artist "X% convert to Y" implication
+        between incomparable units.
+      - **Artist Radar Profile**: 3 of 6 axes now real — Streaming Growth
+        (derived from `growth_trajectory`'s M1→M6 as `(M6/M1-1)×100`,
+        clamped 0-100), Community (bound directly to `retention_rate`),
+        Virality (reuses `social_engagement_index` directly rather than a
+        second, redundant TikTok calculation — Gilberto's call, avoids
+        duplicating logic and a second unvalidated constant). The remaining
+        3 (Sync Potential, Live Performance, Brand Fit) have no real data
+        source anywhere in the pipeline — render `value: 0` for safe chart
+        plotting but a `pending: true` flag drives a "Pending Data" badge
+        in both the chart tooltip and the below-chart grid, instead of a
+        fake number.
+      - **Verified**: isolated logic test (real Chappell Roan data, missing
+        `growth_trajectory`, empty-array `growth_trajectory`, and a
+        legacy-superstar >100%-raw-ratio case) — all correct, no
+        `NaN`/`undefined` ever reaches the chart. `tsc --noEmit` clean,
+        `vite build` succeeded. Live browser visual test (2026-07-27): dev
+        server bound to `127.0.0.1` only (confirmed via `ss -tlnp`, not
+        externally reachable), disposable `intelligence_reports` row seeded
+        with real, previously-verified Chappell Roan data, viewed via SSH
+        tunnel. Confirmed Engagement Pyramid tiers and Radar's 3
+        "Pending Data" badges render correctly; `growth_trajectory`'s M1
+        correctly matched the real `monthly_listeners` anchor. Test row +
+        dev server torn down after.
+      - **Follow-up polish items surfaced during visual QA, not blocking,
+        not yet investigated**: (1) Revenue Snapshot section — bar label
+        rendering issue observed live, needs its own look. (2) PDF export —
+        needs a theme/styling check (unclear yet whether the new Engagement
+        Pyramid/Radar sections render correctly in the PDF export path).
 
 ---
 
