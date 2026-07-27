@@ -56,6 +56,90 @@ Automated n8n backup:
 /docker/n8n/backup_n8n.sh  → runs every hour via cron
 /docker/n8n/backups/        → backup destination (7-day retention)
 
+RESOLVED (2026-07-27): **Postgres password rotation** — Tier 1 security
+item, prioritized once real customer data started flowing through the
+live product. `POSTGRES_PASSWORD` in `/root/supabase/.env` is shared
+across every Supabase service (`db`, `studio`, `auth` as
+`supabase_auth_admin`, `rest` as `authenticator`, `realtime`/`meta`/
+`analytics`/`supavisor` as `supabase_admin`, `storage` as
+`supabase_storage_admin`, `functions` as `postgres`) — confirmed via
+`roles.sql` that `authenticator`, `pgbouncer`, `supabase_auth_admin`,
+`supabase_functions_admin`, `supabase_storage_admin` all get this exact
+password at init, plus `postgres`/`supabase_admin` natively. Not used
+anywhere in n8n (checked `credentials_entity` — no raw Postgres
+credential type exists, only `supabaseApi`/`httpHeaderAuth` which go
+through the REST API) or in any app code/cron job. `pg_hba.conf` trusts
+local/loopback unconditionally — only real inter-container traffic
+(`host all all all scram-sha-256`) needs the password, which is why every
+`docker exec supabase-db psql` admin command used throughout this
+project's history never needed it.
+
+**Rotated live**: `pg_dump` backup first
+(`manual_20260727_212613_pre_postgres_password_rotation.sql`), new 40-char
+password generated, `ALTER ROLE ... WITH PASSWORD` run live for `postgres`,
+`supabase_admin`, `authenticator`, `pgbouncer`, `supabase_auth_admin`,
+`supabase_storage_admin` (6 of the intended 7 — `supabase_functions_admin`
+does not exist in this database at all, harmless no-op), `.env` updated
+(backed up first), `docker compose up -d --force-recreate` run for
+`studio auth rest realtime storage meta analytics supavisor`.
+
+**Deviation from plan**: `db` itself also got recreated (a brief real
+Postgres restart) even though it wasn't in the explicit service list —
+Compose treated it as needing recreation too since its own environment
+block also references `${POSTGRES_PASSWORD}`. More disruptive than the
+"live `ALTER ROLE`, no restart needed" plan, though it came back healthy
+within seconds — noted for next time this needs doing: expect `db` to
+recreate too whenever `POSTGRES_PASSWORD` itself changes, even if not
+explicitly listed.
+
+**Verified on the real customer path**: REST API query against
+`intelligence_reports` via Kong returned a real `200`; Auth health
+endpoint responded correctly through Kong with the `apikey` header.
+`db`/`auth`/`rest`/`storage`/`meta`/`studio` all report healthy.
+
+**Found as a side effect, non-blocking, NOT on the customer path** — see
+§11 Active Tasks: `supabase-pooler` (Supavisor) and `realtime` both began
+crash-looping after being recreated, joining `supabase-edge-functions`
+(also freshly discovered crash-looping, 7,974 restarts since 2026-05-01,
+entirely unrelated to this rotation). All three fail on errors *after*
+successfully authenticating with the new password (pooler: a Cloak/cipher
+key mismatch decrypting its own unrelated internal tenant config;
+realtime: an Ecto migration schema error; functions: "could not find an
+appropriate entrypoint" — no edge function ever deployed) — none are
+password/auth failures, and none are used by the live app (confirmed no
+`.channel(`/Realtime usage anywhere in `src/`; nothing connects through
+the pooler's proxy ports). Can't prove these predate today's recreate
+(restart counts reset on recreation), but the error signatures and the
+fact that none of the three have ever been mentioned across this
+project's entire audit history both point to long-dormant, unused
+components rather than a new regression.
+
+RESOLVED (investigated 2026-07-27): **Git history secret exposure scan**
+— separate from the above (confirmed distinct from a different, already-
+known transcript-only exposure). `americascom/songss-intelligence` is a
+**public** GitHub repo (confirmed via an unauthenticated
+`api.github.com` call returning 200 — private repos 404 unauthenticated).
+Found real, hardcoded (not `${VAR}`) secrets in exactly 2 early commits:
+`6da1d4b` (2026-01-11, `.env` — `VITE_SUPABASE_URL`/`_PROJECT_ID`/
+`_PUBLISHABLE_KEY`, all Vite build-time vars that are always public in
+the client bundle regardless, so not a real exposure) and `c4c858d`
+(2026-04-08, `docker-compose.yml` — real `POSTGRES_PASSWORD`,
+`GOTRUE_JWT_SECRET`/`PGRST_JWT_SECRET`, `SUPABASE_ANON_KEY`,
+`SUPABASE_SERVICE_KEY`). **Confirmed all four values in the real commit
+do NOT match anything currently live** — already superseded by prior
+rotation before this investigation even started. A full pattern-based
+scan across all 318 commits in history (JWTs, Perplexity/OpenAI/
+Anthropic/Google/AWS/Stripe key formats, generic `*_PASSWORD`/`*_SECRET`/
+`*_KEY`/`*_TOKEN` assignments, private-key blocks — first pass had a
+regex word-boundary bug that would've missed compound names like
+`POSTGRES_PASSWORD`, caught and fixed before trusting results) found
+nothing beyond these same 2 commits. **Conclusion: closed, historical,
+non-exploitable** — no git history rewrite attempted (would be
+destructive and wasn't warranted given no active exploit risk). Not a
+full guarantee (regex scan, not an entropy-based tool like `gitleaks`,
+which isn't installed) — flagged as a low-priority follow-up if stronger
+confidence is ever wanted.
+
 ---
 
 ## 4. NIE FLOW (DO NOT BREAK)
@@ -1127,6 +1211,18 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
 - [ ] RTK (Redux Toolkit) — incremental adoption: auth, report, artist, ui slices
 - [ ] USPTO — trademark SONGSS Intelligence (Class 42) and NIE
 - [ ] MFA on Supabase Studio
+- [ ] Supabase `pooler`/`realtime`/`functions` crash loops — non-blocking,
+      not on the live customer path (see §3 "RESOLVED (2026-07-27):
+      Postgres password rotation" for full detail). `supabase-pooler`
+      (Supavisor) crashes on a Cloak/cipher key mismatch decrypting its
+      own internal tenant config; `realtime` crashes on an Ecto migration
+      schema error; `supabase-edge-functions` has been crash-looping since
+      2026-05-01 (7,974 restarts) on "could not find an appropriate
+      entrypoint" — no edge function ever deployed. All three
+      authenticate to Postgres successfully before failing, so none are
+      password/auth issues. Confirmed nothing in the live app uses
+      Realtime subscriptions or connects through the pooler's proxy
+      ports. Needs its own dedicated session to investigate root causes.
 - [x] ~~"Industry Buzz Tracker" feature (compact UI form: "Industry Buzz") —
       n8n workflow integration~~ IMPLEMENTED 2026-07-27 — see §4 "RESOLVED
       (implemented 2026-07-27): Industry Buzz Tracker...". 2 new n8n nodes,
