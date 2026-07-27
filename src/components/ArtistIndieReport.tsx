@@ -7,7 +7,7 @@ import {
 import {
   Download, Sparkles, Heart, TrendingUp, Users, DollarSign,
   Activity, MapPin, Lightbulb, Music, ArrowUpRight, Youtube, Instagram,
-  ShieldCheck, Radio, Calculator, Film, Award, AlertTriangle,
+  ShieldCheck, Radio, Calculator, Film, Award, AlertTriangle, Newspaper,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import PeerBenchmarkChart, { type PeerBenchmarkData } from "@/components/PeerBenchmarkChart";
@@ -152,6 +152,13 @@ interface ReportRow {
   youtube_data: { subscribers?: number; total_views?: number | string } | null;
   instagram_data: { followers?: number; following?: number; media_count?: number } | null;
   peer_benchmark_data: PeerBenchmarkData | null;
+  industry_buzz_data: {
+    sentiment: string | null;
+    summary: string | null;
+    notable_mentions: string[];
+    citations: string[];
+    search_context_size: string | null;
+  } | null;
 }
 
 // ── Shared section card header ───────────────────────────────────────────────
@@ -204,6 +211,21 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
   const igFollowers = Number(ig.followers ?? 0);
   const igFollowing = Number(ig.following ?? 0);
   const hasInstagramData = igFollowers > 0;
+
+  // Industry Buzz Tracker: real-time Perplexity press/media coverage,
+  // structured JSON returned directly by the model, citations are
+  // Perplexity's own real search_results, never AI-invented.
+  const industryBuzz    = report.industry_buzz_data ?? null;
+  const buzzSentiment   = industryBuzz?.sentiment ?? null;
+  const hasIndustryBuzz = !!(industryBuzz?.summary);
+  const BUZZ_SENTIMENT_STYLE: Record<string, { label: string; color: string }> = {
+    positive: { label: "Positive", color: C.cyan },
+    mixed:    { label: "Mixed",    color: C.warm },
+    negative: { label: "Negative", color: "#FF6B6B" },
+  };
+  const buzzBadge = buzzSentiment && BUZZ_SENTIMENT_STYLE[buzzSentiment]
+    ? BUZZ_SENTIMENT_STYLE[buzzSentiment]
+    : null;
 
   const snie = Number(report.digital_score ?? 0) || 72;
   const rawSEI = em.social_engagement_index;
@@ -500,13 +522,14 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
           </p>
         </motion.header>
 
-        {/* 4 Key Metrics */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-14">
+        {/* Key Metrics */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-14">
           {[
             { label: "Social Engagement Index", value: engagementScore === null ? "—" : engagementScore.toFixed(0), icon: Activity, title: engagementScore === null ? "Not enough TikTok data yet to compute this" : "Cumulative engagement relative to audience size" },
             { label: "Retention Rate", value: `${retentionRate.toFixed(0)}%`, icon: Users },
             { label: "Monthly Streams", value: fmtCompact(monthlyStreams), icon: TrendingUp },
             { label: "LTV Projection", value: fmtUSD(ltv), icon: DollarSign, title: "Estimated using a global blended benchmark ($0.012/listener/month). Real values vary by geographic distribution and audience retention." },
+            { label: "Industry Buzz", value: buzzBadge ? buzzBadge.label : "—", icon: Newspaper, valueColor: buzzBadge?.color, title: buzzBadge ? "Recent press & industry coverage sentiment" : "Not enough recent press coverage found" },
           ].map((k, i) => (
             <motion.div
               key={k.label}
@@ -520,7 +543,7 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
                 <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: C.gray }}>{k.label}</span>
                 <k.icon className="w-3.5 h-3.5" style={{ color: C.cyan, filter: `drop-shadow(0 0 6px ${C.cyan}AA)` }} />
               </div>
-              <div className={`${mono} text-3xl font-semibold`} style={{ color: C.white }}>{k.value}</div>
+              <div className={`${mono} text-3xl font-semibold`} style={{ color: (k as any).valueColor || C.white }}>{k.value}</div>
             </motion.div>
           ))}
         </div>
@@ -896,6 +919,66 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
                   </div>
                 </motion.div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Industry Buzz Tracker */}
+        {hasIndustryBuzz && (
+          <div className="rounded-2xl border mb-14 overflow-hidden" style={glass}>
+            <SectionHeader
+              emoji="📰"
+              icon={Newspaper}
+              title="Industry Buzz Tracker"
+              accent={buzzBadge?.color || C.cyan}
+              badge={
+                buzzBadge && (
+                  <span
+                    className={`${mono} text-[10px] px-2.5 py-1 rounded-md border`}
+                    style={{ background: `${buzzBadge.color}12`, color: buzzBadge.color, borderColor: `${buzzBadge.color}30` }}
+                  >
+                    {buzzBadge.label}
+                  </span>
+                )
+              }
+            />
+            <div className="p-6 sm:p-8">
+              <p className="text-[10px] italic mb-5" style={{ color: C.grayDim }}>
+                Sourced from recent press and industry coverage — not a live scan of social media posts.
+              </p>
+              <div
+                className="prose prose-invert max-w-none prose-p:leading-[1.85] prose-p:text-[15px] prose-strong:text-white mb-5"
+                style={{ color: "#D8D8D8" }}
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(industryBuzz?.summary || "") }}
+              />
+              {!!industryBuzz?.notable_mentions?.length && (
+                <div className="mb-5">
+                  <div className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: C.gray }}>Notable Mentions</div>
+                  <ul className="list-disc pl-5 space-y-1">
+                    {industryBuzz.notable_mentions.map((m, i) => (
+                      <li key={i} className="text-sm" style={{ color: "#D8D8D8" }}>{m}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {!!industryBuzz?.citations?.length && (
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: C.gray }}>Sources</div>
+                  <ul className="space-y-1">
+                    {industryBuzz.citations.map((url, i) => (
+                      <li key={i}>
+                        <a
+                          href={url} target="_blank" rel="noopener noreferrer"
+                          className={`${mono} text-xs break-all hover:underline`}
+                          style={{ color: C.cyan }}
+                        >
+                          {url}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
         )}

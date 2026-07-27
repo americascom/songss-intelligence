@@ -850,6 +850,197 @@ validation tweak:
 2. Frontend — a new entry point/UI (e.g. a dashboard button) since
    `Submit.tsx` has no no-ID UI state at all today.
 
+RESOLVED (implemented 2026-07-27): **Industry Buzz Tracker** (full
+report/PDF section name; "Industry Buzz" for compact UI badges/cards —
+originally discussed as "Perplexity Social Listening," renamed for
+accuracy, see naming rationale below) — a new Perplexity-powered feature
+surfacing recent artist press/media buzz, separate from the existing
+`Perplexity — Web Intelligence` node already in the NIE flow. Designed and
+disambiguation-tested earlier the same day (per Gilberto's explicit ask to
+validate "before building anything into the production workflow"), then
+built and deployed later the same session once disambiguation was proven.
+
+**Query format, designed and validated against 3 real homonym cases**: a
+system-prompt guardrail (generic and reusable, not per-artist-tuned) plus a
+structured user-prompt identity block.
+- Context fields: `artist_name`, `genre`, `flagship_song_or_album` (+
+  year), `active_era` (years active), `approx_monthly_listeners` — all
+  objective, always-derivable facts (the last one already real Spotify
+  data used elsewhere in this pipeline), deliberately NOT a hand-authored
+  "not the wrestler"-style hint, since in production we won't know in
+  advance which homonym (if any) a given artist collides with.
+- System guardrail: instructs the model to only use facts matching ALL
+  identifying details given, exclude anything it isn't confident matches,
+  and say so explicitly rather than guessing or blending in a different
+  same-named entity.
+- Task instruction (v2, see fix below): explicitly names target sources
+  (Twitter/X, TikTok, Instagram, and named music press outlets — Pitchfork,
+  Rolling Stone, Billboard, NME, Variety) and asks it to prioritize
+  visibly-dated content from the last 30 days over older evergreen
+  bio/stats pages.
+
+**Disambiguation test — 3 real homonym cases, all passed clean** (direct
+`curl` calls to `api.perplexity.ai/chat/completions`, `model: sonar-pro`,
+run from the VPS host using the real `PERPLEXITY_API_KEY` sourced from
+`/docker/n8n/secrets.env` into a local shell var, never printed):
+1. **Sting** (musician) vs. Sting (professional wrestler, Steve Borden) —
+   clean; response explicitly confirmed "the search results are clearly
+   about the correct Sting."
+2. **Bush** (alt-rock band, Gavin Rossdale) vs. Bush (US Presidents) —
+   clean; response explicitly confirmed "none of the surfaced results
+   refer to a different 'Bush'."
+3. **Nirvana** (1990s Seattle grunge band, Cobain) vs. Nirvana (1967
+   British psychedelic pop band, Alexander Spyropoulos) — clean, the
+   hardest case (same-industry musician-vs-musician, not just a different
+   public figure); all citations were Cobain-era only (Aberdeen WA,
+   *Nevermind*), zero mention of the 1967 band.
+
+**Buzz-retrieval gap, found and fixed same session**: the first-pass task
+prompt (default `search_context_size: low`) reliably passed disambiguation
+but returned NO real recent buzz — all 3 test artists fell back to static
+bio/stats sources (Wikipedia, Viberate, kworb, ChartMasters) and explicitly
+said they couldn't find time-specific last-30-days data rather than
+fabricating an answer (the guardrail's "say so explicitly" instruction
+working as intended, but exposing a real capability gap, not just a
+disambiguation gap).
+
+**Fix**: bumped `web_search_options.search_context_size` to `"high"` and
+named explicit target platforms/outlets in the task instruction. Retested
+Sting (same artist as the v1 baseline, for a clean before/after
+comparison): this **did** surface real, dated coverage — the "Sting 3.0"
+world tour expansion, *Desert Rose Reimagined* EP (Apr 2026), a new live
+album (Jun 2026), *The Last Ship* at the Met Opera — all backed by real
+dated sources (American Songwriter, AXS, NY Post, Ultimate Classic Rock,
+Tixel, Consequence, RTT News, spanning Nov 2025-Jul 2026). Identity check
+still held throughout — explicitly reconfirmed "this specific Sting...
+ex-Police frontman."
+
+**Residual, honest limitation (real, not a prompt-tuning problem)**: even
+at `high` context with named platforms, the model still could NOT surface
+actual native Twitter/X, TikTok, or Instagram posts — only press/
+ticketing/industry coverage that occasionally *references* "trending
+searches" or "renewed interest." It said so explicitly rather than
+inventing a fake viral moment. This is very likely a real limitation of
+what Perplexity's web index covers (news/press/blogs vs. live social
+feeds), not something further prompt iteration will fix — same
+"don't fabricate missing data" principle already applied to
+`retention_rate`/`ltv_projection`/`growth_trajectory`/
+`social_engagement_index`, just discovered here instead of designed in
+from the start.
+
+**Naming decision (Gilberto, 2026-07-27, final)**: given the
+honest-limitation finding, the feature should NOT be called "Social
+Listening" — that implies literal social-platform monitoring it can't
+actually do. Same honesty principle applied throughout this project (e.g.
+`social_engagement_index`'s "not recent activity" caveat,
+`ltv_projection`'s tooltip). **"Industry Buzz Tracker"** for the full
+report/PDF section; **"Industry Buzz"** for compact UI badges/cards.
+
+**Cost data point**: `sonar-pro` at `search_context_size: low` cost
+~$0.015-0.018/call in testing; at `high`, ~$0.028-0.047/call — roughly
+2.6x. **Tiering decision (Gilberto, 2026-07-27)**: `low`/`medium` for
+Indie/Growth, `high` reserved for Pro/Enterprise/Opus tiers — same
+cost-tiering pattern already used for AI model selection across plans
+(see §7 Pricing: Haiku vs. Sonnet vs. Opus by tier).
+
+**Implementation (2026-07-27)**: 2 new n8n nodes inserted between
+`Perplexity — Web Intelligence` and `GPT-4o — Financial Analysis`:
+`Build Industry Buzz Context` (Code node — assembles `genre` from
+`Spotify`'s real `genres[]` or `Last.fm`'s real tags, `flagship_song_or_album`
+from the customer-submitted `song_name` or `Genius`'s first real hit,
+`active_era` from `MusicBrainz`'s `life-span`, `approx_monthly_listeners`
+from `Spotify` — all already-fetched real data, zero new API calls; also
+resolves `search_context_size` from `plan_label`: `Artist Indie`→`low`,
+`Artist Growth`→`medium`, else→`high`, since `Config Haiku` covers
+Indie/Growth/Pro in one node but the tiering doesn't map to that grouping
+1:1) and `Industry Buzz Tracker — Perplexity` (httpRequest node,
+`model: "sonar-pro"`, `alwaysOutputData`/`continueOnFail`, same auth
+pattern as the sibling Perplexity node). Perplexity returns structured
+JSON directly (`{sentiment, summary, notable_mentions}` + its own real
+`citations` array) — no second AI-extraction pass, avoiding the same
+tier-blind-extraction anti-pattern already identified for
+`digital_score`/`geo_hotspots`. `Code in JavaScript` parses this
+defensively (same fenced-JSON-stripping pattern as its `AI Agent` parsing)
+and adds `industry_buzz_data` to the PATCH body; `null` (never fabricated)
+if the call failed or didn't parse.
+
+New Supabase column `intelligence_reports.industry_buzz_data JSONB` (same
+migration pattern as `peer_benchmark_data`), backed up via `pg_dump` first,
+`NOTIFY pgrst, 'reload schema'` applied same-step (not an afterthought).
+
+**Real bug found and fixed during live verification**: the first live test
+(Chappell Roan, Artist Pro tier) returned `industry_buzz_data: null` in
+the database despite both new nodes executing successfully with no error.
+Traced step by step through the actual execution's stored data (decoded
+via n8n's own `flatted` library, same technique as the 2026-07-19 TikTok
+investigation): both new nodes ran clean; the raw Perplexity response
+matched the expected shape exactly; `JSON.parse()` on the actual response
+content succeeded with no error; `Code in JavaScript`'s own output
+already contained a fully correct `industry_buzz_data` object. The actual
+bug was one node further downstream — the `HTTP Request` node that PATCHes
+to Supabase does not pass `$json` through wholesale; it builds its body
+from a hardcoded, explicitly-enumerated field list (`JSON.stringify({...})`)
+that already included `peer_benchmark_data` but had never been extended
+for this new field, since the original patch only touched `Code in
+JavaScript`. Fixed with a one-line addition
+(`"industry_buzz_data": $json.industry_buzz_data ?? null,`) mirroring the
+existing `peer_benchmark_data` line. **Lesson for future fields added to
+the PATCH body**: check the `HTTP Request` node's hardcoded field list
+too, not just `Code in JavaScript` — it does not pass fields through
+automatically.
+
+**Deployed**: both changes via the established 3-DB-location method
+(`workflow_entity.nodes`/`connections` + both `workflow_history` rows,
+`versionId` `c8a04b97-...`/`activeVersionId` `a09c4898-...`), two separate
+backups (`manual_20260727_174035_pre_industry_buzz_tracker.sqlite` and
+`manual_20260727_184404_pre_industry_buzz_data_http_request_fix.sqlite`),
+dry-run against a `.backup`-based throwaway copy before each live patch,
+`/snap/bin/node --check` syntax verification on all new JS, clean restart
+after each, export-diff after each confirming exact scope (first patch: +2
+nodes, 1 node changed, 1 connection rewired; second patch: 0 added/removed,
+only `HTTP Request` changed, connections byte-identical).
+
+**Live-verified end-to-end**: disposable test session (`session_id`
+`cs_test_industry_buzz_verify_20260727`, bypassing Stripe, seeded with
+`artist_name IS NULL` per the established false-409-avoidance pattern),
+fired via internal `POST /webhook/submit-analysis` from inside
+`n8n_songss` (Chappell Roan, real TikTok handle `chappellroan`, `Artist
+Pro` plan — deliberately chosen to exercise the `Config Haiku` tiering
+nuance). After the `HTTP Request` fix: `industry_buzz_data` came back
+fully populated — real `sentiment: "mixed"`, a real dated summary (TikTok
+controversy, All Things Go festival withdrawal, political commentary,
+Billboard chart coverage), 9 real citations, and `search_context_size:
+"high"` correctly resolved for the Pro tier (confirming the plan_label-
+conditional fix, not just the flat Config Opus case). Test session +
+its `processed_sessions` row deleted after, 0 rows left.
+
+**Frontend** (`src/pages/Report.tsx` and
+`src/components/ArtistIndieReport.tsx`): `industry_buzz_data` added to
+both `ReportRow` interfaces (same inline-typing precedent as
+`peer_benchmark_data`). KPI grid widened from 4 to 5 tiles — new
+"Industry Buzz" tile shows a sentiment pill (Positive/Mixed/Negative,
+color-coded) or "—" with a "Not enough recent press coverage found"
+tooltip, same null-handling convention as Social Engagement Index. New
+"Industry Buzz Tracker" full section (only rendered when a summary
+exists) reuses the existing `SectionHeader`/`glass` shell, renders the
+markdown summary + notable mentions + a Sources list of linked
+citations — the first citations/URL-list UI in this codebase — with a
+visible caption: "Sourced from recent press and industry coverage — not a
+live scan of social media posts." Shown on all tiers uniformly (no
+frontend tier-gating; the backend already varies quality via
+`search_context_size`). `tsc --noEmit` clean, `vite build` succeeded.
+
+**Live browser visual test (2026-07-27)**: dev server bound to
+`127.0.0.1` only (confirmed via `ss -tlnp`), two disposable sessions
+(the real Chappell Roan/Pro-tier row above, plus a second directly-seeded
+`Artist Indie`-tier row with `industry_buzz_data` explicitly `NULL` to
+exercise the missing-data path), viewed via Gilberto's own SSH tunnel.
+Confirmed both the sentiment-pill tile and the full section — including
+the honesty caption — render correctly on both tiers, and the null path
+correctly shows `—` with the tooltip and suppresses the full section
+entirely. Both test rows + the `processed_sessions` row deleted after,
+0 rows left.
+
 ---
 
 ## 5. SUPABASE DATABASE
@@ -936,6 +1127,13 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
 - [ ] RTK (Redux Toolkit) — incremental adoption: auth, report, artist, ui slices
 - [ ] USPTO — trademark SONGSS Intelligence (Class 42) and NIE
 - [ ] MFA on Supabase Studio
+- [x] ~~"Industry Buzz Tracker" feature (compact UI form: "Industry Buzz") —
+      n8n workflow integration~~ IMPLEMENTED 2026-07-27 — see §4 "RESOLVED
+      (implemented 2026-07-27): Industry Buzz Tracker...". 2 new n8n nodes,
+      new `industry_buzz_data` Supabase column, frontend KPI tile + full
+      section, live-verified end-to-end. Found and fixed a real bug during
+      verification (the `HTTP Request` PATCH node's hardcoded field list
+      didn't include the new field).
 - [ ] NIE prompt LTV/predictive-metrics rework — see §4 "KNOWN ISSUE (found
       2026-07-18, not fixed, scoped as its own dedicated future session)":
       needs a real LTV formula plus fixing the extraction step to stop
