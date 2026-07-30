@@ -140,6 +140,243 @@ full guarantee (regex scan, not an entropy-based tool like `gitleaks`,
 which isn't installed) — flagged as a low-priority follow-up if stronger
 confidence is ever wanted.
 
+IN PROGRESS (started 2026-07-28): **Supabase `JWT_SECRET`/`ANON_KEY`/
+`SERVICE_ROLE_KEY` rotation** — Tier 1 security item, continuation of the
+2026-07-27 Postgres password rotation. Mapped first (separate step, before
+touching anything): confirmed `JWT_SECRET` is the single source of truth
+(`/root/supabase/.env`, fans out via compose `${VAR}` interpolation to 6+
+services incl. `GOTRUE_JWT_SECRET`/`PGRST_JWT_SECRET`), `ANON_KEY`/
+`SERVICE_ROLE_KEY` are just HS256 JWTs signed by it (not independently
+rotatable — regenerating them without changing the secret provides no real
+security benefit), Kong's `kong.yml` gets them via entrypoint-script env
+substitution (needs a real recreate, not just restart), and the newer
+opaque publishable/secret-key system is fully unconfigured on this
+instance (legacy static-JWT path only). Key structural finding: this
+instance uses a single symmetric HS256 secret with no JWKS/dual-key
+rotation configured, so rotating `JWT_SECRET` **unavoidably invalidates
+every currently-logged-in customer's session JWT** — no zero-downtime path
+exists here. Gilberto's call: proceed now rather than schedule a window,
+since there are no real customers yet.
+
+**New values**: generated via pure-stdlib Python (no `jwt`/`jose` library
+available on this VPS) — `JWT_SECRET` as 48 random bytes base64url-encoded
+(64 chars, matching the current format exactly, confirmed base64url
+charset via regex before generating), `ANON_KEY`/`SERVICE_ROLE_KEY`
+re-signed with the same claim shape as the current live keys
+(`{role, iat, exp}`, same ~50-year expiry horizon). The HS256 sign/verify
+implementation was **self-verified byte-for-byte against the real live
+keys** (re-signed the current keys' actual payload with the current real
+secret and confirmed exact string match) before being trusted to generate
+the new ones.
+
+**Backups** (all timestamped `20260728_143247`, taken before any live
+change): `/root/supabase/.env.backup_20260728_143247_pre_jwt_rotation`,
+`pg_dumpall` to
+`/root/supabase/backups/manual_20260728_143247_pre_jwt_rotation.sql`, and
+an online WAL-safe `.backup` copy of n8n's `database.sqlite` to
+`/docker/n8n/backups/manual_20260728_143247_pre_jwt_apikey_rotation.sqlite`.
+
+**Live cutover, Supabase side — DONE**: new values written to
+`/root/supabase/.env`, `docker compose up -d --force-recreate` run for
+`db auth rest storage meta analytics studio kong` in one shot.
+**Verified on the real customer path**: REST query via Kong with the new
+anon key → `200`; the same query with the **old** anon key → `401
+Unauthorized` (proves the old key is actually dead, not just that the new
+one happens to work); Auth health check → `200`.
+
+**Side effect found**: `supabase-analytics` began crash-looping after
+being recreated — same "freshly surfaced pre-existing dormant issue"
+pattern as the pooler/realtime/functions trio found during the 2026-07-27
+Postgres rotation (see above). Error is `relation "system_metrics" does
+not exist` (an internal Logflare/Ecto migration issue) — not an
+auth/password failure, unrelated to this rotation's actual change, and
+analytics is not on the live customer request path. Not chased further
+this session; should be tracked alongside the existing pooler/realtime/
+functions crash-loop item in §11.
+
+**Live cutover, n8n side — DONE**, and closes the "Hardcoded `apikey`
+header" Golden Rule 4 gap in the same pass rather than hand-patching
+around it: updated the shared "Supabase Service Role Auth" credential
+(id `Aqlm0Ocboq2dZEIl`) via `n8n import:credentials` — deliberately used
+n8n's own CLI/encryption code rather than reimplementing its AES-256-CBC
+credential encryption by hand (that internals path was explicitly ruled
+out as a separate Tier 1 item, same category as the encryptionKey
+rotation — see `project_n8n_encryptionkey_rotation_pending` in memory).
+Verified the CLI mechanism end-to-end first with a disposable test
+credential (round-trip encrypt/decrypt confirmed correct) before touching
+the real one. Then patched `workflow_entity.nodes` directly via the
+established plaintext-SQLite method (same technique used for every
+`retention_rate`/`digital_score`/etc. fix since 2026-07-16) to: 1) update
+the hardcoded `apikey` header value on all 9 nodes that carry it (`Save
+Processed Session`, `Check Duplicate Session`, `HTTP Request`, `Insert
+Intelligence Report`, `Update Artist Name`, `Fetch Session Data`, `HTTP
+Request1`, `Check Peer Cache`, `Write Peer Cache`) to the new
+`SERVICE_ROLE_KEY`; 2) migrate `Check Peer Cache`/`Write Peer Cache` onto
+the shared credential for `Authorization` — these 2 previously had **zero**
+credential wiring at all (both `Authorization` and `apikey` fully
+hardcoded raw), a worse gap than the other 7 nodes which already used the
+credential for `Authorization` and only had `apikey` hardcoded. All 9
+nodes are now in the same, better state. Restarted n8n, then export-diffed
+the active workflow (`8SRNZDEpZKu88qFz`) against a pre-patch export: node
+count 63→63, connections byte-identical, exactly the 9 expected nodes
+changed and nothing else.
+
+**Structural limit, not an oversight**: full elimination of the hardcoded
+`apikey` header itself isn't achievable through n8n's native credential
+UI — an `httpHeaderAuth` credential injects exactly one header, and
+Supabase's Kong config requires both `apikey` and `Authorization`
+populated independently on each request. `apikey` will remain a per-node
+hardcoded value going forward; this rotation closes the "no credential at
+all" gap, not the "still one raw header" gap, which needs a custom n8n
+credential type (real engineering, out of scope here) to fully close.
+
+**Deliberately left stale** (Gilberto's call): the 2 dead `supabaseApi`
+credentials ("Supabase account", "Supabase account 2") used only by
+inactive old workflow versions (V4.1, V4.2, "TESTE 24-04") — not updated,
+now hold a stale service_role key, harmless since unused by the live
+workflow.
+
+**Incidental issue found and fixed mid-session, unrelated to the rotation
+itself**: a `SELECT * FROM user_api_keys` query (checking for a safer way
+to update the n8n credential before the CLI approach was found) printed 3
+live n8n Public API tokens in full plaintext into the session transcript
+— broad scopes including `credential:read`/`credential:update`/
+`workflow:update`. Backed up the n8n DB, then immediately revoked (deleted)
+all 3 rows per Gilberto's explicit go-ahead. Likely ad-hoc dev/test keys
+from May–June (not confirmed tied to any live external integration), but
+treated as exposed regardless once printed.
+
+**RESOLVED (2026-07-28, later same day): Vercel app redeploy.** Gilberto
+set `VITE_SUPABASE_PUBLISHABLE_KEY` in the Vercel dashboard to the new
+`ANON_KEY` (`VITE_SUPABASE_URL` unchanged) and redeployed. **Verified
+live**: fetched `app.songssintelligence.com`'s actual deployed JS bundle
+(`/assets/index-BssHilCq.js`) and confirmed the embedded anon key matches
+the new value exactly; a real `GET /rest/v1/plan_limits` call through Kong
+using that key with `Origin: https://app.songssintelligence.com` returned
+a real `200` with data (not a 401); `/auth/v1/health` through Kong with
+the same key/origin also returned `200`. The app no longer 401s for real
+visitors.
+
+**RESOLVED (2026-07-30): landing page redeploy — closes out this rotation
+entirely.** `/root/songss-landing-page/.env`'s `VITE_SUPABASE_PUBLISHABLE_KEY`
+updated to the new `ANON_KEY` (old value backed up to
+`.env.backup_20260730_pre_landing_page_key_update`), rebuilt via `PATH=
+"/snap/bin:$PATH" npm run build` (per the node-version workaround — VPS
+default `node`/`npx` is v12). Noted: the build's own `scripts/
+ensure-wrangler.mjs` now auto-copies `wrangler.json` into `dist/server/`
+as part of `npm run build` — the separate manual `cp wrangler.json
+dist/server/wrangler.json` step in §9 is no longer needed, the build
+script handles it. Gilberto created a fresh `CLOUDFLARE_API_TOKEN`,
+`wrangler deploy` run from `dist/server`, token revoked immediately after
+per Golden Rule 7.
+
+**Live-verified end-to-end**: live page at `songssintelligence.com`
+(`www.` 301s to the bare domain) serves `index-CUlwJLtf.js` —
+hash-identical to the fresh local build. Fetched that live bundle
+directly: new anon key present, old key absent (0 matches). Real Kong
+REST call from the landing page's own origin
+(`Origin: https://songssintelligence.com`) — `GET /rest/v1/plan_limits`
+with the new key → real `200` with actual plan data; `/auth/v1/health`
+with the same key/origin → `200`; the same REST call repeated with the
+**old** key → real `401` (proves the old key is actually dead, not just
+that the new one happens to work — same negative-control pattern used to
+verify the app).
+
+**Current live impact**: none — app, landing page, and backend are all on
+the new key. This closes the entire 2026-07-28 JWT rotation; the only
+deliberately-skipped piece is a live disposable NIE run through n8n
+(mentioned as a nice-to-have in the original plan, not required since the
+backend/Supabase side of this rotation was already independently
+live-verified on 2026-07-28).
+
+RESOLVED (2026-07-30): **n8n encryptionKey rotation** — Tier 1 security
+item, deferred since the key was accidentally printed into a conversation
+transcript on 2026-07-09 (see `project_n8n_encryptionkey_rotation_pending`
+in memory). This key encrypts the `data` column of all 15 rows in n8n's
+own `credentials_entity` table (AES-256-CBC) — decrypted in memory at
+workflow runtime for every node that uses a stored n8n Credential.
+Confirmed beforehand: no `N8N_ENCRYPTION_KEY` env var existed anywhere
+(compose file, `.env`, `secrets.env`) — the config file at
+`/docker/n8n/.n8n/config` (a single-key JSON, `{"encryptionKey": ...}`)
+was the sole source of truth, exactly as this section previously stated.
+
+**Dry run first** (Gilberto's explicit ask, given this touches all 15
+credentials): full mechanism proven end-to-end on an isolated scratch
+copy — a throwaway n8n container (`--rm`, never touching the real
+`n8n_songss` container or its bind-mounted volume) against a `.backup`-based
+online-consistent copy of the real DB + config. Sequence tested: export
+all 15 credentials decrypted under the original key → swap in a disposable
+test key → confirm the *old* ciphertext now fails to decrypt (proves the
+real risk — n8n fails this loudly and cleanly, "Credentials could not be
+decrypted," not silent corruption) → `import:credentials` re-encrypts all
+15 under the new key → re-export and diff byte-for-byte against the
+original decrypted data (same 15 IDs, same names/types, identical secret
+values). **Real finding from the dry run that changed the live procedure**:
+n8n hard-validates that `N8N_ENCRYPTION_KEY` (env) matches the config
+file's stored `encryptionKey` at startup — a mismatch refuses to boot
+entirely, rather than silently misbehaving. So the config file and env var
+must be updated together, in the same operation, not the env var alone.
+
+**Storage decision (Gilberto, 2026-07-30)**: promote the key from
+config-file-only to an explicit `N8N_ENCRYPTION_KEY` in
+`/docker/n8n/secrets.env` (same visible, git-ignored, 600-perm pattern as
+every other secret in this project — `PERPLEXITY_API_KEY`,
+`STRIPE_WEBHOOK_SECRET`, etc.) rather than leaving it file-only.
+
+**Deployed**: backup first (`manual_20260730_214815_pre_encryptionkey_rotation.
+{sqlite,config.json}` — online `.backup`, not a plain `cp`, per the
+established WAL-consistency lesson — plus
+`secrets.env.pre_encryptionkey_rotation_20260730_221122`). New 64-char hex
+key generated, written consistently to both `config` and `secrets.env` via
+script (value never echoed to a terminal at any point), confirmed
+byte-identical across both files before touching the running container.
+`docker compose up -d --force-recreate n8n` (plain `restart` doesn't pick
+up `env_file` changes — standing lesson). Container came back up clean, no
+mismatch error. Then: `export:credentials --all --decrypted` against the
+live instance (still on the old key) → new key active via the recreate →
+`import:credentials` re-encrypts all 15 live credentials → re-exported to
+confirm the new key can actually decrypt what was just written (not just
+"import said success") — 15/15 IDs match, all decryptable. The plaintext
+export file was deleted immediately after each use (both the live one and
+the dry run's), confirmed via `find` that no copies remained anywhere on
+disk afterward.
+
+**Live-verified on the real customer path**: a disposable test session
+(`cs_test_encryptionkey_rotation_verify_20260730`, seeded directly into
+`intelligence_reports` with `artist_name IS NULL` per the established
+false-409-avoidance pattern) fired through the real `Submit Trigger`
+webhook (Chappell Roan, real TikTok handle). Returned a clean
+`{"status":"ok"}` / `200`, and the resulting row confirmed a fully real,
+complete report: correct `artist_name` written back (proves `Update Artist
+Name` authenticated via the **Supabase Service Role Auth** credential),
+real `spotify_data`/`engagement_metrics`/`industry_buzz_data`, a real
+`digital_score` (87) and a full 49,991-character `report_markdown` (proves
+the **Google Gemini SONGSS** `googlePalmApi` credential decrypted and
+authenticated correctly under the new key). The n8n execution itself
+closed out clean (`status: success`, no hang). Test row deleted after, 0
+rows left.
+
+**Scope note, found during verification**: of the 15 stored credentials,
+only 3 are actually used by the live, active workflow
+(`Songss | NIE V4.2 SEQUENTIAL`) — **Supabase Service Role Auth**
+(httpHeaderAuth, 9 nodes), **SMTP account** (welcome/report emails), and
+**Google Gemini SONGSS** (googlePalmApi, the real NIE Engine LLM calls).
+The `Perplexity — Web Intelligence`, `GPT-4o — Financial Analysis`,
+`Industry Buzz Tracker — Perplexity`, and `Gemini — Brand Intelligence`
+nodes all have **zero n8n Credential wiring** — they read
+`PERPLEXITY_API_KEY`/`OPENAI_API_KEY`/`GEMINI_API_KEY` directly from
+`secrets.env` via raw headers, not through the encrypted credential store
+this rotation touches. The other stored credentials (2 Supabase accounts,
+3 Anthropic accounts, CloudConvert, HTML-to-PDF, 4 generic Header Auth
+accounts) are legacy/dead, used only by inactive old workflow versions
+(V4.1, V4.2 FIXED TESTE) — not exercised by, or relevant to, the live
+customer path. All 15 still round-tripped correctly regardless, since the
+rotation re-encrypts the whole table, not a chosen subset. SMTP itself
+was not independently node-level verified this session (the live test
+confirmed the other 2 credentials plus overall execution success) — no
+reason to expect it behaves differently from the other 14, all of which
+round-tripped identically in the structural verification.
+
 ---
 
 ## 4. NIE FLOW (DO NOT BREAK)
@@ -1149,8 +1386,16 @@ RLS: enabled. Direct reads on intelligence_reports blocked for anon. Always use 
 - Supabase Auth at supabase-auth:9999 (internal Docker)
 - Users created by n8n after Stripe payment
 - Initial password = Stripe session_id
-- n8n encryptionKey: DO NOT CHANGE — stored in /docker/n8n/.n8n/config
-- Key value: see /docker/n8n/.n8n/config on VPS (never commit this value)
+- n8n encryptionKey: rotated 2026-07-30 (was exposed 2026-07-09) — see §3
+  dated entry for the full procedure. Do not change again without
+  following that documented rotation procedure (dry run on a scratch
+  container first, export-decrypted → swap key in config+secrets.env
+  together → import to re-encrypt → live-verify).
+- Now stored as `N8N_ENCRYPTION_KEY` in /docker/n8n/secrets.env (promoted
+  from config-file-only on 2026-07-30, same pattern as every other secret
+  in this project) — config file at /docker/n8n/.n8n/config must always
+  match it exactly, or n8n refuses to start (hard validation, confirmed
+  2026-07-30). Key value: never commit or print either location.
 
 ---
 
@@ -1192,7 +1437,8 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
 ## 10. GOLDEN RULES (NEVER VIOLATE)
 
 1. Do not modify n8n workflow without confirmation
-2. Do not change n8n encryptionKey
+2. Do not change n8n encryptionKey without following the documented
+   rotation procedure (§3/§6) — dry run on a scratch container first
 3. Do not use docker pull n8n:latest — always use n8nio/n8n:stable
 4. Do not expose Supabase service_role key — use n8n Credentials
 5. Do not add no_bundle to wrangler.json
@@ -1259,13 +1505,27 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
             and `geo_hotspots`, since retention_rate/ltv_projection/
             growth_trajectory are all code-computed and no longer read from
             that extraction step at all
-- [ ] Hardcoded `apikey` header (Supabase `service_role` JWT) on all 7 nodes
-      migrated to the shared credential 2026-07-09 — see §4 "Also found, not
-      part of this fix" (2026-07-23) and
-      `feedback_hardcoded_apikey_header_all_7_migrated_nodes` in memory.
-      Known since the original migration, never tracked as an open item
-      since; needs its own session, same as the encryptionKey/tunnel-token
-      rotations
+- [x] ~~Hardcoded `apikey` header (Supabase `service_role` JWT) — the
+      "no credential at all" half of the gap~~ RESOLVED 2026-07-28, as part
+      of the JWT rotation below — see §3 "IN PROGRESS (started 2026-07-28):
+      Supabase JWT_SECRET/ANON_KEY/SERVICE_ROLE_KEY rotation". `Check Peer
+      Cache`/`Write Peer Cache` (previously zero credential wiring at all)
+      migrated onto the shared "Supabase Service Role Auth" credential,
+      matching the other 7 nodes. **Not fully closed**: `apikey` itself
+      stays a per-node hardcoded value on all 9 nodes — n8n's
+      `httpHeaderAuth` credential type only injects one header, and
+      Supabase needs both `apikey` and `Authorization` independently. Full
+      closure needs a custom n8n credential type (real engineering) — flag
+      again if this needs revisiting.
+- [x] ~~Supabase JWT rotation — finish landing page redeploy.~~ RESOLVED
+      2026-07-30 — see §3 "RESOLVED (2026-07-30): landing page redeploy —
+      closes out this rotation entirely." All 3 legs (Supabase backend +
+      n8n, Vercel app, landing page) now done and live-verified. `.env`
+      updated, rebuilt (`ensure-wrangler.mjs` now auto-copies
+      `wrangler.json`, no longer a separate manual step), deployed via a
+      create-use-revoke Cloudflare token, live bundle-grep + real Kong
+      REST 200/401 checks from the landing page's own origin confirmed
+      the cutover. Entire rotation closed; no real-visitor impact remains.
 - [x] ~~Submit form — add helper text/recommended indicators near the
       TikTok/Instagram/YouTube fields to encourage customers to fill them
       in~~ IMPLEMENTED 2026-07-19 — TikTok/Instagram fields in
