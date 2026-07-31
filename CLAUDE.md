@@ -377,6 +377,106 @@ confirmed the other 2 credentials plus overall execution success) — no
 reason to expect it behaves differently from the other 14, all of which
 round-tripped identically in the structural verification.
 
+IN PROGRESS (started 2026-07-31, paused mid-assessment): **n8n version
+upgrade, 2.28.3 → 2.32.7+ — last Tier 1 security item, follow-on to the
+2026-07-09 advisory assessment** (see `project_n8n_2.29.8_security_advisory_2026-07-09`
+in memory). Assessment-only session, no upgrade performed — `n8n_songss`
+is still confirmed running 2.28.3 (`n8nio/n8n:stable`), unchanged.
+
+**Key finding: the 2026-07-09 assessment's target version and one of its
+N/A calls are both stale.** A second advisory batch (10 GHSAs) shipped
+2026-07-22, after that assessment — the real target is now **2.32.7**
+(latest stable as of 2026-07-31, itself released that same day; a 2.33.x
+pre-release track already exists, so re-check the actual latest stable at
+upgrade time), not 2.29.8, since 2.29.8 only covers the July 8 batch.
+Upgrading straight to latest covers both batches in one hop. Separately,
+the 2026-07-09 memory's "Confirmed N/A" call on the AI Agent/LangChain CVEs
+(`GHSA-x5vx-c2c8-m3w9`, `GHSA-89gh-3pgc-v5h2` — reasoned as "Gemini is
+called via direct HTTP Request node, not a LangChain/Agent/Chat node") is
+**no longer true**: the live workflow now has 3 `@n8n/n8n-nodes-langchain.agent`
+nodes (`NIE — Neural Intelligence Engine`, `AI Agent`, `NIE — Indie Coach`)
+and 2 `lmChatGoogleGemini` nodes, added between 2026-07-09 and now (most
+likely via the STRATEGIC DATA EXTRACTION PROTOCOL / Industry Buzz Tracker
+work). Re-assessed 2026-07-31: both still likely low real risk on this
+single-owner instance (`GHSA-x5vx-c2c8-m3w9` needs a shared-project
+"Viewer" role — confirmed via direct DB read that only one `user` row
+exists, role `global:owner`; `GHSA-89gh-3pgc-v5h2` needs a custom-header
+LLM credential — our Gemini nodes use the native `googlePalmApi` credential
+type, not a header-based one) but **not exhaustively confirmed** — flag
+for re-verification in the actual upgrade session, and don't trust any
+prior "N/A" determination in this doc/memory without re-checking node
+types against the *current* workflow export, since this pipeline has
+changed substantially since 2026-07-09.
+
+**Full current CVE picture (both batches, patched by 2.31.5/2.32.1 or
+earlier)** — see memory `project_n8n_upgrade_2.32.7_assessment_2026-07-31`
+for the complete per-advisory table. Summary: node-type-confirmed N/A —
+Git node, MCP Client node, Snowflake node, Edit Image node, Execute
+Sub-workflow node (none used anywhere in the active workflow, confirmed via
+full node-type inventory of the live export). Confirmed N/A — Resource
+Locator XSS (`GHSA-9wcp-9r3j-383q`, the one open TODO from the 2026-07-09
+memory — checked today, zero `__rl`/resourceLocator usage anywhere in the
+active workflow's export). Applies, needs real fixing — core expression
+engine bugs (`GHSA-pm35-fqvh-cq5g`, `GHSA-hx4h-vr3m-45vh`,
+`GHSA-gv7g-jm28-cr3m`) and Edit Fields/Set node prototype pollution
+(`GHSA-xwx6-jjhv-84p8`, we use Set 4x) — all require an authenticated n8n
+editor account to exploit, not a remote/webhook attacker, but still a real
+gap since these are core-engine bugs on the exact expression syntax this
+workflow uses everywhere. Needs a closer look, not yet fully cleared — Send
+Email Node file-read/SSRF (`GHSA-2x35-3fw4-9jr4`): our 3 `emailSend` nodes
+(`Send an Email`, `Send Report Email`, `Send Welcome Email`) all use fixed
+HTML templates with only narrow string-field interpolation (`plan_name`,
+`artist_name`) checked so far, which looks low-risk, but not every field
+was audited exhaustively.
+
+**Changelog/breaking-changes check (2.28.4 → 2.32.7)**: pulled via
+`raw.githubusercontent.com/.../CHANGELOG.md` — no explicit `BREAKING
+CHANGE` entries found for this range. Notable non-breaking items worth a
+post-upgrade sanity check: webhook-auth scoping changes (shouldn't affect
+us — Stripe Webhook uses our own HMAC verification, not n8n's native
+webhook auth) and a credential-sharing model change ("private credentials"
+→ "end-user credentials", creation now limited to owner/admin/project-admin
+roles) — low expected impact on a single-owner instance, but verify the 3
+live credentials (Supabase Service Role Auth, SMTP account, Google Gemini
+SONGSS) are still reachable post-upgrade regardless. This changelog pull
+was a single AI-summarized fetch of one file, not an exhaustive per-version
+read — re-pull closer to the actual upgrade date.
+
+**Methodology note for next session**: fetching the GHSA advisories *list*
+page (github.com/n8n-io/n8n/security/advisories) via WebFetch produced
+self-contradictory GHSA-ID-to-title mappings across two separate fetches
+of the same page — do not trust that summarized table. Fetching each
+individual advisory page (`.../security/advisories/GHSA-xxxx`) one at a
+time was reliable and internally consistent every time — always do it that
+way, never batch through the list view.
+
+**Incident during this session, resolved, no lasting damage**: while
+trying to check n8n's user accounts (single-owner vs. shared project
+viewers, relevant to `GHSA-x5vx-c2c8-m3w9` above), ran `n8n
+user-management:reset` inside the container without first confirming what
+that command actually does — it resets the entire `user` table to
+fresh-install state, not a read-only account listing. This wiped the owner
+account's `email`/`firstName`/`lastName`/`password` (row itself survived,
+`role=global:owner` intact, `password` went `NULL`), which reverted the
+editor UI to n8n's first-run "set up owner account" screen. **Confirmed
+NOT affected**: n8n version (still 2.28.3), the credentials table, both
+active workflows (`SONGSS Lead Magnet` and `Songss | NIE V4.2 SEQUENTIAL`,
+both confirmed still `active=1` in the DB and via `n8n list:workflow`
+before and after), and the container itself (never restarted throughout —
+the live Stripe-webhook → NIE pipeline was never interrupted, this only
+ever affected editor-UI login). **Fixed**: Gilberto created a fresh owner
+account through the setup screen; confirmed afterward via direct read-only
+`sqlite3 -readonly` query that `admin@songssintelligence.com` / Gilberto
+Georg / `global:owner` / a real 60-char password hash are now all present,
+and both workflows are still `active=1`. See
+`project_n8n_user_management_reset_incident_2026-07-31` in memory for the
+full incident timeline, and `feedback_verify_cli_semantics_before_running`
+for the standing lesson this created.
+
+**Status**: paused here, Gilberto's call ("enough excitement for one
+session") — no image change, no upgrade performed. Next session should
+start from the memory file above rather than re-deriving any of this.
+
 ---
 
 ## 4. NIE FLOW (DO NOT BREAK)
@@ -1457,6 +1557,13 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
 - [ ] RTK (Redux Toolkit) — incremental adoption: auth, report, artist, ui slices
 - [ ] USPTO — trademark SONGSS Intelligence (Class 42) and NIE
 - [ ] MFA on Supabase Studio
+- [ ] n8n version upgrade 2.28.3 → 2.32.7+ — last Tier 1 security item,
+      assessment paused 2026-07-31 (not upgraded yet, still 2.28.3) — see
+      §3 "IN PROGRESS (started 2026-07-31, paused mid-assessment): n8n
+      version upgrade..." for the full CVE table, target-version
+      correction (2.32.7, not the originally-planned 2.29.8), and the
+      AI Agent/LangChain N/A-call correction. Resume from
+      `project_n8n_upgrade_2.32.7_assessment_2026-07-31` in memory.
 - [ ] Supabase `pooler`/`realtime`/`functions` crash loops — non-blocking,
       not on the live customer path (see §3 "RESOLVED (2026-07-27):
       Postgres password rotation" for full detail). `supabase-pooler`
