@@ -377,11 +377,82 @@ confirmed the other 2 credentials plus overall execution success) — no
 reason to expect it behaves differently from the other 14, all of which
 round-tripped identically in the structural verification.
 
-IN PROGRESS (started 2026-07-31, paused mid-assessment): **n8n version
-upgrade, 2.28.3 → 2.32.7+ — last Tier 1 security item, follow-on to the
-2026-07-09 advisory assessment** (see `project_n8n_2.29.8_security_advisory_2026-07-09`
-in memory). Assessment-only session, no upgrade performed — `n8n_songss`
-is still confirmed running 2.28.3 (`n8nio/n8n:stable`), unchanged.
+RESOLVED (2026-08-01): **n8n version upgrade, 2.28.3 → 2.32.7 — last Tier 1
+security item, completed.** Follow-on to the 2026-07-31 paused assessment
+(see `project_n8n_upgrade_2.32.7_assessment_2026-07-31` in memory) and the
+2026-07-09 original advisory review.
+
+**Pre-upgrade, same session**: confirmed no new advisories shipped since
+2026-07-31 (re-fetched the GHSA list, still only the July 22 batch as
+latest) and that `2.32.7` was still npm's `stable`/`latest` tag. Closed
+the two items yesterday's assessment left open: `GHSA-2x35-3fw4-9jr4`
+(Send Email SSRF/file-read) — audited all 3 `emailSend` nodes field-by-
+field (`fromEmail` hardcoded static on all 3, `toEmail`/`subject`/`html`
+only ever interpolate narrow scalar values inside static templates, no
+`options.attachments` configured anywhere) — **confirmed N/A**, the
+Nodemailer type-confusion vector needs a field to *be* an object, never
+the case here. `GHSA-x5vx-c2c8-m3w9` (AI Agent Viewer-role privesc) —
+checked `project`/`project_relation`/`shared_workflow` directly: exactly 1
+personal project, 1 `project:personalOwner` relation, all 7 workflows
+`workflow:owner` under that same project — **confirmed N/A**, no
+shared/Viewer access exists at all. Final tally across both advisory
+batches (23 GHSAs total): 7 apply (all core-engine bugs needing an
+authenticated editor account to exploit — this upgrade is the fix), 15
+confirmed N/A, 1 low-relevance (single-tenant instance).
+
+**Also resolved same session, a separate pending question from
+2026-07-31**: the yellow/orange "Publish" indicator in the editor was
+investigated via direct DB query (not guessed) — `workflow_entity.versionId`
+(`c8a04b97`, frozen since a real editor autosave on 2026-07-18) doesn't
+match `activeVersionId` (`a09c4898`, frozen since 2026-07-13); neither
+`workflow_history` row had been touched since those dates because none of
+the raw-SQL "3 DB location" patch scripts (retention_rate, ltv_projection,
+growth_trajectory, industry buzz tracker, apikey credential migration,
+etc.) ever wrote to those two pointer columns, only to `nodes`/
+`connections`. Confirmed the live `workflow_entity.nodes` (what n8n
+actually executes off `active=1`) already reflected every fix through
+2026-07-28 — every live-verification test done across all those sessions
+succeeded without ever clicking Publish. Conclusion: Publish only
+resyncs version-history bookkeeping, not runtime behavior — clicking it
+was not required before this upgrade. Not clicked; left as-is.
+
+**Deployed**: backup first (`.sqlite` via online `sqlite3 ... ".backup"`,
+not a plain `cp`, plus `.n8n/config` — both timestamped
+`manual_20260801_111951_pre_n8n_2.32.7_upgrade.*`), `docker pull
+n8nio/n8n:stable` (resolved to 2.32.7), `docker compose up -d
+--force-recreate n8n` (plain `restart` doesn't pick up an image change —
+standing lesson). Clean startup: all migrations completed, no
+encryptionKey mismatch, both active workflows (`SONGSS Lead Magnet`,
+`Songss | NIE V4.2 SEQUENTIAL`) auto-reactivated. `n8n --version` confirms
+`2.32.7`.
+
+**Live-verified end-to-end on the real customer path**: disposable test
+session (`cs_test_n8n_2327_upgrade_verify_20260801`, seeded with
+`artist_name IS NULL` per the established false-409-avoidance pattern)
+fired through the real `Submit Trigger` webhook (Chappell Roan, real
+TikTok handle). Clean `{"status":"ok"}` response, execution status
+`success`. Resulting row confirmed fully real: correct `artist_name`
+written back, `digital_score: 85`, `retention_rate: 46`,
+`ltv_projection: 8348649`, a real 6-point `growth_trajectory`,
+`social_engagement_index: 63` (matches this same artist's known historical
+TikTok-derived value exactly), `industry_buzz_data` populated, and a full
+49,994-character `report_markdown`. `processed_sessions` row present,
+confirming `Send Report Email` (SMTP) completed before the final node ran.
+**All 3 live credentials confirmed working post-upgrade**: Supabase
+Service Role Auth (artist-name write-back + all REST calls), Google
+Gemini SONGSS (the real report text), SMTP account (report email send).
+Test session + `processed_sessions` row deleted after, 0 rows left.
+
+**Not yet done, deliberately deferred**: post-upgrade sanity checks for
+the two non-breaking changelog items flagged in yesterday's assessment
+(webhook-auth scoping, credential-sharing model rename) weren't
+separately re-verified beyond the live test above, since that test already
+exercised the one credential-dependent path that matters
+(Supabase/Gemini/SMTP all authenticated correctly). New deprecation
+warnings surfaced in the 2.32.7 startup log (`WEBHOOK_URL` →
+`N8N_WEBHOOK_URL`, several `N8N_*` default-value-change notices) — none
+block anything today, worth a config cleanup pass in a future session, not
+urgent.
 
 **Key finding: the 2026-07-09 assessment's target version and one of its
 N/A calls are both stale.** A second advisory batch (10 GHSAs) shipped
@@ -1557,13 +1628,15 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
 - [ ] RTK (Redux Toolkit) — incremental adoption: auth, report, artist, ui slices
 - [ ] USPTO — trademark SONGSS Intelligence (Class 42) and NIE
 - [ ] MFA on Supabase Studio
-- [ ] n8n version upgrade 2.28.3 → 2.32.7+ — last Tier 1 security item,
-      assessment paused 2026-07-31 (not upgraded yet, still 2.28.3) — see
-      §3 "IN PROGRESS (started 2026-07-31, paused mid-assessment): n8n
-      version upgrade..." for the full CVE table, target-version
-      correction (2.32.7, not the originally-planned 2.29.8), and the
-      AI Agent/LangChain N/A-call correction. Resume from
-      `project_n8n_upgrade_2.32.7_assessment_2026-07-31` in memory.
+- [x] ~~n8n version upgrade 2.28.3 → 2.32.7+ — last Tier 1 security
+      item~~ RESOLVED 2026-08-01 — see §3 "RESOLVED (2026-08-01): n8n
+      version upgrade, 2.28.3 → 2.32.7 — last Tier 1 security item,
+      completed." Assessment finished (23 CVEs tallied: 7 apply/
+      editor-only, 15 N/A, 1 low-relevance), upgraded and live-verified
+      end-to-end on the real Stripe→NIE path; all 3 credentials confirmed
+      working post-upgrade. Also closed the separate "yellow Publish
+      indicator" question same session — confirmed via DB it was stale
+      version-history bookkeeping, not pending changes.
 - [ ] Supabase `pooler`/`realtime`/`functions` crash loops — non-blocking,
       not on the live customer path (see §3 "RESOLVED (2026-07-27):
       Postgres password rotation" for full detail). `supabase-pooler`
