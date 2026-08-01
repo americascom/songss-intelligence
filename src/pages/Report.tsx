@@ -3,59 +3,30 @@ import type { ErrorInfo, ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  AreaChart, Area, BarChart, Bar, LineChart, Line,
-  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-} from "recharts";
-import {
   Lock, Loader2, Activity, Users, TrendingUp, DollarSign,
-  MapPin, Lightbulb, ShieldCheck, Radio, Calculator, Film, Award,
-  Heart, Download, Sparkles, Music, Target, ArrowUpRight,
-  Youtube, Instagram, Building2, AlertTriangle, Newspaper,
+  ShieldCheck, Radio, Calculator, Film, Award,
+  Download, Sparkles, ArrowUpRight,
+  Building2, AlertTriangle, Newspaper,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import ArtistIndieReport from "@/components/ArtistIndieReport";
 import { isSampleReportSession } from "@/lib/sampleReports";
 import PeerBenchmarkChart, { type PeerBenchmarkData } from "@/components/PeerBenchmarkChart";
-
-// ── Constants ────────────────────────────────────────────────────────────────
-const C = {
-  bg: "#070707",
-  surface: "#0E0E0E",
-  card: "#111111",
-  border: "#1F1F1F",
-  cyan: "#00C4B5",
-  cyanSoft: "#7AE3DA",
-  warm: "#F5C84B",
-  white: "#F5F5F5",
-  gray: "#9A9A9A",
-  grayDim: "#4A4A4A",
-};
-const mono = "font-mono tabular-nums";
-const glass: React.CSSProperties = {
-  background: "linear-gradient(135deg, rgba(14,14,14,0.85) 0%, rgba(28,28,28,0.68) 100%)",
-  borderColor: "rgba(0,196,181,0.18)",
-  backdropFilter: "blur(22px) saturate(150%)",
-  WebkitBackdropFilter: "blur(22px) saturate(150%)",
-  boxShadow: "0 12px 48px -16px rgba(0,196,181,0.18), inset 0 1px 0 rgba(255,255,255,0.04)",
-};
-const tooltipStyle: React.CSSProperties = {
-  background: "rgba(11,11,11,0.94)",
-  border: "1px solid rgba(0,196,181,0.35)",
-  borderRadius: 8,
-  color: C.white,
-  fontSize: 12,
-  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, monospace",
-  backdropFilter: "blur(8px)",
-};
+import { C, mono, glass, Section, SectionHeader, MarkdownCard, fmtCompact, fmtUSD } from "@/components/report/shared";
+import { NeuralTrajectory } from "@/components/report/NeuralTrajectory";
+import { TopMarkets } from "@/components/report/TopMarkets";
+import { ThreeMovesCard } from "@/components/report/ThreeMovesCard";
+import { CuratorPitch } from "@/components/report/CuratorPitch";
+import { RevenueSnapshot } from "@/components/report/RevenueSnapshot";
+import { YouTubePresence } from "@/components/report/YouTubePresence";
+import { InstagramPresence } from "@/components/report/InstagramPresence";
+import { IndustryBuzzTracker } from "@/components/report/IndustryBuzzTracker";
+import { EngagementPyramid } from "@/components/report/EngagementPyramid";
+import { ArtistRadarProfile } from "@/components/report/ArtistRadarProfile";
+import { TikTokDSPCorrelation } from "@/components/report/TikTokDSPCorrelation";
+import { RevenueModelAdvanced } from "@/components/report/RevenueModelAdvanced";
 
 // ── Utilities ────────────────────────────────────────────────────────────────
-function fmtCompact(n: number) {
-  return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n);
-}
-function fmtUSD(n: number) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
-}
 
 function stripCodeFence(raw: string): string {
   let s = raw.trim();
@@ -131,68 +102,6 @@ function planTier(plan?: string | null): "indie" | "growth" | "pro" | "enterpris
 const tierRank = { indie: 0, growth: 1, pro: 2, enterprise: 3, opus: 4 } as const;
 const has = (t: ReturnType<typeof planTier>, min: keyof typeof tierRank) =>
   tierRank[t] >= tierRank[min];
-
-// ── Sub-components ───────────────────────────────────────────────────────────
-function SectionHeader({
-  emoji, icon: Icon, title, accent, badge,
-}: {
-  emoji: string;
-  icon: React.ElementType;
-  title: string;
-  accent: string;
-  badge?: React.ReactNode;
-}) {
-  return (
-    <div
-      className="flex items-center justify-between px-6 py-4 border-b"
-      style={{ borderColor: `${accent}22`, background: `linear-gradient(135deg, ${accent}0f 0%, transparent 70%)` }}
-    >
-      <div className="flex items-center gap-2.5">
-        <span className="text-lg leading-none">{emoji}</span>
-        <Icon className="w-4 h-4" style={{ color: accent, filter: `drop-shadow(0 0 6px ${accent}99)` }} />
-        <h3 className="text-[10px] font-bold uppercase tracking-[0.28em]" style={{ color: accent }}>{title}</h3>
-      </div>
-      {badge}
-    </div>
-  );
-}
-
-function Section({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-function MarkdownCard({
-  html, emoji, icon, title, accent = C.cyan, badge, delay = 0, extraContent,
-}: {
-  html: string;
-  emoji: string;
-  icon: React.ElementType;
-  title: string;
-  accent?: string;
-  badge?: React.ReactNode;
-  delay?: number;
-  extraContent?: React.ReactNode;
-}) {
-  return (
-    <Section delay={delay}>
-      <div className="rounded-2xl border mb-8 overflow-hidden" style={glass}>
-        <SectionHeader emoji={emoji} icon={icon} title={title} accent={accent} badge={badge} />
-        <div className="p-6 sm:p-8">
-          {extraContent}
-          <div className="indie-section-content" dangerouslySetInnerHTML={{ __html: html }} />
-        </div>
-      </div>
-    </Section>
-  );
-}
 
 // ── Error boundary ────────────────────────────────────────────────────────────
 interface EBState { hasError: boolean; message: string }
@@ -351,6 +260,7 @@ function ReportInner() {
   const buzzBadge = buzzSentiment && BUZZ_SENTIMENT_STYLE[buzzSentiment]
     ? BUZZ_SENTIMENT_STYLE[buzzSentiment]
     : null;
+  const buzzSummaryHtml = useMemo(() => renderMarkdown(industryBuzz?.summary || ""), [industryBuzz]);
 
   const reportDate = report
     ? new Date(report.created_at).toLocaleDateString("en-US", {
@@ -729,125 +639,13 @@ function ReportInner() {
         </div>
 
         {/* ── Neural Trajectory ────────────────────────────────────────────── */}
-        <Section delay={0.10}>
-          <div className="rounded-xl border p-6 mb-14" style={glass}>
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>Neural Trajectory</h3>
-                <p className="text-xs mt-1" style={{ color: C.gray }}>Stream momentum over the next 6 months</p>
-                <p className="text-[10px] mt-1 italic" style={{ color: C.grayDim }} title="Projected using a baseline 2%/month growth assumption, scaled by audience loyalty.">
-                  Projected using a baseline 2%/month growth assumption, scaled by audience loyalty.
-                </p>
-              </div>
-              <Music className="w-4 h-4" style={{ color: C.cyan }} />
-            </div>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trajectory} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
-                  <defs>
-                    <linearGradient id="trajGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={C.cyan} stopOpacity={0.45} />
-                      <stop offset="100%" stopColor={C.cyan} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid stroke={C.border} strokeDasharray="2 4" vertical={false} />
-                  <XAxis dataKey="month" stroke={C.gray} fontSize={11} tickLine={false} axisLine={{ stroke: C.border }} />
-                  <YAxis stroke={C.gray} fontSize={11} tickLine={false} axisLine={false} tickFormatter={fmtCompact} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [fmtCompact(Number(v)), "Streams"]} />
-                  <Area
-                    type="monotone" dataKey="streams"
-                    stroke={C.cyan} strokeWidth={3} fill="url(#trajGrad)"
-                    dot={{ r: 5, fill: C.cyan, stroke: C.white, strokeWidth: 1.5 }}
-                    activeDot={{ r: 7 }}
-                    animationDuration={1600}
-                    style={{ filter: `drop-shadow(0 0 8px ${C.cyan}AA)` }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </Section>
+        <NeuralTrajectory trajectory={trajectory} />
 
         {/* ── Top 3 Markets ────────────────────────────────────────────────── */}
-        <Section delay={0.12}>
-          <div className="mb-14">
-            <div className="mb-5 flex items-center gap-2 flex-wrap">
-              <MapPin className="w-4 h-4" style={{ color: C.cyan }} />
-              <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>Top 3 Markets</h3>
-              <span
-                className={`${mono} text-[9px] px-2.5 py-1 rounded-md border normal-case tracking-normal`}
-                style={{ background: "rgba(154,154,154,0.08)", color: C.gray, borderColor: "rgba(154,154,154,0.25)" }}
-              >
-                AI-generated directional insight — not verified market data
-              </span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {Array.from({ length: 3 }).map((_, i) => {
-                const m = markets[i] ?? null;
-                if (!m) return (
-                  <div key={i} className="rounded-xl border p-6 opacity-30" style={glass}>
-                    <div className={`${mono} text-[10px] uppercase tracking-[0.2em] mb-1`} style={{ color: C.gray }}>#{i + 1}</div>
-                    <div className="text-xl font-semibold" style={{ color: C.white }}>Market Pending</div>
-                  </div>
-                );
-                return (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.12 + i * 0.08, duration: 0.6 }}
-                    className="rounded-xl border p-6"
-                    style={glass}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className={`${mono} text-[10px] uppercase tracking-[0.2em]`} style={{ color: C.gray }}>#{i + 1}</div>
-                      <div className={`${mono} text-2xl font-semibold`} style={{ color: C.cyan }}>{m.score}</div>
-                    </div>
-                    <div className="text-xl font-semibold mb-1" style={{ color: C.white }}>{m.country}</div>
-                    {m.city && <div className="text-sm" style={{ color: C.gray }}>{m.city}</div>}
-                    {m.opportunity && (
-                      <div className="mt-4 pt-4 border-t text-xs leading-relaxed" style={{ color: C.gray, borderColor: C.border }}>
-                        {m.opportunity}
-                      </div>
-                    )}
-                    <div className="mt-3 text-[10px] uppercase tracking-[0.2em]" style={{ color: C.grayDim }}>Potential Score</div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </div>
-        </Section>
+        <TopMarkets markets={markets} />
 
         {/* ── Three Moves That Matter ───────────────────────────────────────── */}
-        <Section delay={0.14}>
-          <div className="mb-14">
-            <div className="mb-5 flex items-center gap-2">
-              <Lightbulb className="w-4 h-4" style={{ color: C.warm }} />
-              <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.warm }}>Three Moves That Matter</h3>
-            </div>
-            <div className="space-y-3">
-              {recommendations.map((r, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.14 + i * 0.1, duration: 0.6 }}
-                  className="rounded-xl border p-6 flex gap-5"
-                  style={glass}
-                >
-                  <div
-                    className={`${mono} shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold`}
-                    style={{ background: `${C.cyan}15`, color: C.cyan, border: `1px solid ${C.cyan}55` }}
-                  >
-                    {i + 1}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-lg font-semibold mb-1.5" style={{ color: C.white }}>{r.title}</div>
-                    {r.body && <div className="text-sm leading-relaxed" style={{ color: C.gray }}>{r.body}</div>}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </Section>
+        <ThreeMovesCard recommendations={recommendations} />
 
         {/* ── Digital Hygiene Index ─────────────────────────────────────────── */}
         {hygieneHtml && (
@@ -939,310 +737,38 @@ function ReportInner() {
         )}
 
         {/* ── Curator Pitch ─────────────────────────────────────────────────── */}
-        <Section delay={0.26}>
-          <div className="rounded-xl border p-7 sm:p-9 mb-14 relative overflow-hidden" style={glass}>
-            <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full"
-              style={{ background: `radial-gradient(circle, ${C.cyan}22 0%, transparent 70%)` }} />
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-4">
-                <Heart className="w-4 h-4" style={{ color: C.cyan }} />
-                <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>Your Curator Pitch</h3>
-              </div>
-              <div
-                className="prose prose-invert max-w-none prose-p:leading-[1.85] prose-p:text-[15px] prose-strong:text-white"
-                style={{ color: "#D8D8D8" }}
-                dangerouslySetInnerHTML={{ __html: curatorPitch }}
-              />
-            </div>
-          </div>
-        </Section>
+        <CuratorPitch curatorPitch={curatorPitch} />
 
         {/* ── Revenue Snapshot ──────────────────────────────────────────────── */}
-        <Section delay={0.28}>
-          <div className="rounded-xl border p-6 mb-14" style={glass}>
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>Revenue Snapshot</h3>
-                <p className="text-xs mt-1" style={{ color: C.gray }}>Where the money is coming in today</p>
-              </div>
-              <DollarSign className="w-4 h-4" style={{ color: C.cyan }} />
-            </div>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={revenueSnapshot} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
-                  <defs>
-                    <linearGradient id="revBar" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={C.cyanSoft} />
-                      <stop offset="100%" stopColor={C.cyan} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid stroke={C.border} strokeDasharray="2 4" vertical={false} />
-                  <XAxis dataKey="source" stroke={C.gray} fontSize={11} tickLine={false} axisLine={{ stroke: C.border }} />
-                  <YAxis stroke={C.gray} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${fmtCompact(v)}`} />
-                  <Tooltip contentStyle={tooltipStyle} cursor={{ fill: `${C.cyan}10` }} formatter={(v: any) => fmtUSD(Number(v))} />
-                  <Bar dataKey="revenue" fill="url(#revBar)" radius={[8, 8, 0, 0]} animationDuration={1400} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </Section>
+        <RevenueSnapshot revenueSnapshot={revenueSnapshot} />
 
         {/* ── YouTube Presence ──────────────────────────────────────────────── */}
         {hasYouTubeData && (
-          <Section delay={0.30}>
-            <div className="mb-14">
-              <div className="mb-5 flex items-center gap-2">
-                <Youtube className="w-4 h-4" style={{ color: C.cyan, filter: `drop-shadow(0 0 6px ${C.cyan}AA)` }} />
-                <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>Your YouTube Presence</h3>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                {[{ label: "Subscribers", value: ytSubscribers }, { label: "Total Views", value: ytTotalViews }].map((k, i) => (
-                  <motion.div
-                    key={k.label}
-                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.30 + i * 0.06, duration: 0.6 }}
-                    className="rounded-xl border p-5"
-                    style={glass}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: C.gray }}>{k.label}</span>
-                      <Youtube className="w-3.5 h-3.5" style={{ color: C.cyan }} />
-                    </div>
-                    <div className={`${mono} text-3xl font-semibold`} style={{ color: C.white }}>{fmtCompact(k.value)}</div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </Section>
+          <YouTubePresence ytSubscribers={ytSubscribers} ytTotalViews={ytTotalViews} />
         )}
 
         {/* ── Instagram Presence ────────────────────────────────────────────── */}
         {hasInstagramData && (
-          <Section delay={0.32}>
-            <div className="mb-14">
-              <div className="mb-5 flex items-center gap-2">
-                <Instagram className="w-4 h-4" style={{ color: C.cyan, filter: `drop-shadow(0 0 6px ${C.cyan}AA)` }} />
-                <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>Your Instagram Presence</h3>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                {[{ label: "Followers", value: igFollowers }, { label: "Following", value: igFollowing }].map((k, i) => (
-                  <motion.div
-                    key={k.label}
-                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.32 + i * 0.06, duration: 0.6 }}
-                    className="rounded-xl border p-5"
-                    style={glass}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: C.gray }}>{k.label}</span>
-                      <Instagram className="w-3.5 h-3.5" style={{ color: C.cyan }} />
-                    </div>
-                    <div className={`${mono} text-3xl font-semibold`} style={{ color: C.white }}>{fmtCompact(k.value)}</div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </Section>
+          <InstagramPresence igFollowers={igFollowers} igFollowing={igFollowing} />
         )}
 
         {/* ── Industry Buzz Tracker ─────────────────────────────────────────── */}
         {hasIndustryBuzz && (
-          <Section delay={0.33}>
-            <div className="rounded-2xl border mb-14 overflow-hidden" style={glass}>
-              <SectionHeader
-                emoji="📰"
-                icon={Newspaper}
-                title="Industry Buzz Tracker"
-                accent={buzzBadge?.color || C.cyan}
-                badge={
-                  buzzBadge && (
-                    <span
-                      className={`${mono} text-[10px] px-2.5 py-1 rounded-md border`}
-                      style={{ background: `${buzzBadge.color}12`, color: buzzBadge.color, borderColor: `${buzzBadge.color}30` }}
-                    >
-                      {buzzBadge.label}
-                    </span>
-                  )
-                }
-              />
-              <div className="p-6 sm:p-8">
-                <p className="text-[10px] italic mb-5" style={{ color: C.grayDim }}>
-                  Sourced from recent press and industry coverage — not a live scan of social media posts.
-                </p>
-                <div
-                  className="prose prose-invert max-w-none prose-p:leading-[1.85] prose-p:text-[15px] prose-strong:text-white mb-5"
-                  style={{ color: "#D8D8D8" }}
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(industryBuzz?.summary || "") }}
-                />
-                {!!industryBuzz?.notable_mentions?.length && (
-                  <div className="mb-5">
-                    <div className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: C.gray }}>Notable Mentions</div>
-                    <ul className="list-disc pl-5 space-y-1">
-                      {industryBuzz.notable_mentions.map((m, i) => (
-                        <li key={i} className="text-sm" style={{ color: "#D8D8D8" }}>{m}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {!!industryBuzz?.citations?.length && (
-                  <div>
-                    <div className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: C.gray }}>Sources</div>
-                    <ul className="space-y-1">
-                      {industryBuzz.citations.map((url, i) => (
-                        <li key={i}>
-                          <a
-                            href={url} target="_blank" rel="noopener noreferrer"
-                            className={`${mono} text-xs break-all hover:underline`}
-                            style={{ color: C.cyan }}
-                          >
-                            {url}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </div>
-          </Section>
+          <IndustryBuzzTracker industryBuzz={industryBuzz} summaryHtml={buzzSummaryHtml} buzzBadge={buzzBadge} />
         )}
 
         {/* ════════════════════════════════════════════════════════════════════
             GROWTH+
         ════════════════════════════════════════════════════════════════════ */}
         {has(tier, "growth") && (
-          <Section delay={0.34}>
-            <div className="rounded-2xl border mb-8 overflow-hidden" style={glass}>
-              <SectionHeader
-                emoji="🔺"
-                icon={TrendingUp}
-                title="Engagement Pyramid"
-                accent={C.cyan}
-                badge={
-                  <span className={`${mono} text-[10px] px-2.5 py-1 rounded-md border`}
-                    style={{ background: `${C.cyan}12`, color: C.cyan, borderColor: `${C.cyan}30` }}>
-                    Audience Depth
-                  </span>
-                }
-              />
-              <div className="p-6 sm:p-8 space-y-4">
-                {engagementPyramid.map((t, i) => (
-                  <motion.div
-                    key={t.tier}
-                    initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.6, delay: 0.34 + i * 0.12, ease: [0.22, 1, 0.36, 1] }}
-                    className="mx-auto rounded-xl border p-4 sm:p-5"
-                    style={{
-                      width: `${100 - i * 22}%`,
-                      borderColor: `${t.color}30`,
-                      background: `${t.color}0C`,
-                    }}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="text-[10px] uppercase tracking-[0.2em] mb-1" style={{ color: C.gray }}>{t.tier}</div>
-                        <div className={`${mono} text-lg sm:text-xl font-bold`} style={{ color: C.white }}>{t.value}</div>
-                      </div>
-                      {t.badge && (
-                        <span
-                          className={`${mono} text-xs font-semibold px-2.5 py-1 rounded-md border shrink-0`}
-                          style={{ color: t.color, borderColor: `${t.color}40`, background: `${t.color}14` }}
-                          title={t.badgeTitle}
-                        >
-                          {t.badge}
-                        </span>
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </Section>
+          <EngagementPyramid engagementPyramid={engagementPyramid} />
         )}
 
         {/* ════════════════════════════════════════════════════════════════════
             PRO+
         ════════════════════════════════════════════════════════════════════ */}
         {has(tier, "pro") && (
-          <Section delay={0.36}>
-            <div className="rounded-2xl border mb-8 overflow-hidden" style={glass}>
-              <SectionHeader
-                emoji="🎯"
-                icon={Target}
-                title="Artist Radar Profile"
-                accent={C.cyan}
-                badge={
-                  <span className={`${mono} text-[10px] px-2.5 py-1 rounded-md border`}
-                    style={{ background: `${C.cyan}12`, color: C.cyan, borderColor: `${C.cyan}30` }}>
-                    6-Axis Analysis
-                  </span>
-                }
-              />
-              <div className="p-6">
-                <div className="h-96">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart data={radarData} margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
-                      <PolarGrid stroke={C.border} />
-                      <PolarAngleAxis
-                        dataKey="axis"
-                        tick={{ fill: C.gray, fontSize: 12, fontFamily: "ui-monospace, monospace" }}
-                      />
-                      <PolarRadiusAxis
-                        stroke={C.border}
-                        tick={{ fill: C.grayDim, fontSize: 10 }}
-                        domain={[0, 100]}
-                        tickCount={5}
-                      />
-                      <Radar
-                        dataKey="value"
-                        stroke={C.cyan}
-                        fill={C.cyan}
-                        fillOpacity={0.25}
-                        strokeWidth={2}
-                        dot={{ r: 5, fill: C.cyan, stroke: C.white, strokeWidth: 1.5 } as any}
-                        style={{ filter: `drop-shadow(0 0 8px ${C.cyan}88)` }}
-                        animationDuration={1600}
-                      />
-                      <Tooltip
-                        contentStyle={tooltipStyle}
-                        formatter={(v: any, _n: any, props: any) => [
-                          props?.payload?.pending ? "Pending Data" : `${Number(v).toFixed(0)} / 100`,
-                          "",
-                        ]}
-                      />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
-                  {radarData.map((d) => (
-                    <div
-                      key={d.axis}
-                      className="rounded-lg px-4 py-3 border"
-                      style={{ borderColor: "rgba(0,196,181,0.12)", background: "rgba(0,196,181,0.04)" }}
-                    >
-                      <div className="text-[10px] uppercase tracking-[0.15em] mb-1" style={{ color: C.gray }}>{d.axis}</div>
-                      {d.pending ? (
-                        <span
-                          className={`${mono} text-[10px] font-semibold px-2 py-0.5 rounded-md border`}
-                          style={{ color: C.grayDim, borderColor: "rgba(154,154,154,0.25)", background: "rgba(154,154,154,0.06)" }}
-                          title="No data source yet for this axis — coming in a future release"
-                        >
-                          Pending Data
-                        </span>
-                      ) : (
-                        <div
-                          className={`${mono} text-xl font-bold`}
-                          style={{ color: d.value >= 70 ? C.cyan : d.value >= 50 ? C.cyanSoft : C.gray }}
-                        >
-                          {d.value.toFixed(0)}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Section>
+          <ArtistRadarProfile radarData={radarData} />
         )}
 
         {/* ════════════════════════════════════════════════════════════════════
@@ -1251,119 +777,10 @@ function ReportInner() {
         {has(tier, "enterprise") && (
           <>
             {/* TikTok × DSP Correlation */}
-            <Section delay={0.38}>
-              <div className="rounded-2xl border mb-8 overflow-hidden" style={glass}>
-                <SectionHeader
-                  emoji="📱"
-                  icon={Activity}
-                  title="TikTok × DSP Correlation"
-                  accent={C.cyan}
-                  badge={
-                    <span className={`${mono} text-[10px] px-2.5 py-1 rounded-md border`}
-                      style={{ background: `${C.cyan}12`, color: C.cyan, borderColor: `${C.cyan}30` }}>
-                      12-Week View
-                    </span>
-                  }
-                />
-                <div className="p-6">
-                  <div className="h-72">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={tiktokDSP} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
-                        <CartesianGrid stroke={C.border} strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="week" stroke={C.gray} fontSize={11} tickLine={false} axisLine={{ stroke: C.border }} />
-                        <YAxis yAxisId="l" stroke={C.cyan}     fontSize={11} tickLine={false} axisLine={false} tickFormatter={fmtCompact} />
-                        <YAxis yAxisId="r" orientation="right" stroke={C.cyanSoft} fontSize={11} tickLine={false} axisLine={false} tickFormatter={fmtCompact} />
-                        <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: any) => [fmtCompact(Number(v)), name]} />
-                        <Legend wrapperStyle={{ color: C.gray, fontSize: 11 }} />
-                        <Line
-                          yAxisId="l" type="monotone" dataKey="tiktok"
-                          stroke={C.cyan} strokeWidth={2} dot={false} name="TikTok Views"
-                          animationDuration={1400}
-                          style={{ filter: `drop-shadow(0 0 4px ${C.cyan}88)` }}
-                        />
-                        <Line
-                          yAxisId="r" type="monotone" dataKey="dsp"
-                          stroke={C.cyanSoft} strokeWidth={2} dot={false} name="DSP Streams"
-                          animationDuration={1400}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-            </Section>
+            <TikTokDSPCorrelation tiktokDSP={tiktokDSP} />
 
             {/* Revenue Model Advanced */}
-            <Section delay={0.40}>
-              <div className="rounded-2xl border mb-8 overflow-hidden" style={glass}>
-                <SectionHeader
-                  emoji="📊"
-                  icon={DollarSign}
-                  title="Revenue Model Advanced"
-                  accent={C.warm}
-                  badge={
-                    <span className={`${mono} text-[10px] px-2.5 py-1 rounded-md border`}
-                      style={{ background: `${C.warm}12`, color: C.warm, borderColor: `${C.warm}30` }}>
-                      5-Year NPV
-                    </span>
-                  }
-                />
-                <div className="p-6 sm:p-8 space-y-8">
-                  {/* Revenue streams */}
-                  <div>
-                    <div className="text-[10px] uppercase tracking-[0.2em] mb-4" style={{ color: C.gray }}>Revenue Streams</div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr style={{ color: C.gray }}>
-                            <th className="py-2.5 text-[10px] uppercase tracking-[0.2em] font-medium text-left">Source</th>
-                            <th className="py-2.5 text-[10px] uppercase tracking-[0.2em] font-medium text-right">Revenue</th>
-                            <th className="py-2.5 text-[10px] uppercase tracking-[0.2em] font-medium text-right">Growth</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {revStreams.map((r: any, i: number) => (
-                            <tr key={i} className="border-t" style={{ borderColor: C.border }}>
-                              <td className="py-3" style={{ color: C.white }}>{r.source}</td>
-                              <td className={`py-3 text-right ${mono}`} style={{ color: C.white }}>{fmtUSD(Number(r.revenue))}</td>
-                              <td className={`py-3 text-right ${mono}`} style={{ color: Number(r.growth) >= 0 ? C.cyan : "#FF6B6B" }}>
-                                {Number(r.growth) >= 0 ? "+" : ""}{Number(r.growth).toFixed(1)}%
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                  {/* NPV projection */}
-                  <div>
-                    <div className="text-[10px] uppercase tracking-[0.2em] mb-4" style={{ color: C.gray }}>NPV Projection @ 10% Discount Rate</div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr style={{ color: C.gray }}>
-                            <th className="py-2.5 text-[10px] uppercase tracking-[0.2em] font-medium text-left">Year</th>
-                            <th className="py-2.5 text-[10px] uppercase tracking-[0.2em] font-medium text-right">Cashflow</th>
-                            <th className="py-2.5 text-[10px] uppercase tracking-[0.2em] font-medium text-right">Discounted</th>
-                            <th className="py-2.5 text-[10px] uppercase tracking-[0.2em] font-medium text-right">Cumulative NPV</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {npv.map((r: any, i: number) => (
-                            <tr key={i} className="border-t" style={{ borderColor: C.border }}>
-                              <td className={`py-3 ${mono}`} style={{ color: C.white }}>{r.year}</td>
-                              <td className={`py-3 text-right ${mono}`} style={{ color: C.white }}>{fmtUSD(Number(r.cashflow))}</td>
-                              <td className={`py-3 text-right ${mono}`} style={{ color: C.white }}>{fmtUSD(Number(r.discounted))}</td>
-                              <td className={`py-3 text-right ${mono}`} style={{ color: C.cyan }}>{fmtUSD(Number(r.cumulative))}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Section>
+            <RevenueModelAdvanced revStreams={revStreams} npv={npv} />
 
             {/* Acquisition Targets & Partners */}
             {acquireHtml ? (
