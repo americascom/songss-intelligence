@@ -1533,6 +1533,84 @@ correctly shows `—` with the tooltip and suppresses the full section
 entirely. Both test rows + the `processed_sessions` row deleted after,
 0 rows left.
 
+RESOLVED (implemented 2026-08-01): **Fan Loyalty Index**
+(`engagement_metrics.fan_loyalty_index`) — a new real, code-computed
+metric blending TikTok virality with streaming-platform stickiness.
+Originally proposed as `0.6 × Social Engagement Index + 0.4 × Spotify
+Retention Rate` (a "hybrid" concept referenced but not actually found on
+record in CLAUDE.md or memory when this session started — worth noting
+for future sessions that not everything discussed verbally makes it into
+persistent docs).
+
+**Design flaw found and fixed before implementation**: `retention_rate`
+already contains a 0.20-weighted TikTok Engagement Depth (TED) sub-signal
+(`min(100, round((heartCount/followerCount)×100/20))`) that is
+*mathematically identical* to `social_engagement_index`
+(`min(100, round(engagement_rate×100/20))`, same `heartCount/followerCount`
+input). Combining `social_engagement_index` with the *full* `retention_rate`
+at 0.6/0.4 would have algebraically reduced (whenever TikTok resolves) to
+`0.68×SEI + 0.20×Spotify + 0.12×Last.fm` — 68% effective weight on TikTok
+alone, not a clean 60/40 split across two distinct signals — and would have
+gone `null` entirely whenever TikTok doesn't resolve (same gate as SEI
+itself), since a literal weighted sum of two required inputs has no partial
+case. Validated the fix against 3 real artists (grentperez, Chappell Roan,
+Billie Eilish — fresh real Last.fm pulls plus a fresh live Spotify pull for
+grentperez, whose raw Spotify numbers weren't previously on record anywhere)
+before writing any code — see `project_fan_loyalty_index_2026-08-01` in
+memory for the full validation table.
+
+**Formula — approved by Gilberto 2026-08-01**:
+```
+retention_core = round(Σ(SFC×0.50, LRD×0.30 — whichever resolve) / Σ(their weights))
+// same SFC/Spotify Follow-Conversion and LRD/Last.fm Repeat-Listen Depth
+// sub-signals as retention_rate itself, but TED (TikTok) deliberately
+// excluded entirely -- this is the fix for the double-counting above.
+// null only if Spotify itself doesn't resolve, same guard as retention_rate.
+
+fan_loyalty_index = round(0.6×SEI + 0.4×retention_core)
+// renormalizes like retention_rate: if one side is missing, 100% weight
+// goes to whichever resolved; null only if BOTH are missing. This was an
+// explicit design choice (Gilberto, 2026-08-01) to keep this metric's
+// null-rate as low as retention_rate's own, rather than inheriting SEI's
+// narrower TikTok-required availability -- the whole point of a "hybrid"
+// metric is that it should have a real value more often than either input
+// alone, not less.
+```
+
+**Deployed**: backup (`manual_20260801_pre_fan_loyalty_index.sqlite`, online
+`sqlite3 ... ".backup"`), patched only `Code in JavaScript` across all 3 DB
+locations (`workflow_entity.nodes` + both `workflow_history` rows, same
+`versionId`/`activeVersionId` pair as every fix since 2026-07-18), dry run
+against a scratch copy first, syntax-checked with `node --check`, clean
+restart (`docker restart n8n_songss` — no env var changed, so a plain
+restart was sufficient, not `--force-recreate`), export-diff confirmed exact
+scope: node count unchanged (63/63), only `Code in JavaScript` changed,
+connections byte-identical. The PATCH `HTTP Request` node needed **no**
+change this time — checked first rather than assumed (see
+`feedback_n8n_http_request_hardcoded_field_list`) — its `engagement_metrics`
+field already passes `$json.engagement_metrics` through as a whole object,
+so the new key flows through automatically.
+
+**Live-verified both paths**, two disposable sessions (bypassing Stripe,
+seeded with `artist_name IS NULL`, fired via internal
+`POST /webhook/submit-analysis` from inside `n8n_songss` using Node's native
+`fetch` since the container has no `curl`), real Chappell Roan data both
+times: with a real TikTok handle (`chappellroan`) →
+`fan_loyalty_index: 55` (`social_engagement_index: 63`,
+`retention_rate: 46`, implied `retention_core: 42`); without a TikTok handle
+→ `fan_loyalty_index: 42`, correctly falling back to 100% weight on
+`retention_core` (which itself equals `retention_rate` in this case, since
+TikTok also drops out of that calc the same way) instead of going `null`.
+Both test sessions and their `processed_sessions` rows deleted after,
+0 rows left.
+
+**Not done, deliberately deferred (Gilberto's call, 2026-08-01)**: no
+frontend display yet — no KPI tile or section in `Report.tsx` /
+`ArtistIndieReport.tsx`. Wants to think through placement/design with fresh
+eyes in a future session rather than rush it. The field is live and
+populated in `engagement_metrics.fan_loyalty_index` on every new report
+starting now, just not yet shown anywhere in the UI.
+
 ---
 
 ## 5. SUPABASE DATABASE
@@ -1644,6 +1722,14 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
       mid-review: this repo's local `.env` had the pre-rotation dead
       Supabase anon key (2026-07-28/30 JWT rotation missed this file) —
       see `project_local_dev_env_stale_anon_key_2026-08-01` in memory.
+- [ ] Fan Loyalty Index — frontend display (KPI tile/section in
+      Report.tsx / ArtistIndieReport.tsx). Backend formula implemented and
+      live-verified 2026-08-01 — see §4 "RESOLVED (implemented
+      2026-08-01): Fan Loyalty Index" — `engagement_metrics.fan_loyalty_index`
+      is live and populated on every new report now, just not shown in the
+      UI yet. Deliberately deferred (Gilberto's call) to think through
+      placement/design with fresh eyes in a future session rather than
+      rush it.
 - [ ] AI First strategy — update positioning on app and landing pages
 - [ ] n8n workflow visual layout — reorganize for readability
 - [ ] RTK (Redux Toolkit) — incremental adoption: auth, report, artist, ui slices
