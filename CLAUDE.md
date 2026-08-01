@@ -1622,7 +1622,28 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
 
 ## 11. ACTIVE TASKS
 
-- [ ] Componentize Report.tsx (1,442 lines) — via Cline
+- [x] ~~Componentize Report.tsx (1,442 lines) — via Cline~~ RESOLVED
+      2026-08-01. Cline's initial pass created 12 section components plus
+      a shared.tsx (constants/formatters/Section/SectionHeader/
+      MarkdownCard) but never actually wired them in — Report.tsx still
+      had every section's original JSX duplicated inline, plus a real
+      TS2440 "import conflicts with local declaration" compile error on
+      Section/SectionHeader/MarkdownCard invisible to a naive `tsc
+      --noEmit` (the root tsconfig.json is solution-style with `files:
+      []`; only `tsc -p tsconfig.app.json` surfaces it — see
+      `feedback_tsc_solution_style_false_pass` in memory). Finished the
+      wiring: swapped every inline block for its component, removed the
+      dead local definitions/imports, and fixed a real behavioral gap in
+      IndustryBuzzTracker.tsx (it dumped raw markdown into
+      dangerouslySetInnerHTML instead of running it through
+      renderMarkdown() first) via a pre-rendered summaryHtml prop.
+      Report.tsx: 1547 → 964 lines. `tsc -p tsconfig.app.json` and `vite
+      build` both clean; live-verified via a disposable test row with
+      markdown-laden industry_buzz_data (bold/italic rendered correctly,
+      row deleted after). Also surfaced and fixed an unrelated finding
+      mid-review: this repo's local `.env` had the pre-rotation dead
+      Supabase anon key (2026-07-28/30 JWT rotation missed this file) —
+      see `project_local_dev_env_stale_anon_key_2026-08-01` in memory.
 - [ ] AI First strategy — update positioning on app and landing pages
 - [ ] n8n workflow visual layout — reorganize for readability
 - [ ] RTK (Redux Toolkit) — incremental adoption: auth, report, artist, ui slices
