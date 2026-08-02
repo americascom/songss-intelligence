@@ -230,6 +230,8 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
   const snie = Number(report.digital_score ?? 0) || 72;
   const rawSEI = em.social_engagement_index;
   const engagementScore: number | null = rawSEI == null ? null : Number(rawSEI);
+  const rawFanLoyalty = em.fan_loyalty_index;
+  const fanLoyaltyIndex: number | null = rawFanLoyalty == null ? null : Number(rawFanLoyalty);
   const retentionRate = Number(em.retention_rate ?? em.retentionRate ?? 0) || 48;
   const monthlyStreams = Number(em.monthly_streams ?? em.monthlyStreams ?? 0) || 12500;
   const ltv = Number(em.ltv_projection ?? em.ltv ?? 0) || 4200;
@@ -523,13 +525,14 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
         </motion.header>
 
         {/* Key Metrics */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-14">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4 mb-14">
           {[
             { label: "Social Engagement Index", value: engagementScore === null ? "—" : engagementScore.toFixed(0), icon: Activity, title: engagementScore === null ? "Not enough TikTok data yet to compute this" : "Cumulative engagement relative to audience size" },
             { label: "Retention Rate", value: `${retentionRate.toFixed(0)}%`, icon: Users },
             { label: "Monthly Streams", value: fmtCompact(monthlyStreams), icon: TrendingUp },
             { label: "LTV Projection", value: fmtUSD(ltv), icon: DollarSign, title: "Estimated using a global blended benchmark ($0.012/listener/month). Real values vary by geographic distribution and audience retention." },
             { label: "Industry Buzz", value: buzzBadge ? buzzBadge.label : "—", icon: Newspaper, valueColor: buzzBadge?.color, title: buzzBadge ? "Recent press & industry coverage sentiment" : "Not enough recent press coverage found" },
+            { label: "Fan Loyalty Index", value: fanLoyaltyIndex === null ? "—" : fanLoyaltyIndex.toFixed(0), icon: Heart, title: fanLoyaltyIndex === null ? "Not enough TikTok or Spotify data yet to compute this" : "Blends TikTok engagement depth with cross-platform streaming retention" },
           ].map((k, i) => (
             <motion.div
               key={k.label}

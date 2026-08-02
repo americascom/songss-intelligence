@@ -6,7 +6,7 @@ import {
   Lock, Loader2, Activity, Users, TrendingUp, DollarSign,
   ShieldCheck, Radio, Calculator, Film, Award,
   Download, Sparkles, ArrowUpRight,
-  Building2, AlertTriangle, Newspaper,
+  Building2, AlertTriangle, Newspaper, Heart,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import ArtistIndieReport from "@/components/ArtistIndieReport";
@@ -230,6 +230,8 @@ function ReportInner() {
   const snie            = Number(report?.digital_score          ?? 0) || 72;
   const rawSEI           = (em as any)?.social_engagement_index;
   const engagementScore: number | null = rawSEI == null ? null : Number(rawSEI);
+  const rawFanLoyalty    = (em as any)?.fan_loyalty_index;
+  const fanLoyaltyIndex: number | null = rawFanLoyalty == null ? null : Number(rawFanLoyalty);
   const retentionRate   = Number((em as any)?.retention_rate    ?? (em as any)?.retentionRate   ?? 0) || 48;
   const monthlyStreams   = Number((em as any)?.monthly_streams   ?? (em as any)?.monthlyStreams  ?? 0) || 28000;
   const ltv             = Number((em as any)?.ltv_projection ?? (em as any)?.ltv ?? 0) || 8400;
@@ -613,13 +615,14 @@ function ReportInner() {
         </motion.header>
 
         {/* ── KPI Cards ────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-14">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4 mb-14">
           {[
             { label: "Social Engagement Index", value: engagementScore === null ? "—" : engagementScore.toFixed(0), icon: Activity, title: engagementScore === null ? "Not enough TikTok data yet to compute this" : "Cumulative engagement relative to audience size" },
             { label: "Retention Rate",   value: `${retentionRate.toFixed(0)}%`,   icon: Users      },
             { label: "Monthly Streams",  value: fmtCompact(monthlyStreams),       icon: TrendingUp },
             { label: "LTV Projection",   value: fmtUSD(ltv),                     icon: DollarSign, title: "Estimated using a global blended benchmark ($0.012/listener/month). Real values vary by geographic distribution and audience retention." },
             { label: "Industry Buzz",    value: buzzBadge ? buzzBadge.label : "—", icon: Newspaper, valueColor: buzzBadge?.color, title: buzzBadge ? "Recent press & industry coverage sentiment" : "Not enough recent press coverage found" },
+            { label: "Fan Loyalty Index", value: fanLoyaltyIndex === null ? "—" : fanLoyaltyIndex.toFixed(0), icon: Heart, title: fanLoyaltyIndex === null ? "Not enough TikTok or Spotify data yet to compute this" : "Blends TikTok engagement depth with cross-platform streaming retention" },
           ].map((k, i) => (
             <motion.div
               key={k.label}
