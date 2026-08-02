@@ -219,6 +219,19 @@ function ReportInner() {
     return () => { stopped = true; };
   }, [session_id]);
 
+  // KNOWN NOT TO WORK, kept as a documented dead end (see
+  // project_pdf_print_theme_check_2026-08-02 in memory): Recharts'
+  // ResponsiveContainer measures its size exclusively via ResizeObserver,
+  // which is a different, unrelated browser API from the "resize" DOM event
+  // -- dispatching a synthetic resize event here does not trigger it, so
+  // charts still render blank in print. Real fix needs print-mode-detected
+  // explicit pixel width/height passed to each ResponsiveContainer instead.
+  useEffect(() => {
+    const remeasure = () => window.dispatchEvent(new Event("resize"));
+    window.addEventListener("beforeprint", remeasure);
+    return () => window.removeEventListener("beforeprint", remeasure);
+  }, []);
+
   // ── Tier ─────────────────────────────────────────────────────────────────
   const tier = planTier(report?.plan_name);
   const isSample = isSampleReportSession(session_id);
@@ -546,10 +559,16 @@ function ReportInner() {
         @media print {
           @page { size:A4;margin:12mm }
           html,body { background:#0a0a0a !important;color:#f5f5f5 !important;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important }
-          .no-print { display:none !important }
+          .no-print, header[role="banner"], footer, nav { display:none !important }
           .tier-mesh { display:none !important }
-          .tier-report-root { background:#0a0a0a !important }
+          .tier-report-root { background:#0a0a0a !important;color:#f5f5f5 !important }
           .tier-report-root * { box-shadow:none !important;text-shadow:none !important;animation:none !important }
+          .tier-report-root .recharts-wrapper, .tier-report-root .recharts-surface { overflow:visible !important }
+          .tier-report-root .mb-14 { margin-bottom:1.25rem !important }
+          .tier-report-root .mb-8 { margin-bottom:0.75rem !important }
+          .tier-report-root .py-10 { padding-top:0.5rem !important;padding-bottom:0.5rem !important }
+          .tier-report-root .pb-10 { padding-bottom:0.75rem !important }
+          .tier-report-root section, .tier-report-root .rounded-xl, .tier-report-root .rounded-2xl { page-break-inside:avoid;break-inside:avoid }
         }
       `}</style>
       <div className="tier-mesh" aria-hidden />

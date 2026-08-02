@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -199,6 +199,19 @@ function SectionHeader({
 }
 
 export default function ArtistIndieReport({ report, isSample = false }: { report: ReportRow; isSample?: boolean }) {
+  // KNOWN NOT TO WORK, kept as a documented dead end (see
+  // project_pdf_print_theme_check_2026-08-02 in memory): Recharts'
+  // ResponsiveContainer measures its size exclusively via ResizeObserver,
+  // which is a different, unrelated browser API from the "resize" DOM event
+  // -- dispatching a synthetic resize event here does not trigger it, so
+  // charts still render blank in print. Real fix needs print-mode-detected
+  // explicit pixel width/height passed to each ResponsiveContainer instead.
+  useEffect(() => {
+    const remeasure = () => window.dispatchEvent(new Event("resize"));
+    window.addEventListener("beforeprint", remeasure);
+    return () => window.removeEventListener("beforeprint", remeasure);
+  }, []);
+
   const em = report.engagement_metrics || {};
   const geo = report.geo_hotspots || {};
 
