@@ -1,6 +1,6 @@
 import { DollarSign } from "lucide-react";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList,
 } from "recharts";
 import { Section, C, mono, glass, tooltipStyle, fmtUSD, fmtCompact } from "./shared";
 
@@ -27,7 +27,7 @@ export function RevenueSnapshot({ revenueSnapshot, delay = 0.28 }: RevenueSnapsh
         </div>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={revenueSnapshot} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
+            <BarChart data={revenueSnapshot} margin={{ top: 28, right: 16, left: 0, bottom: 4 }}>
               <defs>
                 <linearGradient id="revBar" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={C.cyanSoft} />
@@ -38,7 +38,17 @@ export function RevenueSnapshot({ revenueSnapshot, delay = 0.28 }: RevenueSnapsh
               <XAxis dataKey="source" stroke={C.gray} fontSize={11} tickLine={false} axisLine={{ stroke: C.border }} />
               <YAxis stroke={C.gray} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${fmtCompact(v)}`} />
               <Tooltip contentStyle={tooltipStyle} cursor={{ fill: `${C.cyan}10` }} formatter={(v: any) => fmtUSD(Number(v))} />
-              <Bar dataKey="revenue" fill="url(#revBar)" radius={[8, 8, 0, 0]} animationDuration={1400} />
+              <Bar dataKey="revenue" fill="url(#revBar)" radius={[8, 8, 0, 0]} isAnimationActive={false}>
+                <LabelList
+                  dataKey="revenue"
+                  position="top"
+                  offset={8}
+                  className={mono}
+                  fill={C.white}
+                  fontSize={12}
+                  formatter={(v: number) => `$${fmtCompact(v)}`}
+                />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
