@@ -71,6 +71,7 @@ export default function Submit() {
   const [notes, setNotes] = useState("");
   const [tiktokUsername, setTiktokUsername] = useState("");
   const [instagramUsername, setInstagramUsername] = useState("");
+  const [youtubeChannelId, setYoutubeChannelId] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -188,7 +189,7 @@ export default function Submit() {
           artist_name:         artistName.trim(),
           song_name:           songName.trim(),
           tiktok_username:     tiktokUsername.trim() || (((report.engagement_metrics as Record<string, unknown>)?.tiktok_username as string) ?? ""),
-          youtube_channel_id:  (((report.engagement_metrics as Record<string, unknown>)?.youtube_channel_id as string) ?? ""),
+          youtube_channel_id:  youtubeChannelId.trim() || (((report.engagement_metrics as Record<string, unknown>)?.youtube_channel_id as string) ?? ""),
           instagram_username:  instagramUsername.trim() || (((report.engagement_metrics as Record<string, unknown>)?.instagram_username as string) ?? ""),
           cf_turnstile_token:  turnstileToken,
         }),
@@ -301,6 +302,22 @@ export default function Submit() {
                     style={{ borderColor: "rgba(255,255,255,0.08)" }}
                   />
                   <p className="mt-1 text-[11px]" style={{ color: "#5A5A5A" }}>Adds real follower and profile data to your report</p>
+                </Field>
+
+                <Field label="YouTube Channel ID" hint="Recommended" recommended htmlFor="youtube-channel-id">
+                  <Input
+                    id="youtube-channel-id"
+                    name="youtube-channel-id"
+                    value={youtubeChannelId}
+                    onChange={(e) => setYoutubeChannelId(e.target.value)}
+                    placeholder="e.g. UCX6OQ3DkcsbYNE6H8uQQuVA"
+                    maxLength={100}
+                    className="bg-transparent border-white/10 focus-visible:ring-1"
+                    style={{ borderColor: "rgba(255,255,255,0.08)" }}
+                  />
+                  <p className="mt-1 text-[11px]" style={{ color: "#5A5A5A" }}>
+                    Adds real subscriber and channel data to your report. Find yours in YouTube Studio → Settings → Channel → Advanced settings → Channel ID.
+                  </p>
                 </Field>
 
                 {showProFields && (
