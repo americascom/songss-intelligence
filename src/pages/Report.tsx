@@ -219,19 +219,6 @@ function ReportInner() {
     return () => { stopped = true; };
   }, [session_id]);
 
-  // KNOWN NOT TO WORK, kept as a documented dead end (see
-  // project_pdf_print_theme_check_2026-08-02 in memory): Recharts'
-  // ResponsiveContainer measures its size exclusively via ResizeObserver,
-  // which is a different, unrelated browser API from the "resize" DOM event
-  // -- dispatching a synthetic resize event here does not trigger it, so
-  // charts still render blank in print. Real fix needs print-mode-detected
-  // explicit pixel width/height passed to each ResponsiveContainer instead.
-  useEffect(() => {
-    const remeasure = () => window.dispatchEvent(new Event("resize"));
-    window.addEventListener("beforeprint", remeasure);
-    return () => window.removeEventListener("beforeprint", remeasure);
-  }, []);
-
   // ── Tier ─────────────────────────────────────────────────────────────────
   const tier = planTier(report?.plan_name);
   const isSample = isSampleReportSession(session_id);
@@ -563,7 +550,9 @@ function ReportInner() {
           .tier-mesh { display:none !important }
           .tier-report-root { background:#0a0a0a !important;color:#f5f5f5 !important }
           .tier-report-root * { box-shadow:none !important;text-shadow:none !important;animation:none !important }
+          .tier-report-root .max-w-6xl { max-width:100% !important;width:100% !important;padding-left:0 !important;padding-right:0 !important }
           .tier-report-root .recharts-wrapper, .tier-report-root .recharts-surface { overflow:visible !important }
+          .tier-report-root .overflow-x-auto { overflow:visible !important }
           .tier-report-root .mb-14 { margin-bottom:1.25rem !important }
           .tier-report-root .mb-8 { margin-bottom:0.75rem !important }
           .tier-report-root .py-10 { padding-top:0.5rem !important;padding-bottom:0.5rem !important }

@@ -3,6 +3,7 @@ import {
 } from "recharts";
 import { Music } from "lucide-react";
 import { Section, C, mono, glass, tooltipStyle, fmtCompact } from "./shared";
+import { usePrintSize } from "@/hooks/usePrintSize";
 
 interface NeuralTrajectoryProps {
   trajectory: Array<{ month: string; streams: number }>;
@@ -10,6 +11,7 @@ interface NeuralTrajectoryProps {
 }
 
 export function NeuralTrajectory({ trajectory, delay = 0.10 }: NeuralTrajectoryProps) {
+  const [chartRef, printSize] = usePrintSize<HTMLDivElement>();
   return (
     <Section delay={delay}>
       <div className="rounded-xl border p-6 mb-14" style={glass}>
@@ -23,8 +25,8 @@ export function NeuralTrajectory({ trajectory, delay = 0.10 }: NeuralTrajectoryP
           </div>
           <Music className="w-4 h-4" style={{ color: C.cyan }} />
         </div>
-        <div className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-72" ref={chartRef}>
+          <ResponsiveContainer width={printSize?.width ?? "100%"} height={printSize?.height ?? "100%"}>
             <AreaChart data={trajectory} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
               <defs>
                 <linearGradient id="trajGrad" x1="0" y1="0" x2="0" y2="1">

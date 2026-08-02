@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import PeerBenchmarkChart, { type PeerBenchmarkData } from "@/components/PeerBenchmarkChart";
+import { usePrintSize } from "@/hooks/usePrintSize";
 
 const C = {
   bg: "#070707",
@@ -199,18 +200,8 @@ function SectionHeader({
 }
 
 export default function ArtistIndieReport({ report, isSample = false }: { report: ReportRow; isSample?: boolean }) {
-  // KNOWN NOT TO WORK, kept as a documented dead end (see
-  // project_pdf_print_theme_check_2026-08-02 in memory): Recharts'
-  // ResponsiveContainer measures its size exclusively via ResizeObserver,
-  // which is a different, unrelated browser API from the "resize" DOM event
-  // -- dispatching a synthetic resize event here does not trigger it, so
-  // charts still render blank in print. Real fix needs print-mode-detected
-  // explicit pixel width/height passed to each ResponsiveContainer instead.
-  useEffect(() => {
-    const remeasure = () => window.dispatchEvent(new Event("resize"));
-    window.addEventListener("beforeprint", remeasure);
-    return () => window.removeEventListener("beforeprint", remeasure);
-  }, []);
+  const [trajectoryChartRef, trajectoryPrintSize] = usePrintSize<HTMLDivElement>();
+  const [revenueChartRef, revenuePrintSize] = usePrintSize<HTMLDivElement>();
 
   const em = report.engagement_metrics || {};
   const geo = report.geo_hotspots || {};
@@ -453,9 +444,11 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
           .no-print, header[role="banner"], footer, nav { display: none !important; }
           .indie-mesh { display: none !important; }
           .indie-report-root { background: #0a0a0a !important; color: #f5f5f5 !important; }
+          .indie-report-root .max-w-6xl { max-width: 100% !important; width: 100% !important; padding-left: 0 !important; padding-right: 0 !important; }
           .indie-report-root * { box-shadow: none !important; text-shadow: none !important; animation: none !important; }
           .indie-report-root .snie-number { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; opacity: 1 !important; text-shadow: none !important; }
           .indie-report-root .recharts-wrapper, .indie-report-root .recharts-surface { overflow: visible !important; }
+          .indie-report-root .overflow-x-auto { overflow: visible !important; }
           .indie-report-root .curator-pitch-content, .indie-report-root .curator-pitch-content * { color: #e8e8e8 !important; opacity: 1 !important; }
           .indie-report-root .curator-pitch-content { display: block !important; }
           .indie-report-root .mb-14 { margin-bottom: 1.25rem !important; }
@@ -576,8 +569,8 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
             </div>
             <Music className="w-4 h-4" style={{ color: C.cyan }} />
           </div>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-72" ref={trajectoryChartRef}>
+            <ResponsiveContainer width={trajectoryPrintSize?.width ?? "100%"} height={trajectoryPrintSize?.height ?? "100%"}>
               <LineChart data={trajectory} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
                 <defs>
                   <linearGradient id="indieLine" x1="0" y1="0" x2="1" y2="0">
@@ -856,8 +849,8 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
             </div>
             <DollarSign className="w-4 h-4" style={{ color: C.cyan }} />
           </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-64" ref={revenueChartRef}>
+            <ResponsiveContainer width={revenuePrintSize?.width ?? "100%"} height={revenuePrintSize?.height ?? "100%"}>
               <BarChart data={revenueSnapshot} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
                 <defs>
                   <linearGradient id="indieBar" x1="0" y1="0" x2="0" y2="1">

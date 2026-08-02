@@ -1,4 +1,5 @@
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList } from "recharts";
+import { usePrintSize } from "@/hooks/usePrintSize";
 
 interface PeerBenchmarkEntry {
   name: string;
@@ -34,6 +35,7 @@ export default function PeerBenchmarkChart({
   gridColor: string;
   textColor: string;
 }) {
+  const [chartRef, printSize] = usePrintSize<HTMLDivElement>();
   const peers = data?.peer_benchmark ?? [];
   if (!peers.length || !data?.client_monthly_listeners) return null;
 
@@ -49,8 +51,8 @@ export default function PeerBenchmarkChart({
 
   return (
     <div className="mb-4">
-      <div className="h-[180px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="h-[180px] w-full" ref={chartRef}>
+        <ResponsiveContainer width={printSize?.width ?? "100%"} height={printSize?.height ?? "100%"}>
           <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 36, left: 4, bottom: 4 }}>
             <XAxis type="number" hide />
             <YAxis

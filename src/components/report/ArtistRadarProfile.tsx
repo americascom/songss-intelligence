@@ -4,6 +4,7 @@ import {
   Tooltip, ResponsiveContainer,
 } from "recharts";
 import { Section, SectionHeader, C, mono, glass, tooltipStyle } from "./shared";
+import { usePrintSize } from "@/hooks/usePrintSize";
 
 interface RadarDataPoint {
   axis: string;
@@ -17,6 +18,7 @@ interface ArtistRadarProfileProps {
 }
 
 export function ArtistRadarProfile({ radarData, delay = 0.36 }: ArtistRadarProfileProps) {
+  const [chartRef, printSize] = usePrintSize<HTMLDivElement>();
   return (
     <Section delay={delay}>
       <div className="rounded-2xl border mb-8 overflow-hidden" style={glass}>
@@ -33,8 +35,8 @@ export function ArtistRadarProfile({ radarData, delay = 0.36 }: ArtistRadarProfi
           }
         />
         <div className="p-6">
-          <div className="h-96">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-96" ref={chartRef}>
+            <ResponsiveContainer width={printSize?.width ?? "100%"} height={printSize?.height ?? "100%"}>
               <RadarChart data={radarData} margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
                 <PolarGrid stroke={C.border} />
                 <PolarAngleAxis

@@ -3,6 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList,
 } from "recharts";
 import { Section, C, mono, glass, tooltipStyle, fmtUSD, fmtCompact } from "./shared";
+import { usePrintSize } from "@/hooks/usePrintSize";
 
 interface RevenueData {
   source: string;
@@ -15,6 +16,7 @@ interface RevenueSnapshotProps {
 }
 
 export function RevenueSnapshot({ revenueSnapshot, delay = 0.28 }: RevenueSnapshotProps) {
+  const [chartRef, printSize] = usePrintSize<HTMLDivElement>();
   return (
     <Section delay={delay}>
       <div className="rounded-xl border p-6 mb-14" style={glass}>
@@ -25,8 +27,8 @@ export function RevenueSnapshot({ revenueSnapshot, delay = 0.28 }: RevenueSnapsh
           </div>
           <DollarSign className="w-4 h-4" style={{ color: C.cyan }} />
         </div>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-64" ref={chartRef}>
+          <ResponsiveContainer width={printSize?.width ?? "100%"} height={printSize?.height ?? "100%"}>
             <BarChart data={revenueSnapshot} margin={{ top: 28, right: 16, left: 0, bottom: 4 }}>
               <defs>
                 <linearGradient id="revBar" x1="0" y1="0" x2="0" y2="1">

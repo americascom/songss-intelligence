@@ -3,6 +3,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 import { Section, SectionHeader, C, mono, glass, tooltipStyle, fmtCompact } from "./shared";
+import { usePrintSize } from "@/hooks/usePrintSize";
 
 interface TikTokDSPData {
   week: string;
@@ -16,6 +17,7 @@ interface TikTokDSPCorrelationProps {
 }
 
 export function TikTokDSPCorrelation({ tiktokDSP, delay = 0.38 }: TikTokDSPCorrelationProps) {
+  const [chartRef, printSize] = usePrintSize<HTMLDivElement>();
   return (
     <Section delay={delay}>
       <div className="rounded-2xl border mb-8 overflow-hidden" style={glass}>
@@ -32,8 +34,8 @@ export function TikTokDSPCorrelation({ tiktokDSP, delay = 0.38 }: TikTokDSPCorre
           }
         />
         <div className="p-6">
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-72" ref={chartRef}>
+            <ResponsiveContainer width={printSize?.width ?? "100%"} height={printSize?.height ?? "100%"}>
               <LineChart data={tiktokDSP} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
                 <CartesianGrid stroke={C.border} strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="week" stroke={C.gray} fontSize={11} tickLine={false} axisLine={{ stroke: C.border }} />
