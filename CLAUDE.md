@@ -1758,6 +1758,66 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
 
 ## 11. ACTIVE TASKS
 
+- [ ] npm dependency security audit (started 2026-08-09) — `npm audit` found
+      18 vulnerable packages (15 high, 3 moderate, 0 critical). Priority
+      order agreed with Gilberto: react-router-dom first (real
+      customer-facing exposure, ships in the browser bundle), then the
+      broader dev-tooling batch, then Dependabot security alerts (Gilberto
+      checking/enabling directly in GitHub settings — needs his own
+      account access, not checkable via API without a token).
+      - [ ] `react-router-dom` — the originally-reported fix (bump
+            6.30.2 → 6.30.4, non-major) does NOT fully close the exposure:
+            a newer advisory, [GHSA-jjmj-jmhj-qwj2](https://github.com/advisories/GHSA-jjmj-jmhj-qwj2)
+            ("Open redirect leading to XSS", moderate), covers the range
+            `6.0.0-alpha.0 - 7.17.0` — i.e. all of v6 including 6.30.4.
+            The only real fix is `react-router-dom@7.18.2`, a **major**
+            version bump (v6→v7 has real breaking routing-API changes).
+            Deliberately deferred — Gilberto's call, 2026-08-09: this
+            deserves its own dedicated session (migration + full retest),
+            not squeezed into a "simple non-major bump" task. The
+            attempted 6.30.4 patch bump was reverted this session (see
+            below) rather than partially applied.
+      - [ ] `d3-color` ReDoS ([GHSA-36jr-mh4h-2g58](https://github.com/advisories/GHSA-36jr-mh4h-2g58),
+            high) — not in the original `npm audit` at all; surfaced only
+            as a side effect of a broad, unexpected lockfile
+            re-resolution triggered by a single `npm install
+            react-router-dom@6.30.4` (144 packages changed, ~2,235-line
+            `package-lock.json` diff, for what should have been a
+            one-line bump). Pulled in transitively via `d3-transition`
+            (part of the Recharts/d3 dependency tree used by the report
+            charts). Not fixed — needs its own investigation into why
+            that install caused such a broad re-resolution before
+            deciding on a fix path (may need a `recharts`/`d3-*` bump
+            rather than touching `d3-color` directly).
+      - [ ] Remaining dev-tooling batch (`vite`, `rollup`, `esbuild`,
+            `postcss`, `js-yaml`, `lodash`, `glob`, `minimatch`,
+            `picomatch`, `nanoid`, `ajv`, `ws`, `brace-expansion`,
+            `flatted`, `yaml`) — build-time/dev dependencies, not shipped
+            to the customer's browser. `npm audit fix` (non-forced)
+            reported a fix available for all of them as of 2026-08-09, but
+            not run yet given the react-router-dom install's surprising
+            blast radius — worth a careful, isolated diff-check the same
+            way, not assumed safe just because npm calls it "fix available".
+      - [ ] Dependabot security alerts — not yet confirmed on for this
+            repo (no `.github/dependabot.yml`, and the alerts toggle in
+            Settings → Code security and analysis isn't checkable without
+            an authenticated `gh`/API token). Gilberto to check/enable
+            directly.
+      - **Reverted, not committed**: the `react-router-dom@6.30.4` +
+        broad lockfile change was fully reverted this session
+        (`git checkout -- package.json package-lock.json`) — nothing from
+        this investigation is live or committed. `node_modules` on disk
+        was resynced back toward the committed lockfile via `npm ci`,
+        which — separately from all of the above — **failed both times it
+        was run**, identically: `Missing: internmap@1.0.1 from lock file`.
+        Not investigated further (Gilberto's explicit call, out of scope
+        for today) — flagging as its own open finding since it means
+        `npm ci` (the strict, reproducible-install command a fresh clone
+        or CI/CD would use) currently does not work cleanly against this
+        repo's committed lockfile, independent of anything touched this
+        session. `node_modules` itself was confirmed still intact/usable
+        afterward (`vite`, `react-router-dom` both present) — the app
+        isn't broken, only `npm ci` specifically is.
 - [x] ~~Componentize Report.tsx (1,442 lines) — via Cline~~ RESOLVED
       2026-08-01. Cline's initial pass created 12 section components plus
       a shared.tsx (constants/formatters/Section/SectionHeader/
