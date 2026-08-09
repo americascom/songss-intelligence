@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, cloneElement } from "react";
 import { motion } from "framer-motion";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import PeerBenchmarkChart, { type PeerBenchmarkData } from "@/components/PeerBenchmarkChart";
-import { usePrintSize } from "@/hooks/usePrintSize";
+import { useIsPrinting, PRINT_CHART_WIDTH } from "@/hooks/useIsPrinting";
 
 const C = {
   bg: "#070707",
@@ -201,8 +201,7 @@ function SectionHeader({
 }
 
 export default function ArtistIndieReport({ report, isSample = false }: { report: ReportRow; isSample?: boolean }) {
-  const [trajectoryChartRef, trajectoryPrintSize] = usePrintSize<HTMLDivElement>();
-  const [revenueChartRef, revenuePrintSize] = usePrintSize<HTMLDivElement>();
+  const isPrinting = useIsPrinting();
 
   const em = report.engagement_metrics || {};
   const geo = report.geo_hotspots || {};
@@ -410,6 +409,46 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
     year: "numeric", month: "short", day: "numeric",
   });
 
+  const trajectoryChart = (
+    <LineChart data={trajectory} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
+      <defs>
+        <linearGradient id="indieLine" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor={C.cyanSoft} />
+          <stop offset="100%" stopColor={C.cyan} />
+        </linearGradient>
+      </defs>
+      <CartesianGrid stroke={C.border} strokeDasharray="2 4" vertical={false} />
+      <XAxis dataKey="month" stroke={C.gray} fontSize={11} tickLine={false} axisLine={{ stroke: C.border }} />
+      <YAxis stroke={C.gray} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => fmtCompact(v)} />
+      <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [fmtCompact(Number(v)), "Streams"]} />
+      <Line
+        type="monotone" dataKey="streams"
+        stroke="url(#indieLine)" strokeWidth={3}
+        dot={{ r: 5, fill: C.cyan, stroke: C.white, strokeWidth: 1.5 }}
+        activeDot={{ r: 7 }}
+        isAnimationActive={!isPrinting}
+        animationDuration={1600}
+        style={{ filter: `drop-shadow(0 0 8px ${C.cyan}AA)` }}
+      />
+    </LineChart>
+  );
+
+  const revenueChart = (
+    <BarChart data={revenueSnapshot} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
+      <defs>
+        <linearGradient id="indieBar" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={C.cyanSoft} />
+          <stop offset="100%" stopColor={C.cyan} />
+        </linearGradient>
+      </defs>
+      <CartesianGrid stroke={C.border} strokeDasharray="2 4" vertical={false} />
+      <XAxis dataKey="source" stroke={C.gray} fontSize={11} tickLine={false} axisLine={{ stroke: C.border }} />
+      <YAxis stroke={C.gray} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${fmtCompact(v)}`} />
+      <Tooltip contentStyle={tooltipStyle} cursor={{ fill: `${C.cyan}10` }} formatter={(v: any) => fmtUSD(Number(v))} />
+      <Bar dataKey="revenue" fill="url(#indieBar)" radius={[8, 8, 0, 0]} animationDuration={1400} />
+    </BarChart>
+  );
+
   return (
     <div className="indie-report-root min-h-screen relative overflow-hidden" style={{ background: C.bg, color: C.white }}>
       <style>{`
@@ -574,29 +613,10 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
             </div>
             <Music className="w-4 h-4" style={{ color: C.cyan }} />
           </div>
-          <div className="h-72" ref={trajectoryChartRef}>
-            <ResponsiveContainer width={trajectoryPrintSize?.width ?? "100%"} height={trajectoryPrintSize?.height ?? "100%"}>
-              <LineChart data={trajectory} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
-                <defs>
-                  <linearGradient id="indieLine" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor={C.cyanSoft} />
-                    <stop offset="100%" stopColor={C.cyan} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke={C.border} strokeDasharray="2 4" vertical={false} />
-                <XAxis dataKey="month" stroke={C.gray} fontSize={11} tickLine={false} axisLine={{ stroke: C.border }} />
-                <YAxis stroke={C.gray} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => fmtCompact(v)} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [fmtCompact(Number(v)), "Streams"]} />
-                <Line
-                  type="monotone" dataKey="streams"
-                  stroke="url(#indieLine)" strokeWidth={3}
-                  dot={{ r: 5, fill: C.cyan, stroke: C.white, strokeWidth: 1.5 }}
-                  activeDot={{ r: 7 }}
-                  animationDuration={1600}
-                  style={{ filter: `drop-shadow(0 0 8px ${C.cyan}AA)` }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+          <div className="h-72">
+            {isPrinting
+              ? cloneElement(trajectoryChart, { width: PRINT_CHART_WIDTH, height: 288 })
+              : <ResponsiveContainer width="100%" height="100%">{trajectoryChart}</ResponsiveContainer>}
           </div>
         </div>
 
@@ -854,22 +874,10 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
             </div>
             <DollarSign className="w-4 h-4" style={{ color: C.cyan }} />
           </div>
-          <div className="h-64" ref={revenueChartRef}>
-            <ResponsiveContainer width={revenuePrintSize?.width ?? "100%"} height={revenuePrintSize?.height ?? "100%"}>
-              <BarChart data={revenueSnapshot} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
-                <defs>
-                  <linearGradient id="indieBar" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={C.cyanSoft} />
-                    <stop offset="100%" stopColor={C.cyan} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke={C.border} strokeDasharray="2 4" vertical={false} />
-                <XAxis dataKey="source" stroke={C.gray} fontSize={11} tickLine={false} axisLine={{ stroke: C.border }} />
-                <YAxis stroke={C.gray} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${fmtCompact(v)}`} />
-                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: `${C.cyan}10` }} formatter={(v: any) => fmtUSD(Number(v))} />
-                <Bar dataKey="revenue" fill="url(#indieBar)" radius={[8, 8, 0, 0]} animationDuration={1400} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="h-64">
+            {isPrinting
+              ? cloneElement(revenueChart, { width: PRINT_CHART_WIDTH, height: 256 })
+              : <ResponsiveContainer width="100%" height="100%">{revenueChart}</ResponsiveContainer>}
           </div>
         </div>
 

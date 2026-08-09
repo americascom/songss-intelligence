@@ -1,17 +1,43 @@
+import * as React from "react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { Music } from "lucide-react";
 import { Section, C, mono, glass, tooltipStyle, fmtCompact } from "./shared";
-import { usePrintSize } from "@/hooks/usePrintSize";
+import { useIsPrinting, PRINT_CHART_WIDTH } from "@/hooks/useIsPrinting";
 
 interface NeuralTrajectoryProps {
   trajectory: Array<{ month: string; streams: number }>;
   delay?: number;
 }
 
+const CHART_HEIGHT = 288; // matches the h-72 container below
+
 export function NeuralTrajectory({ trajectory, delay = 0.10 }: NeuralTrajectoryProps) {
-  const [chartRef, printSize] = usePrintSize<HTMLDivElement>();
+  const isPrinting = useIsPrinting();
+  const chart = (
+    <AreaChart data={trajectory} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
+      <defs>
+        <linearGradient id="trajGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={C.cyan} stopOpacity={0.45} />
+          <stop offset="100%" stopColor={C.cyan} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <CartesianGrid stroke={C.border} strokeDasharray="2 4" vertical={false} />
+      <XAxis dataKey="month" stroke={C.gray} fontSize={11} tickLine={false} axisLine={{ stroke: C.border }} />
+      <YAxis stroke={C.gray} fontSize={11} tickLine={false} axisLine={false} tickFormatter={fmtCompact} />
+      <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [fmtCompact(Number(v)), "Streams"]} />
+      <Area
+        type="monotone" dataKey="streams"
+        stroke={C.cyan} strokeWidth={3} fill="url(#trajGrad)"
+        dot={{ r: 5, fill: C.cyan, stroke: C.white, strokeWidth: 1.5 }}
+        activeDot={{ r: 7 }}
+        isAnimationActive={!isPrinting}
+        animationDuration={1600}
+        style={{ filter: `drop-shadow(0 0 8px ${C.cyan}AA)` }}
+      />
+    </AreaChart>
+  );
   return (
     <Section delay={delay}>
       <div className="rounded-xl border p-6 mb-14" style={glass}>
@@ -25,29 +51,14 @@ export function NeuralTrajectory({ trajectory, delay = 0.10 }: NeuralTrajectoryP
           </div>
           <Music className="w-4 h-4" style={{ color: C.cyan }} />
         </div>
-        <div className="h-72" ref={chartRef}>
-          <ResponsiveContainer width={printSize?.width ?? "100%"} height={printSize?.height ?? "100%"}>
-            <AreaChart data={trajectory} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
-              <defs>
-                <linearGradient id="trajGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={C.cyan} stopOpacity={0.45} />
-                  <stop offset="100%" stopColor={C.cyan} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke={C.border} strokeDasharray="2 4" vertical={false} />
-              <XAxis dataKey="month" stroke={C.gray} fontSize={11} tickLine={false} axisLine={{ stroke: C.border }} />
-              <YAxis stroke={C.gray} fontSize={11} tickLine={false} axisLine={false} tickFormatter={fmtCompact} />
-              <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [fmtCompact(Number(v)), "Streams"]} />
-              <Area
-                type="monotone" dataKey="streams"
-                stroke={C.cyan} strokeWidth={3} fill="url(#trajGrad)"
-                dot={{ r: 5, fill: C.cyan, stroke: C.white, strokeWidth: 1.5 }}
-                activeDot={{ r: 7 }}
-                animationDuration={1600}
-                style={{ filter: `drop-shadow(0 0 8px ${C.cyan}AA)` }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+        <div className="h-72">
+          {isPrinting
+            ? React.cloneElement(chart, { width: PRINT_CHART_WIDTH, height: CHART_HEIGHT })
+            : (
+              <ResponsiveContainer width="100%" height="100%">
+                {chart}
+              </ResponsiveContainer>
+            )}
         </div>
       </div>
     </Section>

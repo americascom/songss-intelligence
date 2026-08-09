@@ -1,9 +1,10 @@
+import * as React from "react";
 import { DollarSign } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList,
 } from "recharts";
 import { Section, C, mono, glass, tooltipStyle, fmtUSD, fmtCompact } from "./shared";
-import { usePrintSize } from "@/hooks/usePrintSize";
+import { useIsPrinting, PRINT_CHART_WIDTH } from "@/hooks/useIsPrinting";
 
 interface RevenueData {
   source: string;
@@ -15,8 +16,35 @@ interface RevenueSnapshotProps {
   delay?: number;
 }
 
+const CHART_HEIGHT = 256; // matches the h-64 container below
+
 export function RevenueSnapshot({ revenueSnapshot, delay = 0.28 }: RevenueSnapshotProps) {
-  const [chartRef, printSize] = usePrintSize<HTMLDivElement>();
+  const isPrinting = useIsPrinting();
+  const chart = (
+    <BarChart data={revenueSnapshot} margin={{ top: 28, right: 48, left: 0, bottom: 4 }}>
+      <defs>
+        <linearGradient id="revBar" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={C.cyanSoft} />
+          <stop offset="100%" stopColor={C.cyan} />
+        </linearGradient>
+      </defs>
+      <CartesianGrid stroke={C.border} strokeDasharray="2 4" vertical={false} />
+      <XAxis dataKey="source" stroke={C.gray} fontSize={11} tickLine={false} axisLine={{ stroke: C.border }} />
+      <YAxis stroke={C.gray} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${fmtCompact(v)}`} />
+      <Tooltip contentStyle={tooltipStyle} cursor={{ fill: `${C.cyan}10` }} formatter={(v: any) => fmtUSD(Number(v))} />
+      <Bar dataKey="revenue" fill="url(#revBar)" radius={[8, 8, 0, 0]} isAnimationActive={false}>
+        <LabelList
+          dataKey="revenue"
+          position="top"
+          offset={8}
+          className={mono}
+          fill={C.white}
+          fontSize={12}
+          formatter={(v: number) => `$${fmtCompact(v)}`}
+        />
+      </Bar>
+    </BarChart>
+  );
   return (
     <Section delay={delay}>
       <div className="rounded-xl border p-6 mb-14" style={glass}>
@@ -27,32 +55,14 @@ export function RevenueSnapshot({ revenueSnapshot, delay = 0.28 }: RevenueSnapsh
           </div>
           <DollarSign className="w-4 h-4" style={{ color: C.cyan }} />
         </div>
-        <div className="h-64" ref={chartRef}>
-          <ResponsiveContainer width={printSize?.width ?? "100%"} height={printSize?.height ?? "100%"}>
-            <BarChart data={revenueSnapshot} margin={{ top: 28, right: 16, left: 0, bottom: 4 }}>
-              <defs>
-                <linearGradient id="revBar" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={C.cyanSoft} />
-                  <stop offset="100%" stopColor={C.cyan} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke={C.border} strokeDasharray="2 4" vertical={false} />
-              <XAxis dataKey="source" stroke={C.gray} fontSize={11} tickLine={false} axisLine={{ stroke: C.border }} />
-              <YAxis stroke={C.gray} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${fmtCompact(v)}`} />
-              <Tooltip contentStyle={tooltipStyle} cursor={{ fill: `${C.cyan}10` }} formatter={(v: any) => fmtUSD(Number(v))} />
-              <Bar dataKey="revenue" fill="url(#revBar)" radius={[8, 8, 0, 0]} isAnimationActive={false}>
-                <LabelList
-                  dataKey="revenue"
-                  position="top"
-                  offset={8}
-                  className={mono}
-                  fill={C.white}
-                  fontSize={12}
-                  formatter={(v: number) => `$${fmtCompact(v)}`}
-                />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="h-64">
+          {isPrinting
+            ? React.cloneElement(chart, { width: PRINT_CHART_WIDTH, height: CHART_HEIGHT })
+            : (
+              <ResponsiveContainer width="100%" height="100%">
+                {chart}
+              </ResponsiveContainer>
+            )}
         </div>
       </div>
     </Section>

@@ -1,10 +1,11 @@
+import * as React from "react";
 import { Target } from "lucide-react";
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   Tooltip, ResponsiveContainer,
 } from "recharts";
 import { Section, SectionHeader, C, mono, glass, tooltipStyle } from "./shared";
-import { usePrintSize } from "@/hooks/usePrintSize";
+import { useIsPrinting, PRINT_CHART_WIDTH } from "@/hooks/useIsPrinting";
 
 interface RadarDataPoint {
   axis: string;
@@ -17,8 +18,43 @@ interface ArtistRadarProfileProps {
   delay?: number;
 }
 
+const CHART_HEIGHT = 384; // matches the h-96 container below
+
 export function ArtistRadarProfile({ radarData, delay = 0.36 }: ArtistRadarProfileProps) {
-  const [chartRef, printSize] = usePrintSize<HTMLDivElement>();
+  const isPrinting = useIsPrinting();
+  const chart = (
+    <RadarChart data={radarData} margin={{ top: 20, right: 72, bottom: 20, left: 72 }}>
+      <PolarGrid stroke={C.border} />
+      <PolarAngleAxis
+        dataKey="axis"
+        tick={{ fill: C.gray, fontSize: 12, fontFamily: "ui-monospace, monospace" }}
+      />
+      <PolarRadiusAxis
+        stroke={C.border}
+        tick={{ fill: C.grayDim, fontSize: 10 }}
+        domain={[0, 100]}
+        tickCount={5}
+      />
+      <Radar
+        dataKey="value"
+        stroke={C.cyan}
+        fill={C.cyan}
+        fillOpacity={0.25}
+        strokeWidth={2}
+        dot={{ r: 5, fill: C.cyan, stroke: C.white, strokeWidth: 1.5 } as any}
+        style={{ filter: `drop-shadow(0 0 8px ${C.cyan}88)` }}
+        isAnimationActive={!isPrinting}
+        animationDuration={1600}
+      />
+      <Tooltip
+        contentStyle={tooltipStyle}
+        formatter={(v: any, _n: any, props: any) => [
+          props?.payload?.pending ? "Pending Data" : `${Number(v).toFixed(0)} / 100`,
+          "",
+        ]}
+      />
+    </RadarChart>
+  );
   return (
     <Section delay={delay}>
       <div className="rounded-2xl border mb-8 overflow-hidden" style={glass}>
@@ -35,39 +71,14 @@ export function ArtistRadarProfile({ radarData, delay = 0.36 }: ArtistRadarProfi
           }
         />
         <div className="p-6">
-          <div className="h-96" ref={chartRef}>
-            <ResponsiveContainer width={printSize?.width ?? "100%"} height={printSize?.height ?? "100%"}>
-              <RadarChart data={radarData} margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
-                <PolarGrid stroke={C.border} />
-                <PolarAngleAxis
-                  dataKey="axis"
-                  tick={{ fill: C.gray, fontSize: 12, fontFamily: "ui-monospace, monospace" }}
-                />
-                <PolarRadiusAxis
-                  stroke={C.border}
-                  tick={{ fill: C.grayDim, fontSize: 10 }}
-                  domain={[0, 100]}
-                  tickCount={5}
-                />
-                <Radar
-                  dataKey="value"
-                  stroke={C.cyan}
-                  fill={C.cyan}
-                  fillOpacity={0.25}
-                  strokeWidth={2}
-                  dot={{ r: 5, fill: C.cyan, stroke: C.white, strokeWidth: 1.5 } as any}
-                  style={{ filter: `drop-shadow(0 0 8px ${C.cyan}88)` }}
-                  animationDuration={1600}
-                />
-                <Tooltip
-                  contentStyle={tooltipStyle}
-                  formatter={(v: any, _n: any, props: any) => [
-                    props?.payload?.pending ? "Pending Data" : `${Number(v).toFixed(0)} / 100`,
-                    "",
-                  ]}
-                />
-              </RadarChart>
-            </ResponsiveContainer>
+          <div className="h-96">
+            {isPrinting
+              ? React.cloneElement(chart, { width: PRINT_CHART_WIDTH, height: CHART_HEIGHT })
+              : (
+                <ResponsiveContainer width="100%" height="100%">
+                  {chart}
+                </ResponsiveContainer>
+              )}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
             {radarData.map((d) => (
