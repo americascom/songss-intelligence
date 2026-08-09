@@ -811,11 +811,16 @@ function ReportInner() {
               <Section delay={0.42}>
                 <div className="rounded-2xl border mb-8 overflow-hidden" style={glass}>
                   <SectionHeader emoji="🤝" icon={Building2} title="Acquisition Targets & Partners" accent={C.warm} />
-                  <div className="p-6 sm:p-8">
+                  <div className="p-6 sm:p-8 flex items-center gap-3">
+                    <span
+                      className={`${mono} text-[10px] font-semibold px-2 py-0.5 rounded-md border shrink-0`}
+                      style={{ color: C.grayDim, borderColor: "rgba(154,154,154,0.25)", background: "rgba(154,154,154,0.06)" }}
+                      title="No acquisition or partnership signals found for this artist yet"
+                    >
+                      Pending Data
+                    </span>
                     <p className="text-sm" style={{ color: C.gray }}>
-                      Acquisition and partnership intelligence will populate here once the AI workflow includes an{" "}
-                      <strong style={{ color: C.white }}>## Acquisition Targets</strong> or{" "}
-                      <strong style={{ color: C.white }}>## Label Targets</strong> section in the report markdown.
+                      Not enough acquisition or partnership signals found for this report yet.
                     </p>
                   </div>
                 </div>
