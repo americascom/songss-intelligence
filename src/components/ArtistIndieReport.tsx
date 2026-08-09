@@ -152,6 +152,7 @@ interface ReportRow {
   created_at: string;
   youtube_data: { subscribers?: number; total_views?: number | string } | null;
   instagram_data: { followers?: number; following?: number; media_count?: number } | null;
+  spotify_data: { followers?: number; monthly_listeners?: number; top_country?: string } | null;
   peer_benchmark_data: PeerBenchmarkData | null;
   industry_buzz_data: {
     sentiment: string | null;
@@ -237,7 +238,11 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
   const rawFanLoyalty = em.fan_loyalty_index;
   const fanLoyaltyIndex: number | null = rawFanLoyalty == null ? null : Number(rawFanLoyalty);
   const retentionRate = Number(em.retention_rate ?? em.retentionRate ?? 0) || 48;
-  const monthlyStreams = Number(em.monthly_streams ?? em.monthlyStreams ?? 0) || 12500;
+  // monthly_streams was an AI-fabricated free-text estimate (no formula) --
+  // same class of bug already fixed for retention_rate/ltv_projection/
+  // growth_trajectory. Use the real Spotify anchor those fields already use
+  // instead of a second, unrelated fake number.
+  const monthlyListeners = Number(report.spotify_data?.monthly_listeners ?? 0) || 12500;
   const ltv = Number(em.ltv_projection ?? em.ltv ?? 0) || 4200;
 
   const trajectory = useMemo(() => {
@@ -250,9 +255,9 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
     }
     return Array.from({ length: 6 }, (_, i) => ({
       month: `M${i + 1}`,
-      streams: Math.round(monthlyStreams * (0.55 + i * 0.12)),
+      streams: Math.round(monthlyListeners * (0.55 + i * 0.12)),
     }));
-  }, [em, monthlyStreams]);
+  }, [em, monthlyListeners]);
 
   const markets = useMemo(() => {
     const raw = Array.isArray(geo)
@@ -535,7 +540,7 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
           {[
             { label: "Social Engagement Index", value: engagementScore === null ? "—" : engagementScore.toFixed(0), icon: Activity, title: engagementScore === null ? "Not enough TikTok data yet to compute this" : "Cumulative engagement relative to audience size" },
             { label: "Retention Rate", value: `${retentionRate.toFixed(0)}%`, icon: Users },
-            { label: "Monthly Streams", value: fmtCompact(monthlyStreams), icon: TrendingUp },
+            { label: "Monthly Listeners", value: fmtCompact(monthlyListeners), icon: TrendingUp },
             { label: "LTV Projection", value: fmtUSD(ltv), icon: DollarSign, title: "Estimated using a global blended benchmark ($0.012/listener/month). Real values vary by geographic distribution and audience retention." },
             { label: "Industry Buzz", value: buzzBadge ? buzzBadge.label : "—", icon: Newspaper, valueColor: buzzBadge?.color, title: buzzBadge ? "Recent press & industry coverage sentiment" : "Not enough recent press coverage found" },
             { label: "Fan Loyalty Index", value: fanLoyaltyIndex === null ? "—" : fanLoyaltyIndex.toFixed(0), icon: Heart, title: fanLoyaltyIndex === null ? "Not enough TikTok or Spotify data yet to compute this" : "Blends TikTok engagement depth with cross-platform streaming retention" },

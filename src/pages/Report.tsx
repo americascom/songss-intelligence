@@ -233,7 +233,11 @@ function ReportInner() {
   const rawFanLoyalty    = (em as any)?.fan_loyalty_index;
   const fanLoyaltyIndex: number | null = rawFanLoyalty == null ? null : Number(rawFanLoyalty);
   const retentionRate   = Number((em as any)?.retention_rate    ?? (em as any)?.retentionRate   ?? 0) || 48;
-  const monthlyStreams   = Number((em as any)?.monthly_streams   ?? (em as any)?.monthlyStreams  ?? 0) || 28000;
+  // monthly_streams was an AI-fabricated free-text estimate (no formula) --
+  // same class of bug already fixed for retention_rate/ltv_projection/
+  // growth_trajectory. Use the real Spotify anchor those fields already use
+  // instead of a second, unrelated fake number.
+  const monthlyListeners = Number((report?.spotify_data as any)?.monthly_listeners ?? 0) || 28000;
   const ltv             = Number((em as any)?.ltv_projection ?? (em as any)?.ltv ?? 0) || 8400;
 
   const yt              = report?.youtube_data   ?? {};
@@ -281,9 +285,9 @@ function ReportInner() {
     }
     return Array.from({ length: 6 }, (_, i) => ({
       month:   `M${i + 1}`,
-      streams: Math.round(monthlyStreams * (0.55 + i * 0.12)),
+      streams: Math.round(monthlyListeners * (0.55 + i * 0.12)),
     }));
-  }, [em, monthlyStreams]);
+  }, [em, monthlyListeners]);
 
   const markets = useMemo(() => {
     const raw  = Array.isArray(geo) ? geo : ((geo as any)?.top_cities ?? (geo as any)?.cities ?? (geo as any)?.top ?? (geo as any)?.hotspots ?? []);
@@ -627,7 +631,7 @@ function ReportInner() {
           {[
             { label: "Social Engagement Index", value: engagementScore === null ? "—" : engagementScore.toFixed(0), icon: Activity, title: engagementScore === null ? "Not enough TikTok data yet to compute this" : "Cumulative engagement relative to audience size" },
             { label: "Retention Rate",   value: `${retentionRate.toFixed(0)}%`,   icon: Users      },
-            { label: "Monthly Streams",  value: fmtCompact(monthlyStreams),       icon: TrendingUp },
+            { label: "Monthly Listeners", value: fmtCompact(monthlyListeners),    icon: TrendingUp },
             { label: "LTV Projection",   value: fmtUSD(ltv),                     icon: DollarSign, title: "Estimated using a global blended benchmark ($0.012/listener/month). Real values vary by geographic distribution and audience retention." },
             { label: "Industry Buzz",    value: buzzBadge ? buzzBadge.label : "—", icon: Newspaper, valueColor: buzzBadge?.color, title: buzzBadge ? "Recent press & industry coverage sentiment" : "Not enough recent press coverage found" },
             { label: "Fan Loyalty Index", value: fanLoyaltyIndex === null ? "—" : fanLoyaltyIndex.toFixed(0), icon: Heart, title: fanLoyaltyIndex === null ? "Not enough TikTok or Spotify data yet to compute this" : "Blends TikTok engagement depth with cross-platform streaming retention" },

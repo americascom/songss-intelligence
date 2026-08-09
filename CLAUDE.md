@@ -1182,6 +1182,64 @@ touched here. `monthly_streams` also remains unchanged, still
 AI-fabricated and confirmed fully unused by anything real — a candidate for
 removal in a future session.
 
+RESOLVED (implemented 2026-08-09): **`monthly_streams` removed — closes the
+"candidate for removal" item flagged above.** Pre-launch embarrassment-risk
+pass: confirmed 8x off from reality on a real artist (Luan Carbonari, AI said
+7M, real `spotify_data.monthly_listeners` was 862K) and directly displayed on
+a KPI tile on every report, unlike the other AI-fabricated fields already
+fixed. Same treatment as `retention_rate`/`ltv_projection`/`growth_trajectory`:
+no separate "streams" concept exists anywhere in this pipeline's real data, so
+rather than inventing a formula for a fake concept, dropped the field and
+pointed every reader at the same real `spotify_data.monthly_listeners` anchor
+already used for `ltv_projection`/`growth_trajectory`.
+
+**Backend**: `Code in JavaScript` now does
+`delete engagement_metrics.monthly_streams;` right after
+`engagement_metrics = aiData.engagement_metrics || {}`, so the AI-fabricated
+value never reaches `intelligence_reports.engagement_metrics` — same
+dead-field pattern as `revenue_economics` on the `Edit Fields` side (its
+"STRATEGIC DATA EXTRACTION PROTOCOL" schema still asks for `monthly_streams`,
+now simply generated-and-discarded, not touched, to keep the diff to exactly
+one node — consistent with every prior fix in this rework).
+
+**Deployed**: backup
+(`manual_20260809_152831_pre_monthly_streams_removal.sqlite`), patched
+`workflow_entity.nodes` + both `workflow_history` rows (`versionId`
+`c8a04b97-...`/`activeVersionId` `a09c4898-...`, same two rows as every fix
+since 2026-07-18) via a Python script, dry run against an online
+`sqlite3 ... ".backup"` copy first, syntax-checked with `/snap/bin/node
+--check`, plain `docker restart n8n_songss` (no env var changed), export-diff
+confirmed exact scope: 63/63 nodes, only `Code in JavaScript` changed.
+
+**Live-verified**: disposable test session
+(`cs_test_monthly_streams_removal_verify_20260809`, bypassing Stripe, seeded
+with `artist_name IS NULL`), fired via internal `POST /webhook/submit-analysis`
+from inside `n8n_songss` (Chappell Roan, real TikTok handle `chappellroan`).
+Real run returned `engagement_metrics ? 'monthly_streams'` → `false` (key
+fully absent, not just null), while every other real field still checked out:
+`retention_rate: 46`, `ltv_projection: 8374300` (exact match to the existing
+formula), `growth_trajectory` M1 anchored to the real `monthly_listeners`
+(30288991), `social_engagement_index: 63`, `fan_loyalty_index: 55`. Test
+session + its `processed_sessions` row deleted after, 0 rows left.
+
+**Frontend** (`src/pages/Report.tsx`, `src/components/ArtistIndieReport.tsx`):
+the "Monthly Streams" KPI tile — the only place this field was directly shown
+to a customer — is now "Monthly Listeners", reading
+`spotify_data.monthly_listeners` directly (added to `ArtistIndieReport.tsx`'s
+`ReportRow` interface, which didn't have `spotify_data` typed at all until
+now; `Report.tsx` already had it from the Engagement Pyramid work). The
+Neural Trajectory chart's synthetic-fallback curve (only reachable when
+`growth_trajectory` itself is missing — legacy pre-2026-07-26 reports, or the
+genuine `monthly_listeners = 0` edge case) now scales off the same real
+anchor instead of the fabricated one. `tsc -p tsconfig.app.json` and `vite
+build` both clean.
+
+**Not done, deliberately out of scope**: the two hardcoded per-file fallback
+constants for when Spotify data is entirely missing (28000 in `Report.tsx`,
+12500 in `ArtistIndieReport.tsx`) are unchanged — same pre-existing pattern
+already used by every other KPI tile's `|| <constant>` fallback in both
+files, not part of this fix's scope.
+
 FEATURE ADDED (2026-07-18): **Social Engagement Index**
 (`engagement_metrics.social_engagement_index`) — Gilberto's resolution to
 the `engagement_score` product question above: rather than remove the
