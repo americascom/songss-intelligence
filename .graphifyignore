@@ -1,0 +1,4 @@
+# Pass 1 exclusions (agreed plan) — Supabase migrations, RLS policy files, n8n workflow JSON
+supabase/migrations/
+init.sql
+nie_v4_1_workflow.json

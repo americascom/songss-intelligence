@@ -1758,6 +1758,14 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
 
 ## 11. ACTIVE TASKS
 
+- [ ] Syntax errors found during graphify Pass 1 extraction (2026-08-10) —
+      `graphify extract . --code-only` reported 2 source files with syntax
+      errors, partially extracted rather than fully parsed:
+      `src/pages/Pricing.tsx` (first error at line 109) and
+      `src/pages/Privacy.tsx` (first error at line 892). Not investigated
+      yet — worth a look to confirm whether these are real bugs or
+      artifacts of graphify's tree-sitter parser (e.g. unsupported syntax),
+      since neither has been reported as broken in the live app.
 - [ ] npm dependency security audit (started 2026-08-09) — `npm audit` found
       18 vulnerable packages (15 high, 3 moderate, 0 critical). Priority
       order agreed with Gilberto: react-router-dom first (real
@@ -2207,3 +2215,13 @@ Company: Americascom, Inc. — 651 N Broad St, Ste 206, Middletown, DE 19709, US
 Stripe Portal: https://buyer.americaspay.com/p/login/bJe4gz9tjbuTfSa1zL3cc00
 Supabase Studio: https://studio.songssintelligence.com
 n8n: https://n8n.songssintelligence.com (admin@songssintelligence.com)
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
