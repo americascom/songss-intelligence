@@ -1806,11 +1806,17 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
             not run yet given the react-router-dom install's surprising
             blast radius — worth a careful, isolated diff-check the same
             way, not assumed safe just because npm calls it "fix available".
-      - [ ] Dependabot security alerts — not yet confirmed on for this
-            repo (no `.github/dependabot.yml`, and the alerts toggle in
-            Settings → Code security and analysis isn't checkable without
-            an authenticated `gh`/API token). Gilberto to check/enable
-            directly.
+      - [x] ~~Dependabot security alerts — not yet confirmed on~~ CONFIRMED
+            ACTIVE 2026-08-10: a `git push origin main` surfaced GitHub's
+            own Dependabot summary directly in the push output — **34
+            vulnerabilities found (15 high, 17 moderate, 2 low)**, a
+            broader count than the 18 `npm audit` found locally on
+            2026-08-09 (15 high, 3 moderate, 0 critical). No
+            `.github/dependabot.yml` exists (alerts are GitHub's default
+            repo-level scanning, not a configured update bot), and the
+            full per-advisory breakdown still isn't checkable without an
+            authenticated `gh`/API token — Gilberto to review the
+            Dependabot tab directly for details beyond this summary count.
       - **Reverted, not committed**: the `react-router-dom@6.30.4` +
         broad lockfile change was fully reverted this session
         (`git checkout -- package.json package-lock.json`) — nothing from
