@@ -182,6 +182,7 @@ interface ReportRow {
     citations: string[];
     search_context_size: string | null;
   } | null;
+  granite_powered: boolean;
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -605,6 +606,11 @@ function ReportInner() {
               {report.plan_name ?? "Intelligence Report"} · {reportDate}
             </span>
           </div>
+          {report.granite_powered && (
+            <div className={`${mono} text-[11px] font-bold uppercase tracking-[0.2em] mb-6`} style={{ color: C.grayDim }}>
+              AI Analytics powered by IBM Granite™
+            </div>
+          )}
           <h1 className="text-4xl sm:text-6xl font-semibold tracking-tight leading-[1.05] mb-8" style={{ color: C.white }}>
             {report.artist_name || "Your Artist Report"}
           </h1>
@@ -978,6 +984,13 @@ function ReportInner() {
         <div className={`${mono} text-center mt-8 text-[10px] uppercase tracking-[0.3em]`} style={{ color: C.grayDim }}>
           CONFIDENTIAL · SONGSS Intelligence · Americascom, Inc.
         </div>
+        {report.granite_powered && (
+          <p className="text-center mt-4 text-[10px] max-w-2xl mx-auto leading-relaxed" style={{ color: C.grayDim }}>
+            IBM and IBM Granite are trademarks or registered trademarks of International
+            Business Machines Corporation in the United States and/or other countries.
+            All other trademarks are the property of their respective owners.
+          </p>
+        )}
       </div>
     </div>
   );

@@ -1715,6 +1715,16 @@ Enterprise: $299/mo | 150 queries | Sonnet + GPT-4o
 Opus Maximus: $1,500/mo or $12k/yr | 1,500 queries | Opus (Taylor Made — no self-service)
 Opus + Compliance: $3,000/mo or $24k/yr | 1,500 queries | Opus + IBM watsonx
 
+STALE, NEEDS UPDATE (flagged 2026-08-12, Gilberto's real decision, not yet
+reflected in the table above): **Opus Maximus now includes IBM Granite by
+default** (no separate price given). **Enterprise can add IBM Granite as an
+$800/mo add-on**, same 150-query cap — not a bigger quota, just the model
+addition. Relationship to the existing "Opus + Compliance" row (which already
+bundles IBM watsonx) not yet clarified — table above still shows the old
+figures pending a full rewrite in a future session. Do not treat the numbers
+above as current for Opus Maximus/Enterprise/Opus+Compliance until this is
+resolved.
+
 ---
 
 ## 8. CLOUDFLARE WAF (5 active rules)
@@ -1758,6 +1768,99 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
 
 ## 11. ACTIVE TASKS
 
+- [ ] IBM Granite badge/disclaimer — UI plumbing DONE 2026-08-12, gating
+      inputs still pending. New `intelligence_reports.granite_powered
+      boolean NOT NULL DEFAULT false` column added (backup-first migration,
+      `NOTIFY pgrst 'reload schema'` sent, live-verified via the real
+      `get_report_by_session` REST path — 40 existing rows backfilled
+      `false`). `Report.tsx`: "AI Analytics powered by IBM Granite™" badge
+      in the hero (gated solely on `report.granite_powered`, no separate
+      frontend tier check — only the future generation-wiring path should
+      ever set this flag true) + full IBM trademark disclaimer in the page
+      footer, both conditional on the same flag. `Terms.tsx`: new §20
+      "THIRD-PARTY TRADEMARKS" section with the same disclaimer text
+      (renumbered old §20 Contact Us → §21). Nothing currently sets
+      `granite_powered` to `true` — badge is invisible on all real traffic
+      today, by design, since Granite isn't wired into any live report-
+      generation path yet (see the isolated-test-workflow item below).
+      `ArtistIndieReport.tsx` deliberately not touched — Indie tier can't
+      reach a Granite-eligible plan under current tier design.
+
+      **Still needed before this can ever go live**:
+      1. Wire actual watsonx/Granite generation into the n8n workflow for
+         Opus Maximus / Opus+Compliance / Enterprise-with-addon and set
+         `granite_powered = true` only when that call really succeeds for
+         that report — the harder, separately-scoped Granite item (model
+         comparison test already done, see
+         `project_ibm_granite_watsonx_test_2026-08-10` in memory; this is
+         real workflow engineering, needs its own confirmation per Golden
+         Rule 1).
+      2. Enterprise Granite add-on entitlement (Gilberto's call,
+         2026-08-12): a separate `granite_addon_active` boolean on the
+         customer/account record, set via the Stripe webhook based on
+         which Stripe price ID was purchased — deliberately NOT encoded
+         into `plan_name` string variants. Needs its own Stripe price
+         object created first; not yet built.
+      3. §7 pricing table rewrite (Opus Maximus now includes Granite by
+         default, Enterprise add-on $800/mo same 150-query cap) — flagged
+         in place in §7, not yet rewritten.
+- [ ] SERVICE_ROLE_KEY transcript exposure — RESOLVED (2026-08-11) on the
+      backend+n8n leg, 2 legs remain. Found: the live `SERVICE_ROLE_KEY`
+      (hardcoded `apikey` header, already a known Golden Rule 4 gap on 9
+      n8n nodes) got printed into a Claude Code transcript while
+      inspecting a node's JSON shape during the Granite/watsonx.ai test
+      resume. Not a new architectural gap, but a live secret reaching a
+      transcript is treated as exposed regardless — same category as the
+      2026-07-28 incident. No real customers yet (confirmed), so no
+      forced-relogin concern this time, unlike the 2026-07-28 rotation's
+      framing.
+
+      **Done, same procedure as 2026-07-28 (see §3 for that entry's full
+      method)**: backups first (`.env`, `pg_dumpall`, n8n sqlite online
+      `.backup`, all `manual_20260811_110831_*`/`.env.backup_20260811_110831_*`).
+      New `JWT_SECRET` (48 random bytes, base64url, 64 chars) + re-signed
+      `ANON_KEY`/`SERVICE_ROLE_KEY` (same `{role,iat,exp}` claim shape,
+      same ~50-year horizon) generated via pure-stdlib Python, HS256
+      implementation self-verified against the real live keys byte-for-byte
+      before trusting it to generate new ones. `docker compose up -d
+      --force-recreate db auth rest storage meta analytics studio kong`.
+      **Live-verified**: real Kong REST call with new anon key → `200`;
+      same call with old anon key → `401` (negative control); Auth health
+      → `200`. n8n side: shared "Supabase Service Role Auth" credential
+      updated via `n8n import:credentials` (not hand-rolled encryption),
+      re-exported to confirm it decrypts to the new value. All 9 hardcoded
+      `apikey` headers patched via the established 3-DB-location method
+      (`workflow_entity.nodes` + both `workflow_history` rows), plain
+      `docker restart n8n_songss` (no env var changed), export-diff
+      confirmed exact scope (63/63 nodes, 9/9 confirmed on new value).
+      **Live end-to-end test**: disposable session
+      (`cs_test_jwt_rotation_verify_20260811`, Chappell Roan, real TikTok
+      handle) through the real `/webhook/submit-analysis` path → clean
+      `200`/`{"status":"ok"}`, real `artist_name`/`digital_score: 90`/
+      `retention_rate: 46`/`ltv_projection: 8410897`/21,037-char
+      `report_markdown`, `processed_sessions` row present (confirms SMTP
+      completed). Test row + `processed_sessions` row deleted after,
+      0 rows left. All plaintext credential-export/patch scratch files
+      (container and host) shredded/removed after use.
+
+      **RESOLVED same session — all 3 legs done, rotation fully closed.**
+      Vercel app: Gilberto updated `VITE_SUPABASE_PUBLISHABLE_KEY` in the
+      dashboard and redeployed; live-verified via bundle-grep (new key
+      present, old absent) + real REST/Auth `200`s from
+      `Origin: https://app.songssintelligence.com` + old-key `401`
+      negative control. Landing page:
+      `/root/songss-landing-page/.env`'s `VITE_SUPABASE_PUBLISHABLE_KEY`
+      updated (old value backed up to
+      `.env.backup_20260811_120128_pre_landing_page_key_update`), rebuilt
+      via the node-version workaround, deployed via `wrangler deploy`
+      using a fresh Cloudflare token Gilberto created (told to revoke it
+      after — note `unset CLOUDFLARE_API_TOKEN` only clears the local
+      shell var, doesn't itself invalidate the token on Cloudflare's side).
+      Live-verified identically: bundle-grep on the live
+      `songssintelligence.com` assets (new key present, old absent) + real
+      REST/Auth `200`s from that origin + old-key `401`. All scratch
+      files (bundles, HTML fetches) deleted after use. See memory
+      `project_service_role_key_transcript_exposure_2026-08-11`.
 - [ ] Syntax errors found during graphify Pass 1 extraction (2026-08-10) —
       `graphify extract . --code-only` reported 2 source files with syntax
       errors, partially extracted rather than fully parsed:

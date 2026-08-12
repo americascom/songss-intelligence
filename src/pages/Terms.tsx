@@ -24,7 +24,8 @@ const TOC: { id: string; label: string }[] = [
   { id: "electronic-communications", label: "17. ELECTRONIC COMMUNICATIONS, TRANSACTIONS, AND SIGNATURES" },
   { id: "miscellaneous", label: "18. MISCELLANEOUS" },
   { id: "ai-disclaimer", label: "19. AI-GENERATED REPORTS DISCLAIMER" },
-  { id: "contact-us", label: "20. CONTACT US" },
+  { id: "third-party-trademarks", label: "20. THIRD-PARTY TRADEMARKS" },
+  { id: "contact-us", label: "21. CONTACT US" },
 ];
 
 const A = ({ href, children }: { href: string; children: React.ReactNode }) => (
@@ -586,7 +587,19 @@ const Terms = () => (
             making business, financial, or career decisions based on report outputs.
           </p>
 
-          <H2 id="contact-us">20. CONTACT US</H2>
+          <H2 id="third-party-trademarks">20. THIRD-PARTY TRADEMARKS</H2>
+          <p>
+            Select tiers of the Services may incorporate AI analytics powered by{" "}
+            <strong className="text-foreground">IBM Granite™</strong>, indicated on the
+            applicable report where used.
+          </p>
+          <p>
+            IBM and IBM Granite are trademarks or registered trademarks of International
+            Business Machines Corporation in the United States and/or other countries.
+            All other trademarks are the property of their respective owners.
+          </p>
+
+          <H2 id="contact-us">21. CONTACT US</H2>
           <p>
             In order to resolve a complaint regarding the Services or to receive
             further information regarding use of the Services, please contact us at:
