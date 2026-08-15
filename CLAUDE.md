@@ -1715,15 +1715,12 @@ Enterprise: $299/mo | 150 queries | Sonnet + GPT-4o
 Opus Maximus: $1,500/mo or $12k/yr | 1,500 queries | Opus (Taylor Made — no self-service)
 Opus + Compliance: $3,000/mo or $24k/yr | 1,500 queries | Opus + IBM watsonx
 
-STALE, NEEDS UPDATE (flagged 2026-08-12, Gilberto's real decision, not yet
-reflected in the table above): **Opus Maximus now includes IBM Granite by
-default** (no separate price given). **Enterprise can add IBM Granite as an
-$800/mo add-on**, same 150-query cap — not a bigger quota, just the model
-addition. Relationship to the existing "Opus + Compliance" row (which already
-bundles IBM watsonx) not yet clarified — table above still shows the old
-figures pending a full rewrite in a future session. Do not treat the numbers
-above as current for Opus Maximus/Enterprise/Opus+Compliance until this is
-resolved.
+RESOLVED (2026-08-15): the 2026-08-12 "Opus Maximus now includes IBM Granite
+by default" / Enterprise $800/mo add-on plan flagged here as pending is now
+moot — Gilberto cancelled the entire Granite initiative 2026-08-15 (see §11
+"Granite production wiring — Opus Maximus, REVERTED" and "IBM Granite
+badge/disclaimer"). The table above was never actually stale; no rewrite is
+needed for this item.
 
 SEPARATE, BIGGER ISSUE (found 2026-08-12, NOT fixed, flagged for its own
 future session — see §11 Active Tasks "Pricing table model differentiation
@@ -1731,8 +1728,8 @@ never existed in the pipeline"): the "Haiku"/"Sonnet"/"Opus"/"Sonnet + GPT-4o"
 per-tier model claims in the table above have never reflected what the
 pipeline actually runs. Every tier's report — Indie through Opus Maximus —
 is written by the exact same hardcoded `gemini-2.5-flash` call in
-`NIE — Neural Intelligence Engine`. This predates and is independent of the
-Granite work below.
+`NIE — Neural Intelligence Engine`. This is unrelated to, and predates, the
+now-cancelled Granite work above.
 
 ---
 
@@ -1777,44 +1774,21 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
 
 ## 11. ACTIVE TASKS
 
-- [ ] IBM Granite badge/disclaimer — UI plumbing DONE 2026-08-12, gating
-      inputs still pending. New `intelligence_reports.granite_powered
-      boolean NOT NULL DEFAULT false` column added (backup-first migration,
-      `NOTIFY pgrst 'reload schema'` sent, live-verified via the real
-      `get_report_by_session` REST path — 40 existing rows backfilled
-      `false`). `Report.tsx`: "AI Analytics powered by IBM Granite™" badge
-      in the hero (gated solely on `report.granite_powered`, no separate
-      frontend tier check — only the future generation-wiring path should
-      ever set this flag true) + full IBM trademark disclaimer in the page
-      footer, both conditional on the same flag. `Terms.tsx`: new §20
-      "THIRD-PARTY TRADEMARKS" section with the same disclaimer text
-      (renumbered old §20 Contact Us → §21). Nothing currently sets
-      `granite_powered` to `true` — badge is invisible on all real traffic
-      today, by design, since Granite isn't wired into any live report-
-      generation path yet (see the isolated-test-workflow item below).
-      `ArtistIndieReport.tsx` deliberately not touched — Indie tier can't
-      reach a Granite-eligible plan under current tier design.
-
-      **Still needed before this can ever go live**:
-      1. Wire actual watsonx/Granite generation into the n8n workflow —
-         IN PROGRESS, scope narrowed 2026-08-12 to **Opus Maximus only**
-         (included by default, no billing dependency); Enterprise's
-         $800/mo add-on is explicitly deferred to its own future session
-         once Stripe entitlement work exists (see item 2 below) — reuses
-         the same Granite connection built now, just gated differently.
-         See the dedicated "Granite production wiring — Opus Maximus"
-         task below for the full paused plan (Gilberto's approved design:
-         REPLACE Gemini for this tier, automatic fallback to Gemini on any
-         Granite error, `granite_powered` set only on real success).
-      2. Enterprise Granite add-on entitlement (Gilberto's call,
-         2026-08-12): a separate `granite_addon_active` boolean on the
-         customer/account record, set via the Stripe webhook based on
-         which Stripe price ID was purchased — deliberately NOT encoded
-         into `plan_name` string variants. Needs its own Stripe price
-         object created first; not yet built.
-      3. §7 pricing table rewrite (Opus Maximus now includes Granite by
-         default, Enterprise add-on $800/mo same 150-query cap) — flagged
-         in place in §7, not yet rewritten.
+- [ ] IBM Granite badge/disclaimer — UI plumbing DONE 2026-08-12, but the
+      whole Granite initiative was CANCELLED 2026-08-15 (Gilberto's call:
+      too much integration friction for a solo founder relative to the
+      value it adds — see "Granite production wiring — Opus Maximus,
+      REVERTED" below). `intelligence_reports.granite_powered` column,
+      the `Report.tsx` badge/disclaimer (gated on that flag), and the
+      `Terms.tsx` §20 trademark section are all left in place as harmless
+      dead plumbing — nothing will ever set the flag true now, so the
+      badge stays permanently invisible. Not worth unwinding; same
+      "leave the unused field, don't chase it" pattern used elsewhere in
+      this doc (e.g. `revenue_economics`). §7's pricing table still needs
+      a cleanup pass to drop the stale "Opus Maximus now includes IBM
+      Granite by default" / Enterprise add-on language — no Stripe
+      entitlement work (`granite_addon_active`) was ever built, and none
+      is needed now.
 - [ ] Pricing table model differentiation never existed in the pipeline —
       found 2026-08-12 while reviewing the production NIE workflow to plan
       the Granite wiring below, NOT fixed, bigger than a Granite-scoped
@@ -1839,137 +1813,110 @@ WARNING: Cloudflare CI is disconnected — always deploy manually
       that's adding a new capability for Opus Maximus; this is about
       whether the *existing* tier promises (Haiku/Sonnet/Opus) were ever
       true for any tier.
-- [ ] **Granite production wiring — Opus Maximus.** PAUSED 2026-08-12
-      (90% usage, stopped deliberately before touching the live workflow —
-      confirmed untouched, see verification below). Scope, confirmed with
-      Gilberto 2026-08-12: Opus Maximus ONLY for now (included by default,
-      no billing dependency). Enterprise's $800/mo add-on needs Stripe
-      entitlement work that doesn't exist yet (`granite_addon_active`,
-      see item 2 in the badge task above) — explicit separate follow-up,
-      will reuse the same Granite connection built here.
+- [x] ~~**Granite production wiring — Opus Maximus.**~~ REVERTED 2026-08-15
+      — Gilberto's call: stop pursuing IBM Granite integration entirely,
+      too much friction for a solo founder relative to the value it adds
+      (this was the item paused mid-deployment 2026-08-13 after a second
+      live test failed with an undiagnosed error — see memory
+      `project_granite_production_wiring_opus_maximus_2026-08-12` for the
+      full paused-state detail, now historical). All 4 Granite nodes (`Route to
+      Granite?`, `Get IAM Token`, `Granite Text Generation`, `Normalize
+      Granite Output`) removed from the production workflow
+      (`8SRNZDEpZKu88qFz`); `Edit Fields`, `Code in JavaScript`, and `HTTP
+      Request` restored to their pre-Granite bodies; `Gemini — Brand
+      Intelligence`'s edge reconnected directly to both
+      `NIE — Neural Intelligence Engine` and `NIE — Indie Coach` (undoing
+      the `Route to Granite?` reroute). Opus Maximus (and every other
+      tier) is back to 100% Gemini synthesis, same as every tier before
+      2026-08-13.
 
-      **Design, approved by Gilberto 2026-08-12**: REPLACE, not additive.
-      Granite replaces Gemini for Opus Maximus's final report synthesis
-      only — all other tiers untouched. Automatic fallback to Gemini on
-      any Granite error (never block a report). `granite_powered` set to
-      `true` only when Granite actually succeeded for that report, `false`
-      otherwise (default/other tiers, or Opus Maximus on fallback).
+      **Deployed**: backup first
+      (`manual_20260815_002332_pre_granite_revert.sqlite`), source of
+      truth was the known-good `manual_20260813_135743_
+      pre_granite_production_wiring.sqlite` backup (taken immediately
+      before the Granite deploy began) — its `workflow_entity.nodes`/
+      `connections` and both `workflow_history` rows (`versionId`
+      `c8a04b97-...`/`activeVersionId` `a09c4898-...`, same two rows as
+      every fix since 2026-07-18) applied to the live DB, dry-run-verified
+      against a scratch copy first, plain `docker restart n8n_songss` (no
+      env var changed). Export-diff confirmed an exact restoration: 63/63
+      nodes, node-for-node byte-identical to the pre-Granite reference,
+      connections byte-identical, zero Granite nodes remaining.
 
-      **Investigation findings this session (read-only export of
-      `8SRNZDEpZKu88qFz`, confirmed via `n8n export:workflow`, zero writes
-      — see verification below)**:
-      - Exactly one node writes the customer-facing report text for every
-        tier today: `NIE — Neural Intelligence Engine` (LangChain Agent
-        node), backed by `Google Gemini Chat Model — NIE`
-        (`gemini-2.5-flash`, temp 0.7, credential `Google Gemini SONGSS`).
-        Its prompt is built entirely from expressions referencing other
-        named nodes (`$('Data Consolidator')`, `$('Perplexity — Web
-        Intelligence')`, `$('GPT-4o — Financial Analysis')`,
-        `$('Gemini — Brand Intelligence')`), not from its own main-input
-        `$json` — same technique can be reused to feed Granite an
-        identical prompt.
-      - Runs in parallel with `NIE — Indie Coach` (lean version, also
-        `gemini-2.5-flash` via a separate `Google Gemini Chat Model`
-        node) — both feed `Merge NIE Outputs` (NIE Engine → main0, Indie
-        Coach → main1) → `Combine NIE Outputs` (Code, collapses to 1
-        item) → `Edit Fields`/`AI Agent` (structured extraction, now
-        mostly dead per the LTV rework — only `digital_score`/
-        `geo_hotspots` still read from it) → `Code in JavaScript`
-        (computes retention_rate/ltv_projection/growth_trajectory/
-        social_engagement_index/fan_loyalty_index, builds the Supabase
-        PATCH body) → `HTTP Request` (PATCH, hardcoded field list — see
-        [[feedback_n8n_http_request_hardcoded_field_list]], `granite_powered`
-        will need adding here too). `NIE — Neural Intelligence Engine`'s
-        output ALSO branches directly to `Format Report HTML` → `Send
-        Report Email` (the emailed copy) — both downstream branches need
-        to receive the Granite-authored text when Granite is used.
-      - Confirmed zero references to `granite_powered` or `granite`
-        anywhere in the current production workflow JSON — the badge
-        work (see task above) only touched the DB column + frontend;
-        nothing on the n8n side exists yet.
-      - `Code in JavaScript`'s and `HTTP Request`'s exact current bodies
-        were NOT YET pulled into this session before stopping — first
-        step of the next session, not assumed.
+      **Live-verified**: disposable Opus Maximus test session
+      (`cs_test_granite_revert_verify_20260815`, Chappell Roan, real
+      TikTok handle) fired through the real `/webhook/submit-analysis`
+      path → clean `200`/`{"status":"ok"}`, real 25,690-char
+      `report_markdown`, correct `artist_name`, `granite_powered: false`,
+      `processed_sessions` row present (confirms SMTP completed).
+      `retention_rate`/`ltv_projection`/`growth_trajectory` came back
+      `null` this run on a transient Apify Spotify hiccup
+      (`monthly_listeners: 0`/`followers: 0` for an otherwise
+      correctly-resolved artist URI) — unrelated to this revert, and the
+      existing null-guard behaved exactly as designed (no fabricated
+      numbers); `social_engagement_index`/`fan_loyalty_index` (TikTok-
+      anchored, not Spotify-anchored) computed correctly at 63/63. Test
+      row + `processed_sessions` row deleted after, 0 rows left. Plaintext
+      scratch files (the workflow export, which contains the 9 nodes'
+      hardcoded `apikey`/`SERVICE_ROLE_KEY` values inline per the known
+      Golden Rule 4 gap) shredded after use.
 
-      **Concrete plan for next session** (not yet built, not yet
-      confirmed node-by-node — re-validate against the live export fresh,
-      don't trust this file's node names if the workflow drifts):
-      1. Re-export `8SRNZDEpZKu88qFz` fresh (scratchpad files from this
-         session are gone — new session, new scratchpad dir).
-      2. Read `Code in JavaScript` and `HTTP Request` (PATCH) node bodies
-         in full before designing the exact insertion point (this was the
-         very next step when the session paused).
-      3. New nodes, same pattern as the working isolated test
-         (`T3ma7RKsDyQBKuuD` / [[project_ibm_granite_watsonx_test_2026-08-10]]):
-         `Get IAM Token` → `Granite Text Generation`, but use
-         `/ml/v1/text/chat` (IBM's own deprecation warning on
-         `/ml/v1/text/generation`, surfaced during the isolated test —
-         not yet done in the isolated test either). Model: start with
-         `ibm/granite-4-h-small` (confirmed entitled + working
-         end-to-end in the isolated test); the 3-model comparison
-         Gilberto asked for is still open separately and doesn't block
-         this.
-      4. Branch point: a Switch/IF node keyed on `plan_label ===
-         'Opus Maximus'` (read via the same
-         `$('Data Consolidator').first().json.plan_label` /
-         `$('Config Opus...').first().json.plan_label` pattern used
-         everywhere else in this workflow) — true branch builds the same
-         prompt `NIE — Neural Intelligence Engine` builds today (reuse
-         its exact prompt text, swap only the generation backend) and
-         calls Granite; false branch (and Granite-error fallback) goes to
-         the existing `NIE — Neural Intelligence Engine` node, completely
-         unchanged.
-      5. Fallback wiring: `Get IAM Token` and `Granite Text Generation`
-         both need `onError: continueErrorOutput` so a failure routes to
-         a second output pinned to `NIE — Neural Intelligence Engine`
-         (the existing Gemini path) instead of failing the report —
-         verify this n8n error-output mechanism actually works as
-         expected before relying on it (not yet tested in this project).
-      6. Normalize Granite's raw HTTP JSON response into whatever shape
-         `Merge NIE Outputs` expects from the LangChain agent's `.output`
-         field (Granite is a raw httpRequest, not an agent node — shapes
-         will differ) via a small Code node, e.g. `Normalize Granite
-         Output`, which also sets `granite_powered: true` on its item.
-      7. `Code in JavaScript`: read whether the Granite branch actually
-         ran via the same try/catch node-reference pattern used
-         throughout this workflow (e.g.
-         `try { $('Normalize Granite Output').first().json.granite_powered
-         === true } catch(e) { false }`) — do NOT rely on the flag
-         surviving positionally through `Merge NIE Outputs`/`Combine NIE
-         Outputs`/`AI Agent`, since `AI Agent` (a LangChain agent node)
-         replaces `$json` entirely with its own output, same "$json fully
-         replaced" trap that caused the 2026-07-14 Spotify Search bug —
-         confirm this assumption against the real node output shape
-         before trusting it. Add `granite_powered` to the final PATCH
-         body.
-      8. Add `granite_powered` to the `HTTP Request` node's hardcoded
-         field list too — checked, not assumed (per
-         [[feedback_n8n_http_request_hardcoded_field_list]]).
-      9. Deploy: backup first (`.sqlite` online `.backup`), dry run
-         against a scratch copy, patch BOTH `workflow_entity.nodes` AND
-         the matching `workflow_history` row for the active `versionId`
-         (2.32.7 behavior — see
-         [[feedback_n8n_2327_workflow_history_execution_source]], a
-         nodes-only patch silently fails to take effect on this n8n
-         version), restart, export-diff to confirm exact scope.
-      10. Live-verify end-to-end with a disposable Opus Maximus test
-          session (bypass Stripe, seed `artist_name IS NULL`, fire via
-          internal `POST /webhook/submit-analysis`) — confirm
-          `granite_powered: true` and real Granite-authored
-          `report_markdown` land in the row; separately force a Granite
-          failure (e.g. temporarily bad IAM key) to confirm the fallback
-          path actually produces a normal Gemini report with
-          `granite_powered: false` rather than failing the execution.
-          Clean up test row after, 0 rows left.
+      **Not touched, deliberately out of scope**: the isolated test
+      workflow (`T3ma7RKsDyQBKuuD`, "TEST — IBM Granite watsonx.ai
+      Comparison") — left as-is, since Gilberto's decision was about
+      production integration, not the standalone test harness; can be
+      archived/deleted in a future session if desired. The
+      `intelligence_reports.granite_powered` column and the `Report.tsx`
+      badge/disclaimer UI (gated solely on that flag, see the badge task
+      above) are also left in place — harmless dead plumbing now that
+      nothing will ever set the flag true again, same "leave the unused
+      column, don't chase it" pattern already used for `revenue_economics`
+      elsewhere in this doc. §7's stale "Opus Maximus now includes IBM
+      Granite by default" note has already been resolved (see §7 — the
+      plan never shipped, so the pricing table's pre-existing figures
+      needed no rewrite after all).
 
-      **Verified before pausing — production untouched this session**:
-      `workflow_entity` for `8SRNZDEpZKu88qFz` shows `updatedAt
-      2026-07-18 22:49:04.731` / `versionId c8a04b97-...` — unchanged
-      since the digital_score clamp fix, no write today. `n8n_songss`
-      container uptime 26h, no restart this session. Only read-only
-      commands were run this session (`n8n list:workflow`,
-      `n8n export:workflow`, local JSON parsing) — no `import:workflow`,
-      no SQL writes, no restart.
+- [x] ~~SERVICE_ROLE_KEY transcript exposure (2026-08-13)~~ RESOLVED same
+      session. Resuming the Granite plan above, reading the `HTTP Request`
+      PATCH node's full body (step 2 of the plan) printed the live
+      `SERVICE_ROLE_KEY` into the transcript again — same recurring
+      structural gap as 2026-08-11 (the hardcoded `apikey` header can't be
+      made credential-only via n8n's UI). Gilberto's call: rotate again
+      rather than defer. Same procedure as 2026-07-28/08-11 (see §3 for the
+      full method): backups first (`.env`, `pg_dumpall`, n8n sqlite online
+      `.backup`, all `manual_20260813_122352_*`), new `JWT_SECRET`/
+      `ANON_KEY`/`SERVICE_ROLE_KEY` generated via pure-stdlib Python
+      (self-verified against the real live keys byte-for-byte first),
+      values never printed to the terminal — written straight to a
+      600-perm file and consumed by scripts, shredded once no longer
+      needed. `docker compose up -d --force-recreate db auth rest storage
+      meta analytics studio kong`. **Live-verified**: new anon key → `200`,
+      old anon key → `401` negative control, Auth health → `200`. n8n:
+      shared "Supabase Service Role Auth" credential updated via `n8n
+      import:credentials`, re-exported to confirm it decrypts to the new
+      value (iat matched exactly). All 9 hardcoded `apikey` headers patched
+      via the established 3-DB-location method (`workflow_entity.nodes` +
+      both `workflow_history` rows, same `versionId`/`activeVersionId` as
+      every fix since 2026-07-18), dry run against a scratch copy first,
+      plain `docker restart n8n_songss` (no env var changed), export-diff
+      confirmed exact scope (63/63 nodes, connections byte-identical,
+      exactly the 9 target nodes changed, all 9 confirmed on the new key).
+      **Live end-to-end test**: disposable session
+      (`cs_test_jwt_rotation_verify_20260813`, Chappell Roan, real TikTok
+      handle), fired via internal `POST /webhook/submit-analysis` → clean
+      `200`/`{"status":"ok"}`, real `artist_name`/`digital_score: 65`/
+      `retention_rate: 46`/`ltv_projection: 8457057`/27,762-char
+      `report_markdown`, `processed_sessions` row present (SMTP
+      completed). Test row + `processed_sessions` row deleted after,
+      0 rows left. **All 3 legs closed same session**: Vercel app (Gilberto
+      updated `VITE_SUPABASE_PUBLISHABLE_KEY` in the dashboard and
+      redeployed) and landing page (`/root/songss-landing-page/.env`
+      updated, rebuilt via the node-version workaround, deployed by
+      Gilberto directly on the VPS terminal) both live-verified via
+      bundle-grep (new key present, old key absent) + real REST/Auth `200`s
+      from each origin + old-key `401` negative control. All plaintext
+      credential-export/patch scratch files shredded after use, same
+      standing lesson as 2026-08-11.
 - [ ] SERVICE_ROLE_KEY transcript exposure — RESOLVED (2026-08-11) on the
       backend+n8n leg, 2 legs remain. Found: the live `SERVICE_ROLE_KEY`
       (hardcoded `apikey` header, already a known Golden Rule 4 gap on 9
