@@ -614,6 +614,54 @@ signature verification structurally intact + secret/crypto present, but a
 claimed "Douglas's case" break has no record in docs/memory/git and is
 unconfirmed.
 
+RESOLVED (2026-08-15): **Off-site encrypted backups to Cloudflare R2 —
+closes audit item #4, the last open item from the 2026-08-15 sweep.**
+Architecture: daily cron → Supabase `pg_dumpall` + WAL-safe n8n `.n8n`
+backup → gzip → GPG symmetric AES-256 (passphrase from `secrets.env`,
+never hardcoded) → `rclone` upload to R2 → local shred. 30-day retention
+via an R2 bucket lifecycle rule (set in the CF dashboard, not in-script).
+
+- **Script**: `/docker/n8n/offsite_backup.sh` (700 root). Reads secrets
+  literally from `secrets.env` (no shell interpretation → any passphrase
+  chars safe). n8n step uses `sqlite3 ".backup"` (WAL-safe, standing
+  lesson) + includes `.n8n/config` (the encryptionKey — required to
+  decrypt n8n creds on restore) + `nodes`/`storage`. **Backs up only
+  `.n8n` (132M), NOT `/docker/n8n` (17G of old corrupt-DB junk.)** Supabase
+  step: `docker exec supabase-db pg_dumpall -U postgres`. GPG passphrase
+  via `--passphrase-fd 0` (never argv). `DRY_RUN=1` builds+encrypts+tests
+  R2 connectivity without uploading.
+- **rclone**: apt-installed (`v1.53.3`; old but works with R2 via the S3
+  backend using `provider=Other` + endpoint + `no_check_bucket=true` —
+  R2 rejects the HEAD-bucket probe). Remote configured entirely via
+  `RCLONE_CONFIG_R2_*` env vars in-script (no rclone.conf; the "config
+  file not found" NOTICE is harmless).
+- **secrets.env additions** (via `/root/secrets_upsert.py`, a hidden-prompt
+  `getpass` helper Gilberto ran himself so values never hit the
+  transcript): `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT`,
+  `BACKUP_GPG_PASSPHRASE`. **The GPG passphrase is ALSO saved in Gilberto's
+  Google Drive** — critical: the on-VPS copy dies with the VPS, and without
+  an off-VPS copy the R2 backups would be undecryptable exactly when
+  needed.
+- **R2 API token**: scoped to Object Read/Write on the single
+  `songss-offsite-backups` bucket only. Unlike Golden Rule 7's
+  create-use-revoke deploy tokens, this one is long-lived (cron needs it);
+  the tight scoping is the mitigation.
+- **cron**: `0 3 * * *` daily → `offsite_backup.sh`, logging to
+  `/docker/n8n/backups/offsite_backup.log`. Separate from the existing
+  hourly LOCAL n8n backup (`backup_n8n.sh`), which stays as-is.
+- **Tested end-to-end 2026-08-15**: DRY_RUN → real run (uploaded +
+  post-upload verified in R2, nothing kept locally) → restore test
+  (downloaded from R2, decrypted, extracted). n8n side **fully
+  live-restored** (real queries: integrity ok, 8 workflows, 15 creds,
+  active NIE workflow present). Supabase side **statically verified
+  complete** (41/41 `intelligence_reports` == live, 6 `plan_limits`, 5/5
+  key roles, clean completion) — authoritative proof the artifact holds
+  all live data. A live-container Supabase restore hit throwaway-harness
+  artifacts (pg_dumpall superuser-password reset self-shutting-down the
+  container; a password-line filter then corrupting the COPY stream) —
+  NOT backup defects. See §11 for the stock-Postgres re-verification.
+  All plaintext shredded after each step.
+
 ---
 
 ## 4. NIE FLOW (DO NOT BREAK)
@@ -1868,14 +1916,15 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
             — see §3 "RESOLVED (2026-08-15): SSH hardening". Password auth
             disabled, `PermitRootLogin prohibit-password`, key login proven
             working first, live-verified both directions.
-      - [ ] **Off-site backups — OPEN, real single-point-of-failure gap.**
-            n8n backups (`/docker/n8n/backup_n8n.sh`, hourly cron): plain
-            `cp` of `database.sqlite` locally, 7-day `-mtime` retention, no
-            remote step. Supabase backups (`/root/supabase/backups/`):
-            manual `pg_dump` only, no cron. **Neither is replicated
-            anywhere off the VPS** — no R2/S3/rclone/rsync/scp. If the VPS
-            disk is lost, all backups go with it. Decide on an off-site
-            target (Cloudflare R2 fits the existing CF stack) + automate.
+      - [x] ~~Off-site backups — OPEN, real single-point-of-failure
+            gap.~~ RESOLVED 2026-08-15 — daily encrypted backups to
+            Cloudflare R2 (`0 3 * * *` → `/docker/n8n/offsite_backup.sh`:
+            Supabase `pg_dumpall` + WAL-safe n8n `.n8n` → gzip → GPG
+            AES-256 → rclone → R2, 30-day lifecycle). Built + tested
+            end-to-end (dry run, real upload+verify, restore test). Full
+            detail in §3 "RESOLVED (2026-08-15): Off-site encrypted
+            backups". The old local-only n8n hourly `cp` + manual Supabase
+            `pg_dump` stay as-is, now complemented by the off-site copy.
       - [ ] Stripe webhook signature verification / "Douglas's case" —
             UNCONFIRMED. The gate is structurally intact (`Verify Stripe
             Signature` HMAC-SHA256 + `Signature Valid?` IF → Filter, wired
@@ -1900,11 +1949,10 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       DONE — SSH hardening (§3: password auth off, root prohibit-password,
       key login proven first); RLS clean (all 5 public tables); Postgres
       5432 not host-exposed (internal Docker only); d3-color resolved
-      (committed lockfile pins the patched 3.1.0). STILL PENDING —
-      (1) react-router-dom v7 migration, the sole remaining browser-bundle
-      vuln (major v6→v7, its own session); (2) off-site backups — n8n
-      (hourly local `cp`) + Supabase (manual `pg_dump`) both local-only on
-      the VPS disk, no R2/S3/rclone replication anywhere; (3) Stripe
+      (committed lockfile pins the patched 3.1.0); off-site encrypted R2
+      backups (§3: daily `0 3 * * *`, built + restore-tested). STILL
+      PENDING — (1) react-router-dom v7 migration, the sole remaining
+      browser-bundle vuln (major v6→v7, its own session); (2) Stripe
       webhook / "Douglas's case" mystery — no record of a break or fix in
       docs/memory/git; next concrete step is READ-ONLY: pull execution
       123's `stripe_signature_reason` (that 01:17 `Stripe Webhook` run) to
