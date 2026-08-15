@@ -1928,26 +1928,59 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
             detail in §3 "RESOLVED (2026-08-15): Off-site encrypted
             backups". The old local-only n8n hourly `cp` + manual Supabase
             `pg_dump` stay as-is, now complemented by the off-site copy.
-      - [ ] Stripe webhook signature verification / "Douglas's case" —
-            UNCONFIRMED. The gate is structurally intact (`Verify Stripe
-            Signature` HMAC-SHA256 + `Signature Valid?` IF → Filter, wired
-            correctly; `STRIPE_WEBHOOK_SECRET` present len 38;
-            `NODE_FUNCTION_ALLOW_BUILTIN=crypto` set). But the claim that
-            it "broke yesterday (Douglas's case)" has **no record** in
-            CLAUDE.md/memory/git, and no "already-identified fix" exists on
-            record — do not invent one. Circumstantial evidence it may be
-            failing for real events: today's report runs (execs 122,
-            124-128) all fired via `Submit Trigger` (the manual bypass),
-            not the Stripe webhook, and a backup
-            `manual_20260815_022457_pre_douglas_manual_session_insert.sql`
-            exists. Next step before any fix: pull execution 123 (the one
-            recent `Stripe Webhook`-triggered run, 01:17) to read its
-            `stripe_signature_reason` / actual failure. Likely suspect if
-            it IS failing: rawBody handling — if the code falls to
-            `JSON.stringify($json.body)` instead of the real raw bytes, the
-            HMAC can never match Stripe's signature (re-check whether the
-            2.32.7 upgrade changed `$binary`/rawBody exposure to Code
-            nodes). Not confirmed — evidence first.
+      - [ ] **★ TOP PRIORITY NEXT SESSION — Stripe webhook signature
+            verification BROKEN by the 2.32.7 upgrade; blocks EVERY real
+            Stripe payment, not just Douglas's.** Root-caused 2026-08-15
+            (fully read-only, no changes made). MECHANISM: on n8n 2.32.7
+            the `Verify Stripe Signature` Code node's `$binary` accessor is
+            EMPTY at runtime (the webhook rawBody binary is persisted on
+            the item but not exposed to the Code node's `$binary`), so it
+            falls into the `else` branch — `rawBody =
+            JSON.stringify($json.body)` — signing re-serialized JSON that
+            can never match Stripe's byte-exact payload → returns
+            `stripe_signature_reason: signature_mismatch`. PROVEN against
+            execution 123 (Douglas's real `livemode:true` payment, 01:17
+            2026-08-15): the persisted raw body (4229 bytes, valid
+            ASCII/UTF-8, Buffer→utf8 round-trip lossless) + the stored
+            `STRIPE_WEBHOOK_SECRET` DO produce a valid HMAC == Stripe's
+            `v1` — so the secret is CORRECT and it is NOT UTF-8 corruption;
+            the node simply never used the real bytes. The reflexive
+            "signature_mismatch → rotate the secret" fix would be WRONG and
+            fix nothing. TIMELINE: gate built + verified working on 2.28.3
+            (2026-07-23, §4); broke silently at the 2.32.7 upgrade
+            (2026-08-01, §3). IMPACT: all live Stripe payments since ~Aug 1
+            rejected at the gate; Douglas's was worked around via the
+            manual `intelligence_reports` insert
+            (`manual_20260815_022457_pre_douglas_manual_session_insert.sql`).
+            FIX SCOPE (workflow change → needs Gilberto confirmation per
+            Golden Rule 1):
+            1. In `Verify Stripe Signature`, replace the `$binary`-based
+               raw-body read with a 2.32.7-correct accessor — test which
+               actually returns the raw bytes:
+               `$input.item.binary?.data?.data`, or
+               `$('Stripe Webhook').first().binary?.data?.data`, or
+               `items[0].binary?.data?.data`. Keep the HMAC/timestamp/
+               compare logic unchanged (proven correct).
+            2. Make the fallback FAIL LOUD — if the raw body can't be read,
+               set `reason='missing_raw_body'` and reject, instead of
+               silently signing `JSON.stringify(body)` (that silent
+               fallback is exactly what hid this for ~2 weeks).
+            3. Deploy via the established 3-DB-location method
+               (`workflow_entity.nodes` + BOTH `workflow_history` rows — on
+               2.32.7 the active-versionId history row IS read at execution,
+               see memory `feedback_n8n_2327_workflow_history_execution_source`),
+               backup first, dry-run on a scratch copy, `node --check`,
+               export-diff to confirm only that node changed.
+            4. RE-VERIFY with a real signed event (the 2026-07-23 method:
+               sign a test `checkout.session.completed` from inside the
+               container using the real secret → confirm it now PASSES;
+               confirm missing/tampered/old-timestamp still blocked).
+            5. RECONCILE: scan `execution_entity`/`execution_data` for any
+               OTHER real `Stripe Webhook` runs with `signature_mismatch`
+               since Aug 1 — real customers who paid but got no account/
+               report/email — and process them manually like Douglas.
+            See memory `project_stripe_webhook_binary_regression_2026-08-15`
+            and §4 REGRESSION note (near the 2026-07-23 signature-gate entry).
 - [ ] **Session status snapshot (2026-08-15, start here next session):**
       DONE — SSH hardening (§3: password auth off, root prohibit-password,
       key login proven first); RLS clean (all 5 public tables); Postgres
@@ -1955,11 +1988,15 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       (committed lockfile pins the patched 3.1.0); off-site encrypted R2
       backups (§3: daily `0 3 * * *`, built + restore-tested). STILL
       PENDING — (1) react-router-dom v7 migration, the sole remaining
-      browser-bundle vuln (major v6→v7, its own session); (2) Stripe
-      webhook / "Douglas's case" mystery — no record of a break or fix in
-      docs/memory/git; next concrete step is READ-ONLY: pull execution
-      123's `stripe_signature_reason` (that 01:17 `Stripe Webhook` run) to
-      confirm whether/why it's failing before touching anything.
+      browser-bundle vuln (major v6→v7, its own session); (2) **★ Stripe
+      webhook broken by the 2.32.7 upgrade — THE TOP PRIORITY for next
+      session**, root-caused 2026-08-15 ("Douglas's case"): the `Verify
+      Stripe Signature` node's `$binary` is empty at runtime on 2.32.7 →
+      else-branch signs re-serialized JSON → `signature_mismatch` on EVERY
+      real payment (secret is CORRECT, proven via HMAC recompute). Fix =
+      node raw-body accessor code change (full scope + reconcile step in
+      the audit-sweep block above); blocks ALL live Stripe payments until
+      fixed.
 - [ ] IBM Granite badge/disclaimer — UI plumbing DONE 2026-08-12, but the
       whole Granite initiative was CANCELLED 2026-08-15 (Gilberto's call:
       too much integration friction for a solo founder relative to the
