@@ -21,6 +21,8 @@ const Footer = () => {
               A product of Americascom, Inc. — Registered in Delaware, USA.
               <br />
               Payments processed by AmericasPay, by Stripe Technology.
+              <br />
+              Americascom, Inc. is a Member of the IBM Partner Plus ecosystem.
             </p>
           </div>
 
