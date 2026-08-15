@@ -659,8 +659,11 @@ via an R2 bucket lifecycle rule (set in the CF dashboard, not in-script).
   all live data. A live-container Supabase restore hit throwaway-harness
   artifacts (pg_dumpall superuser-password reset self-shutting-down the
   container; a password-line filter then corrupting the COPY stream) —
-  NOT backup defects. See §11 for the stock-Postgres re-verification.
-  All plaintext shredded after each step.
+  NOT backup defects. **Re-verified definitively same session**: unfiltered
+  restore into a throwaway stock `postgres:15-alpine` (local-socket peer
+  auth, no supervisor to self-shutdown) live-queried `intelligence_reports`
+  41/41 == live + `plan_limits` 6 — Supabase side now fully live-restore-
+  confirmed too. All plaintext shredded, test image removed after.
 
 ---
 
