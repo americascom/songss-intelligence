@@ -548,6 +548,72 @@ for the standing lesson this created.
 session") — no image change, no upgrade performed. Next session should
 start from the memory file above rather than re-deriving any of this.
 
+RESOLVED (2026-08-15): **SSH hardening — password auth disabled, root
+login restricted to keys.** Part of a broader security audit sweep (RLS
+coverage, Postgres port exposure, SSH, off-site backups, Stripe webhook —
+see §11 for the still-open items). Found via `sshd -T`:
+`PasswordAuthentication` was effectively **yes** and `PermitRootLogin`
+**yes**, and every recent login in `/var/log/auth.log` was `Accepted
+password for root` (zero `publickey`) — i.e. the only working auth was
+passwords, on a box actively being brute-forced by internet bots.
+
+**Key correction to the initial read** (confirm, don't assume): the two
+files in `/etc/ssh/sshd_config.d/` (`50-cloud-init.conf` = `yes`,
+`60-cloudimg-settings.conf` = `no`) looked like a "conflict," but the main
+`/etc/ssh/sshd_config` has **no `Include` line at all** (hand-customized,
+old 2017 OpenBSD-template header, `PermitRootLogin yes` manually appended
+after the `Match` example) — so **both drop-ins are inert/unread**. The
+real control point is the main config: password auth was `yes` purely by
+default (its line was commented), root `yes` from the appended line.
+Confirmed by reading the whole file, not assuming standard-Ubuntu Include
+behavior.
+
+**Lockout-avoidance (Gilberto's explicit gate)**: did NOT disable password
+auth until key login was proven. First key-only test
+(`ssh -o PreferredAuthentications=publickey -o PasswordAuthentication=no`)
+**failed** (`Permission denied`) — the pre-existing `gilberto@wwtvplay.com`
+ed25519 key already in root's `authorized_keys` had no matching private
+half on Gilberto's laptop. Server side was healthy for keys (perms
+StrictModes-clean, `PubkeyAuthentication yes`, ed25519 accepted, zero key
+failures in the log), so the gap was client-side. Gilberto generated a
+fresh ed25519 keypair locally; its public key
+(`SHA256:Yvzbc9wDCVloo1fdrlMHNK9+QdPk88dErIxZ+tcBS4s`) was appended to
+`/root/.ssh/authorized_keys` (backup
+`authorized_keys.backup_20260815_112320` first, dedupe-checked, 8→9 keys,
+perms `600 root:root`, re-validated with `ssh-keygen -l -f`). Note: two
+ed25519 keys now carry the `gilberto@wwtvplay.com` comment — the old
+orphan (`SHA256:3NEJ9O…`, private half lost) and the new working one
+(`SHA256:Yvzbc9…`); orphan left in place, prune later if wanted.
+
+**Applied**: backup `sshd_config.backup_20260815_112822` first, then in the
+main config `PasswordAuthentication no` + `PermitRootLogin prohibit-password`
+(renders as `without-password` in `sshd -T`), plus aligned the inert
+`50-cloud-init.conf` to `no` (backed up) so no self-contradictory config
+remains on disk if an `Include` is ever added later. `sshd -t` passed →
+`systemctl reload ssh` (**reload, not restart** — existing sessions
+survive; the standing docker-compose lesson's SSH analogue).
+
+**Live-verified end-to-end**: a fresh `Accepted publickey for root ...
+ED25519 SHA256:Yvzbc9…` from Gilberto's IP appeared in `/var/log/auth.log`
+before the change; after the reload, Gilberto confirmed from a new session
+that (1) key login still works with no password prompt, and (2)
+password-only login now returns `Permission denied (publickey)`. Rollback
+path (unused): `cp /etc/ssh/sshd_config.backup_20260815_112822
+/etc/ssh/sshd_config && systemctl reload ssh`. Effective config now:
+`passwordauthentication no`, `permitrootlogin without-password`,
+`pubkeyauthentication yes`.
+
+**Other sweep items (2026-08-15, see §11)**: RLS confirmed enabled on all
+5 public tables (`intelligence_reports`, `plan_limits`,
+`processed_sessions`, `spotify_artist_cache`, `teams` — not just the one
+verified before; `processed_sessions`/`teams` deny-all with zero policies,
+correct); Postgres 5432 confirmed NOT host-published (internal Docker
+network only, `supabase-pooler` publishes no ports either); off-site
+backups confirmed **absent** (local-only — open item); Stripe webhook
+signature verification structurally intact + secret/crypto present, but a
+claimed "Douglas's case" break has no record in docs/memory/git and is
+unconfirmed.
+
 ---
 
 ## 4. NIE FLOW (DO NOT BREAK)
@@ -1787,6 +1853,49 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
 
 ## 11. ACTIVE TASKS
 
+- [ ] Security audit sweep (2026-08-15) — 5-item honest-status pass. Two
+      items clean, one done, two open:
+      - [x] ~~RLS coverage on ALL public tables~~ CLEAN — all 5 tables
+            (`intelligence_reports`, `plan_limits`, `processed_sessions`,
+            `spotify_artist_cache`, `teams`) have `rowsecurity=t`;
+            `processed_sessions`/`teams` are deny-all (zero policies), no
+            `USING(true)` anywhere. Nothing to fix.
+      - [x] ~~Postgres 5432 external exposure~~ CLEAN — `supabase-db`
+            publishes no host port (internal Docker net only), no host
+            listener on 5432/6543, `supabase-pooler` publishes nothing.
+            Nothing to fix.
+      - [x] ~~SSH: password auth + direct root login~~ RESOLVED 2026-08-15
+            — see §3 "RESOLVED (2026-08-15): SSH hardening". Password auth
+            disabled, `PermitRootLogin prohibit-password`, key login proven
+            working first, live-verified both directions.
+      - [ ] **Off-site backups — OPEN, real single-point-of-failure gap.**
+            n8n backups (`/docker/n8n/backup_n8n.sh`, hourly cron): plain
+            `cp` of `database.sqlite` locally, 7-day `-mtime` retention, no
+            remote step. Supabase backups (`/root/supabase/backups/`):
+            manual `pg_dump` only, no cron. **Neither is replicated
+            anywhere off the VPS** — no R2/S3/rclone/rsync/scp. If the VPS
+            disk is lost, all backups go with it. Decide on an off-site
+            target (Cloudflare R2 fits the existing CF stack) + automate.
+      - [ ] Stripe webhook signature verification / "Douglas's case" —
+            UNCONFIRMED. The gate is structurally intact (`Verify Stripe
+            Signature` HMAC-SHA256 + `Signature Valid?` IF → Filter, wired
+            correctly; `STRIPE_WEBHOOK_SECRET` present len 38;
+            `NODE_FUNCTION_ALLOW_BUILTIN=crypto` set). But the claim that
+            it "broke yesterday (Douglas's case)" has **no record** in
+            CLAUDE.md/memory/git, and no "already-identified fix" exists on
+            record — do not invent one. Circumstantial evidence it may be
+            failing for real events: today's report runs (execs 122,
+            124-128) all fired via `Submit Trigger` (the manual bypass),
+            not the Stripe webhook, and a backup
+            `manual_20260815_022457_pre_douglas_manual_session_insert.sql`
+            exists. Next step before any fix: pull execution 123 (the one
+            recent `Stripe Webhook`-triggered run, 01:17) to read its
+            `stripe_signature_reason` / actual failure. Likely suspect if
+            it IS failing: rawBody handling — if the code falls to
+            `JSON.stringify($json.body)` instead of the real raw bytes, the
+            HMAC can never match Stripe's signature (re-check whether the
+            2.32.7 upgrade changed `$binary`/rawBody exposure to Code
+            nodes). Not confirmed — evidence first.
 - [ ] IBM Granite badge/disclaimer — UI plumbing DONE 2026-08-12, but the
       whole Granite initiative was CANCELLED 2026-08-15 (Gilberto's call:
       too much integration friction for a solo founder relative to the
