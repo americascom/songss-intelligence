@@ -1754,6 +1754,19 @@ Landing page: MANUAL via terminal only:
 
 WARNING: no_bundle was removed from wrangler.json — do NOT add it back
 WARNING: Cloudflare CI is disconnected — always deploy manually
+WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
+  do NOT remove it. Cloudflare's default assets handling 307-redirects any
+  request for a literal `*.html` path to its extensionless equivalent
+  (e.g. `/google<id>.html` → `/google<id>`), which broke Google Search
+  Console's domain-ownership verification — its verifier fetches the exact
+  `.html` URL and does not follow the redirect. Since this site is fully
+  SSR'd through the Worker (TanStack Start), Cloudflare's own HTML routing
+  never serves any real page anyway, so disabling it has no effect on
+  normal site behavior. Fixed and committed 2026-08-15
+  (`eca540f`) — also committed the actual verification file itself,
+  `public/google5b3546be51c87f40.html`, which had been present on disk and
+  live via a prior manual deploy but was never checked into git (every
+  other file in `public/` was already tracked).
 
 ---
 
