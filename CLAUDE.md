@@ -821,13 +821,12 @@ TAMPERED `v1`, and a 10-minute-STALE timestamp were all still correctly
 `timestamp_outside_tolerance`) — confirms the fix didn't weaken the
 security gate.
 
-**Impact / not yet done**: every real Stripe payment from ~2026-08-01 to
-2026-08-15 was rejected at this gate; only Douglas's was recovered (manual
-`intelligence_reports` insert). A reconcile pass — scanning
-`execution_entity`/`execution_data` for other real `Stripe Webhook` runs
-with `signature_mismatch` in that window, i.e. other real customers who
-paid but got no account/report/email — has **not** been done yet; still
-needed as a follow-up.
+**Impact**: every real Stripe payment from ~2026-08-01 to 2026-08-15 was
+rejected at this gate; only Douglas's was recovered (manual
+`intelligence_reports` insert). **No reconcile pass needed**: Gilberto
+confirmed 2026-08-14 that Douglas is the ONLY real customer who attempted
+a purchase during the outage window — no other real customers were
+affected. Closed, no further action.
 
 RESOLVED BUG (found and fixed 2026-07-14): the "Spotify Search" node
 (`httpRequest` → Apify `automation-lab~spotify-scraper`, `mode:"search"`) read
@@ -1998,16 +1997,11 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
             passes + proceeds; missing/tampered/stale still blocked; zero
             real side effects). See memory
             `project_stripe_webhook_binary_regression_2026-08-15`.
-      - [ ] **Stripe webhook reconcile pass — the one piece NOT yet done.**
-            Every real Stripe payment from ~2026-08-01 (the 2.32.7 upgrade)
-            to 2026-08-15 (this fix) was rejected at the signature gate.
-            Only Douglas's was recovered (manual `intelligence_reports`
-            insert). Need to scan `execution_entity`/`execution_data` for
-            OTHER real `Stripe Webhook` runs with
-            `stripe_signature_reason: signature_mismatch` in that window —
-            i.e. other real customers who paid but got no account/report/
-            email — and process them manually the same way. Read-only scan
-            first; each real hit needs Gilberto's input on remediation.
+      - [x] ~~Stripe webhook reconcile pass~~ NOT NEEDED — Gilberto
+            confirmed 2026-08-14 that Douglas was the ONLY real customer
+            who attempted a purchase during the ~2026-08-01 to 2026-08-15
+            outage window; no other real customers were affected. No scan
+            required, closed.
 - [ ] **Session status snapshot (2026-08-15, start here next session):**
       DONE — SSH hardening (§3: password auth off, root prohibit-password,
       key login proven first); RLS clean (all 5 public tables); Postgres
@@ -2018,11 +2012,11 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       (§4 "REGRESSION + RESOLVED" — `$binary` structurally strips binary
       `data` in n8n Code nodes; switched to `$('Stripe Webhook').first()`,
       fail-loud on missing raw body; 4-case live test suite passed, zero
-      side effects). STILL PENDING — (1) react-router-dom v7 migration, the
-      sole remaining browser-bundle vuln (major v6→v7, its own session);
-      (2) **Stripe reconcile pass** — scan for other real customers who
-      paid between ~Aug 1-15 and got rejected at the (now-fixed) gate, same
-      as Douglas, and process them manually.
+      side effects; no reconcile pass needed — Gilberto confirmed
+      2026-08-14 that Douglas was the only real customer affected during
+      the outage window). STILL PENDING — react-router-dom v7 migration,
+      the sole remaining browser-bundle vuln (major v6→v7, its own
+      session).
 - [ ] IBM Granite badge/disclaimer — UI plumbing DONE 2026-08-12, but the
       whole Granite initiative was CANCELLED 2026-08-15 (Gilberto's call:
       too much integration friction for a solo founder relative to the
