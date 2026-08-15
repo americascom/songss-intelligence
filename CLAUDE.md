@@ -1896,6 +1896,19 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
             HMAC can never match Stripe's signature (re-check whether the
             2.32.7 upgrade changed `$binary`/rawBody exposure to Code
             nodes). Not confirmed — evidence first.
+- [ ] **Session status snapshot (2026-08-15, start here next session):**
+      DONE — SSH hardening (§3: password auth off, root prohibit-password,
+      key login proven first); RLS clean (all 5 public tables); Postgres
+      5432 not host-exposed (internal Docker only); d3-color resolved
+      (committed lockfile pins the patched 3.1.0). STILL PENDING —
+      (1) react-router-dom v7 migration, the sole remaining browser-bundle
+      vuln (major v6→v7, its own session); (2) off-site backups — n8n
+      (hourly local `cp`) + Supabase (manual `pg_dump`) both local-only on
+      the VPS disk, no R2/S3/rclone replication anywhere; (3) Stripe
+      webhook / "Douglas's case" mystery — no record of a break or fix in
+      docs/memory/git; next concrete step is READ-ONLY: pull execution
+      123's `stripe_signature_reason` (that 01:17 `Stripe Webhook` run) to
+      confirm whether/why it's failing before touching anything.
 - [ ] IBM Granite badge/disclaimer — UI plumbing DONE 2026-08-12, but the
       whole Granite initiative was CANCELLED 2026-08-15 (Gilberto's call:
       too much integration friction for a solo founder relative to the
@@ -2122,19 +2135,21 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
             deserves its own dedicated session (migration + full retest),
             not squeezed into a "simple non-major bump" task. The
             attempted 6.30.4 patch bump was reverted this session (see
-            below) rather than partially applied.
-      - [ ] `d3-color` ReDoS ([GHSA-36jr-mh4h-2g58](https://github.com/advisories/GHSA-36jr-mh4h-2g58),
-            high) — not in the original `npm audit` at all; surfaced only
-            as a side effect of a broad, unexpected lockfile
-            re-resolution triggered by a single `npm install
-            react-router-dom@6.30.4` (144 packages changed, ~2,235-line
-            `package-lock.json` diff, for what should have been a
-            one-line bump). Pulled in transitively via `d3-transition`
-            (part of the Recharts/d3 dependency tree used by the report
-            charts). Not fixed — needs its own investigation into why
-            that install caused such a broad re-resolution before
-            deciding on a fix path (may need a `recharts`/`d3-*` bump
-            rather than touching `d3-color` directly).
+            below) rather than partially applied. **As of 2026-08-15 this
+            is the SOLE remaining open browser-bundle vulnerability**
+            (d3-color resolved above) — the v7 migration is the one real
+            customer-facing dep exposure left.
+      - [x] ~~`d3-color` ReDoS ([GHSA-36jr-mh4h-2g58](https://github.com/advisories/GHSA-36jr-mh4h-2g58),
+            high)~~ RESOLVED 2026-08-15 — advisory confirmed (WebFetch of
+            the GHSA page) as vulnerable `>=1.0.2, <3.1.0`, first patched
+            `3.1.0`. The committed `package-lock.json` pins
+            `d3-color@3.1.0` — **exactly the patched version, NOT
+            vulnerable as committed.** The 2026-08-09 flag was raised only
+            during the transient, *reverted* broad lockfile re-resolution;
+            the restored committed tree sits at 3.1.0. It's transitive
+            (via `d3-transition` → Recharts), so a future re-resolution
+            could move it — but only forward, never back below 3.1.0.
+            Nothing to do.
       - [ ] Remaining dev-tooling batch (`vite`, `rollup`, `esbuild`,
             `postcss`, `js-yaml`, `lodash`, `glob`, `minimatch`,
             `picomatch`, `nanoid`, `ajv`, `ws`, `brace-expansion`,
