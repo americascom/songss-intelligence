@@ -665,6 +665,395 @@ via an R2 bucket lifecycle rule (set in the CF dashboard, not in-script).
   41/41 == live + `plan_limits` 6 — Supabase side now fully live-restore-
   confirmed too. All plaintext shredded, test image removed after.
 
+RESOLVED (2026-08-16): **Douglas real-customer bug-discovery session — 3
+distinct fixes, all found because a real paying customer actually tried to
+use the product post-launch.** Reinforces Gilberto's 2026-08-15 call to
+prioritize building automated pre-launch testing agents — these 3 bugs
+would very plausibly have been caught before any real customer hit them,
+by a suite that actually logs in, checks the dashboard, and submits a
+report end-to-end rather than only exercising the n8n/DB layer via
+disposable sessions the way this project's testing has to date.
+
+**Fix 1 — password reset.** Douglas (`drm@grupooqta.com.br`) needed a
+working login. Set directly via the GoTrue admin API through Kong
+(`PUT /auth/v1/admin/users/{id}`, `password` + `email_confirm: true` +
+`ban_duration: "none"`). Confirmed via the lookup first that his account
+was already `email_confirmed_at`-set and not banned — the reset only
+needed the password itself. **Live-verified** with a real
+`grant_type=password` token exchange against his exact user ID
+(`102638e9-a761-4c51-ac58-8fad5ecd8f1d`) before handing the credential
+back — proves the password actually works, not just that the API call
+returned 200. Scratch files holding the password/API responses shredded
+after Gilberto confirmed he'd copied and sent it.
+
+**Fix 2 — `intelligence_reports.user_id` NULL, causing "No active plan
+found for this account" on the Dashboard.** Root cause: Douglas's report
+row (`session_id cs_live_a1IaFR...`, `Artist Indie`, created
+2026-08-15T21:10:53Z) was a manual recovery insert from the Stripe-webhook
+outage (see the `$binary` regression entry above) that predates his
+Supabase Auth account by 2 seconds and was never linked to it —
+`user_id` stayed `NULL`. Both `get_quota_status()` and
+`request_new_report()` resolve plan/quota by
+`WHERE ir.user_id = v_owner_id` (`v_owner_id = auth.uid()` via
+`pool_owner_id`), so a `NULL` `user_id` can never match a real signed-in
+user — the RPC correctly fell through to
+`RAISE EXCEPTION 'No active plan found for this account'`. The report
+still appeared in the Dashboard's "Your Reports" history table because
+that query filters by `customer_email`, a completely separate path that
+doesn't hit this gap — which is why the symptom looked like a display bug
+rather than a missing foreign key. **Fix**: single-row
+`UPDATE public.intelligence_reports SET user_id = '102638e9-...' WHERE
+session_id = '...' AND user_id IS NULL`. **Deviation from Golden Rule 6**:
+no `pg_dump` backup was taken first — a low-risk single-row UPDATE on a
+NULL field felt low-stakes in the moment, but the rule says *always*, no
+exception carved out for "small." Noted as a real gap, not a one-off
+excuse — see `feedback_backup_before_any_db_write` in memory. **Verified**
+via a rolled-back-transaction simulation of Douglas's real JWT
+(`SET LOCAL request.jwt.claims`) calling the real `get_quota_status()` RPC
+post-fix: returned `Artist Indie / 1 / 4` correctly. A second, older row
+(`douglas@grupomuzika.com.br`, a same-person test-email row from
+2026-08-15) has the identical `user_id IS NULL` gap — deliberately left
+alone, Gilberto's explicit call, not a real ongoing account.
+
+**Fix 3 — Cloudflare WAF Rule 4 blocked the CORS preflight, not just the
+POST, breaking report submission for any browser whose preflight didn't
+carry the expected Referer.** Douglas got a client-side "Load failed"
+(exact wording is Safari/WebKit's for a network-level `fetch()` failure,
+distinct from this codebase's own `Webhook error {status}` message for a
+real HTTP error response — see `src/pages/Submit.tsx` line ~197) trying to
+submit a new report, even though Cloudflare Turnstile itself passed.
+Root cause, confirmed via direct curl testing against the live endpoint:
+`Submit.tsx`'s cross-origin `fetch()` (`app.songssintelligence.com` →
+`n8n.songssintelligence.com`, `Content-Type: application/json`) triggers a
+mandatory browser CORS preflight `OPTIONS` request first. Rule 4 ("Protect
+submit endpoint — Managed Challenge without correct Referer") was matching
+`OPTIONS` requests too, not just the real `POST` — an `OPTIONS` preflight
+with no Referer got `403` + `cf-mitigated: challenge` + **zero CORS
+headers**, which the browser treats as a hard CORS failure and aborts
+before ever sending the real POST (or the Turnstile token) — meaning
+Turnstile passing was irrelevant, the request never reached n8n. This
+was a real bug affecting any customer whose preflight Referer didn't
+satisfy the rule, not something specific to Douglas's browser/session.
+
+**Fix, applied directly in the Cloudflare dashboard (not via API — see
+below)**: appended `and http.request.method eq "POST"` to Rule 4's
+expression, scoping the Referer check to the real POST only and letting
+`OPTIONS` preflights pass through untouched. **Live-verified**, 3 cases:
+`OPTIONS` no-Referer preflight → `204` with proper
+`access-control-allow-origin` (was `403`+challenge); `POST` no-Referer →
+still `403` (real bot protection intact, unchanged); `POST` with correct
+Referer → still `200` (normal flow unchanged).
+
+**Tooling note for next time a WAF rule needs an API-driven fix**: the
+first Cloudflare token Gilberto created only had Zone Read-level access
+(zone lookup succeeded, but every `/rulesets/...` endpoint returned a
+generic `Authentication error`, code 10000 — indistinguishable via the API
+alone from "bad token"). A second token, explicitly re-created for Zone →
+Firewall Services → Edit, verified as `active` via
+`/user/tokens/verify` but *still* got the identical `Authentication error`
+on every ruleset endpoint while zone-level reads kept working — a
+dashboard token-creation issue on Cloudflare's side, not a scope typo
+recoverable by retrying the same flow. Gilberto made the fix directly in
+the dashboard UI instead; the change was still independently verified via
+curl exactly as an API-driven fix would have been. Both tokens revoked
+after use, per Golden Rule 7.
+
+RESOLVED (started 2026-08-16, fully verified 2026-08-18): **Spotify
+artist-identity mismatch guard.**
+Found investigating MaLu's (`@malucantora`) real report: Apify's Spotify
+search matched "MaLu" (a Brazilian Voice Brasil contestant, real
+customer) to **Maluma** (the global reggaeton star) — confirmed via
+`spotify_data.artist_name: "Maluma"`, a real Maluma `artist_uri`, and
+`peer_benchmark_data.client_name: "Maluma"` benchmarked against Ozuna/
+Rauw Alejandro/Farruko. The report's own AI-generated "Digital Hygiene
+Index" section self-detected this ("Spotify: Mismatch. Data provided for
+'Maluma', not 'MaLu'. Critical identity error." — also flagged Deezer and
+Last.fm mismatches against two *different* wrong "Malu"/"Malú" people),
+but nothing downstream ever reads that flag — every code-computed
+real-data metric since the retention_rate/ltv_projection/growth_trajectory
+rework (§4) blindly trusts `structured_data.spotify_data` as ground
+truth. Result: `retention_rate: 54`, `ltv_projection: $14.8M`, and the
+full `growth_trajectory` curve were all real numbers — for Maluma, shown
+to a different real customer as her own.
+
+**Fix implemented (code-level, not dependent on the AI's own hygiene
+text)**: a whole-word name comparison (`artistNamesMatch()`, added to the
+`Code in JavaScript` node) between the requested `artist_name` and
+`spotifyRaw.name`. Deliberately whole-word, not substring — naive
+substring containment would have let `"malu"` match inside `"maluma"`
+and missed this exact case. On mismatch, `spotify_data.monthly_listeners`/
+`followers` are zeroed (kept `artist_name`/`artist_uri` as a diagnostic
+breadcrumb); every existing `monthly_listeners > 0` guard downstream
+already nulls `retention_rate`/`ltv_projection`/`growth_trajectory`
+correctly with zero other code changes needed, and the frontend's Monthly
+Listeners KPI tile (reads `spotify_data.monthly_listeners` directly per
+the `monthly_streams` removal fix) is protected the same way, for free.
+**Explicit known limitation, not fixed this pass**: two real different
+people sharing the literal same name (the Deezer/Last.fm mismatches seen
+in the same MaLu report) can't be caught by name comparison alone — out
+of scope, flagged for a future session if it recurs.
+
+**Deployed and verified so far**: backup taken first (online `.backup`,
+`manual_20260816_155655_pre_spotify_identity_guard.sqlite` — redone
+properly after an initial plain `cp` was caught and corrected mid-session,
+see [[feedback_backup_before_any_db_write]]). Dry run against a scratch
+DB copy succeeded (`OLD` block found and replaced cleanly in all 3
+locations). Syntax-checked clean with the container's own `node --check`.
+**Isolated unit test of `artistNamesMatch()` passed 10/10 cases**,
+including the exact motivating bug (`"MaLu"` vs `"Maluma"` → correctly
+`false`) and false-positive guards (`"Chappell Roan"` vs itself, `"MC
+Kevin"` vs `"MC Kevin o Chris"` — a legitimate official-name variation —
+both correctly `true`; `"Bush"` vs `"Bushido"` correctly `false`, proving
+the whole-word design avoids the substring trap). Applied live to all 3
+DB locations (`workflow_entity.nodes` + both `workflow_history` rows,
+`versionId c8a04b97-...`/`a09c4898-...`, same two rows as every fix since
+2026-07-18). `docker restart n8n_songss` — clean startup, both active
+workflows re-activated, no errors (two "DNS server returned an error"
+log lines are pre-existing unrelated noise, present both before and after
+this restart). Export-diff confirmed exact scope: 63/63 nodes, only
+`Code in JavaScript` changed, connections byte-identical.
+
+**Live test 1 (the real bug case) — PASSED**: disposable session
+`cs_test_spotify_identity_guard_malu_20260816` (artist "MaLu", Instagram
+`malucantora`) fired via the real `/webhook/submit-analysis` webhook.
+Apify reproduced the identical "Maluma" mismatch (confirms it's
+deterministic, not a fluke) — and this time the guard correctly caught
+it: `spotify_data` came back `{followers: 0, monthly_listeners: 0,
+artist_name: "Maluma", artist_uri: <real Maluma URI>}`, and
+`retention_rate`/`ltv_projection`/`growth_trajectory` were all correctly
+`null` instead of polluted.
+
+**Live test 2 (Chappell Roan regression check) — RESOLVED 2026-08-18, was
+a concurrency artifact, not a real regression.** Root cause found via
+`execution_entity`: the original 2026-08-16 regression run
+(execution 138) had `status: canceled`, `finished: 0`, ran for exactly
+300 seconds (16:05:15.729 → 16:10:15.846) — an exact match for this
+project's `EXECUTIONS_TIMEOUT=300`. It had been fired nearly
+simultaneously with the MaLu test (execution 139, started 16:07:24 while
+138 was still running) rather than sequentially, so it got starved/hung
+and was killed by the timeout mid-run, before ever reaching the PATCH
+step — hence the all-`NULL` `report_markdown`/`spotify_data`, unrelated
+to the identity-guard code change itself.
+
+**Confirmed by re-running both tests sequentially, alone, 2026-08-18**:
+1) regression check re-run
+(`cs_test_regression_check_rerun_20260818`, Chappell Roan, real TikTok
+handle) completed cleanly end-to-end with zero concurrency — real
+20,690-char `report_markdown`, `spotify_data.artist_name: "Chappell
+Roan"`, `monthly_listeners: 30555655`, `retention_rate: 46`,
+`ltv_projection: 8448027` (exact match to the existing formula:
+`round(30555655 × 0.012 × 24 × 0.96) = 8448027`), `growth_trajectory`
+correctly anchored — proves the identity-guard patch introduced no
+regression to the normal (non-mismatch) path. 2) MaLu identity-mismatch
+case re-run alone afterward
+(`cs_test_malu_identity_guard_rerun_20260818`, artist "MaLu", Instagram
+`malucantora`) reproduced the exact original bug scenario and confirmed
+both halves of the fix still hold: the AI's own Digital Hygiene Index
+still detects and reports the mismatch in the generated report text
+(`"Spotify: 🔴 Mismatched artist data ("Maluma" instead of "MaLu")."`,
+plus a separate MusicBrainz mismatch against a third wrong "Malú"), and
+the code-level guard correctly zeroed `spotify_data.monthly_listeners`/
+`followers` (keeping `artist_name: "Maluma"`/a real Maluma `artist_uri`
+as a diagnostic breadcrumb) with `retention_rate`/`ltv_projection`/
+`growth_trajectory` all `null` — not the polluted Maluma numbers the
+original bug produced. Both test sessions reached `Save Processed
+Session` (real `processed_sessions` rows confirmed SMTP completed). All
+4 test rows (today's 2 plus the 2 left over from 2026-08-16) and their
+`processed_sessions` rows deleted after, 0 rows left; the scratch file
+holding the full report markdown was also deleted. This closes the
+Spotify identity-guard fix as fully verified — no code changes were
+needed this session, only the outstanding verification.
+
+IMPLEMENTED (2026-08-18): **"⚠️ Limited" badge for null
+retention_rate/ltv_projection/growth_trajectory — closes a real display bug
+the identity-mismatch guard above exposed.** Once `retention_rate`/
+`ltv_projection`/`growth_trajectory` started legitimately going `null`
+(2026-08-16's guard), both `src/pages/Report.tsx` and
+`src/components/ArtistIndieReport.tsx` were found to still use a
+`Number(x ?? 0) || fallback` pattern — this silently turns `null` into `0`,
+then `0 || 48`/`0 || 8400`(`4200` on Indie) into a **fabricated number**,
+not a blank/broken display as originally suspected. Same bug hit the
+Neural Trajectory chart (fell back to a synthetic curve scaled off a fake
+28000/12500 listener constant) and, on `Report.tsx` only, three further
+consumers that inherit the same fake `retentionRate`/`ltv`: Engagement
+Pyramid's "Active Superfans" tier, Artist Radar Profile's "Community" axis
+(hardcoded `pending: false`), and Revenue Snapshot / the Enterprise+
+"Revenue Model Advanced" 5-Year NPV section (the latter had an *inconsistent*
+guard — `(ltv || 25000)` for cashflow but a fully unguarded `ltv * 0.45` for
+the revenue-streams table, which would have rendered all-$0 rows on `null`).
+
+**Fix**: all `retentionRate`/`ltv` values are now `number | null`, preserving
+`null` instead of coercing through a fallback. New shared primitive in
+`src/components/report/shared.tsx` — `LIMITED_LABEL` ("⚠️ Limited"),
+`LIMITED_TOOLTIP` ("This data could not be confirmed for this artist or
+period."), `LimitedBadge`, `LimitedChartState` (amber, reused across the KPI
+tiles, Neural Trajectory, Revenue Snapshot, and Revenue Model Advanced) —
+mirrored as local consts in `ArtistIndieReport.tsx` since that file is
+deliberately self-contained (doesn't import `shared.tsx`). Deliberately
+distinct from the pre-existing softer "—" / native-tooltip convention
+already used for `social_engagement_index`/`fan_loyalty_index`/
+`industry_buzz` (which means "not enough source data yet") — "Limited" is a
+louder, amber warning specifically for a data-quality guard suppressing an
+otherwise-computed number. On the Radar chart specifically, this is a new
+`limited` flag distinct from the existing `pending` flag (Sync Potential/
+Live Performance/Brand Fit, which have no data source at all, ever) — same
+distinction, reused in the tooltip formatter and the below-chart grid.
+Growth Trajectory's old "legacy pre-2026-07-26 report" synthetic-fallback
+curve was deliberately removed rather than preserved alongside the new
+Limited state — the two cases are indistinguishable at the frontend (`null`
+either way), and showing a fabricated curve for either would contradict the
+very "don't fabricate missing data" principle this whole predictive-metrics
+rework has enforced since [[project_retention_rate_real_formula_2026-07-23]].
+
+**Verified**: `tsc -p tsconfig.app.json --noEmit` and `vite build` both
+clean. Live logic path (real MaLu/Maluma data) already confirmed correct
+`null` values reach the frontend in the identity-guard verification above;
+this session additionally seeded 2 disposable rows
+(`cs_test_limited_badge_verify_growth_20260818` for Report.tsx,
+`cs_test_limited_badge_verify_indie_20260818` for ArtistIndieReport.tsx,
+both `artist_name: "MaLu"`, `spotify_data.artist_name: "Maluma"`,
+`monthly_listeners`/`followers: 0`, `retention_rate`/`ltv_projection`/
+`growth_trajectory: null`) and started the dev server (`--host 127.0.0.1
+--port 8080`, confirmed via `ss -tlnp` not externally reachable) for a
+live visual check — **pending Gilberto's own SSH-tunnel confirmation**,
+same as every prior "Live browser visual test" in this doc; not yet
+independently screenshot-verified since no headless browser is available
+on this VPS. Both test rows deliberately left in the database until that
+visual check is done — do not delete
+`cs_test_limited_badge_verify_growth_20260818` or
+`cs_test_limited_badge_verify_indie_20260818` until confirmed, then clean
+up per the usual pattern.
+
+**Not committed to git yet.**
+
+RESOLVED (started 2026-08-18, deployed + live-verified 2026-08-19):
+**Artist Identity MVP — optional Spotify Artist Link field, backend uses
+direct ID lookup instead of name search when provided.** Builds on the
+2026-08-18 Spotify identity-guard work above; this is the proactive
+complement — let customers who know they have a name-collision risk
+sidestep it entirely by pasting their own Spotify profile link, rather than
+relying only on the reactive mismatch-guard/"Limited" badge after the fact.
+
+**Frontend — DONE**: `src/pages/Submit.tsx` — new optional
+"Spotify Artist Link" field (`spotifyUrl` state, placed right after Artist
+Name) with helper text "For the most accurate results, paste your Spotify
+artist profile link (e.g., open.spotify.com/artist/...)."; new helper text
+under the Artist Name field itself, "Please enter your artist name exactly
+as it appears on streaming platforms for the most accurate results."; POST
+body to `/webhook/submit-analysis` now includes `spotify_url:
+spotifyUrl.trim()`. `tsc -p tsconfig.app.json --noEmit` clean.
+
+**Backend — DEPLOYED and live-verified.**
+Investigated the live workflow export (`8SRNZDEpZKu88qFz`) rather than
+assuming a new Spotify Web API integration was needed: the existing
+`Spotify` node (`httpRequest`, calls Apify actor
+`automation-lab~spotify-scraper`) already supports `mode:"urls"` — direct
+artist-URL lookup, no name matching — currently fed exclusively from
+`Spotify Search`'s `mode:"search"` result (the exact node responsible for
+the MaLu→Maluma collision). So no new API/credential is needed: when a
+customer provides their own link, feed it straight into `Spotify`'s
+`urls` array and let `Spotify Search`'s risky name-based resolution go
+unused for that request.
+
+**Chosen approach (Gilberto's explicit call, 2026-08-18): minimal-diff
+option** — `Spotify Search` still runs unconditionally (a small wasted
+Apify search call whenever a link is provided) rather than adding an
+IF-node bypass to skip it, matching this project's standing preference for
+the smallest safe change to the production workflow over saving one minor
+API call.
+
+**Patch — exactly 2 nodes, built and validated but not yet applied**:
+1. `Submit Context` (Code node, Phase 2/Submit-Trigger path) — add
+   `spotify_url: submitBody.spotify_url || ''` to its output object,
+   mirroring how `tiktok_username`/`instagram_username` already flow
+   through from the webhook body. (Phase 1/Stripe-checkout path's `Extract
+   Metadata` node is deliberately NOT touched — Stripe checkout metadata
+   has no `spotify_url` field and adding one is out of scope; the
+   `Spotify` node's fallback chain checks `Extract Metadata` first purely
+   for consistency with every other field's established two-node fallback
+   pattern in this workflow, even though it will realistically always be
+   empty there today.)
+2. `Spotify` node's `jsonBody` — before falling back to
+   `$('Spotify Search').first().json.url`, regex-extracts an artist ID
+   from the customer-provided `spotify_url` (checked via the same
+   `Extract Metadata` → `Submit Context` fallback chain used throughout
+   this workflow) and rebuilds it as a canonical
+   `https://open.spotify.com/artist/{id}` URL for the actor's `urls` mode.
+   Handles `open.spotify.com/artist/ID` with or without `https://`/a
+   trailing `?si=...` query string, and the `spotify:artist:ID` URI form;
+   any other input (empty, garbage, a non-artist Spotify link like a
+   playlist URL) correctly falls through to the existing search-based
+   resolution unchanged.
+
+**Validation done this session** (all clean, nothing live-touched yet):
+- Backed up first:
+  `/docker/n8n/backups/manual_20260818_220411_pre_spotify_artist_link_mvp.sqlite`
+  (online `.backup`, not a plain `cp`).
+- Confirmed current version pointers unchanged from every fix since
+  2026-07-18: `versionId c8a04b97-49dc-4146-8921-7f4835f2df9d` /
+  `activeVersionId a09c4898-47db-4a22-970e-25d86ff6a9dd`.
+- **Dry run** against an online-`.backup`'d scratch copy of the DB: patch
+  script applied cleanly to all 3 locations (`workflow_entity.nodes` +
+  both `workflow_history` rows), exactly the 2 target nodes changed,
+  63/63 nodes total preserved in each location.
+- **Syntax-checked** both patched snippets with the container's own
+  `node --check` (v24.18.0, not the host's stale v12) — both clean.
+- **Isolated logic test of the ID-extraction regex, 10/10 passed**: full
+  URL, URL with `?si=...` query string, URL without `https://`, the
+  `spotify:artist:ID` URI form, a trailing-slash variant, empty string,
+  `null`, `undefined`, plain garbage text, and — importantly — a
+  *non-artist* Spotify link (a playlist URL) correctly returned `null`
+  rather than a false match.
+- Patch script persisted to a durable VPS path (not just the session's
+  ephemeral scratchpad):
+  `/docker/n8n/patch_spotify_artist_link_20260818.py` — run as
+  `python3 /docker/n8n/patch_spotify_artist_link_20260818.py
+  /docker/n8n/.n8n/database.sqlite` to apply. Contains the exact validated
+  `jsCode`/`jsonBody` strings for both nodes; asserts exactly `{"Submit
+  Context", "Spotify"}` were changed before committing, on both the dry
+  run and the live apply.
+
+**Deployed 2026-08-19**: applied
+`/docker/n8n/patch_spotify_artist_link_20260818.py` to the live DB (all 3
+locations), `docker restart n8n_songss` (plain restart — no env var
+changed). Clean startup, both active workflows re-activated, no errors.
+**Export-diff confirmed exact scope**: 63/63 nodes preserved (compared
+against the pre-patch backup's node/connection set), exactly `Submit
+Context` + `Spotify` changed, nothing added/removed, connections
+byte-identical.
+
+**Live-verified with a real 3-case suite, fired sequentially** (not
+concurrently, per [[project_spotify_identity_guard_verified_2026-08-18]]'s
+`EXECUTIONS_TIMEOUT` lesson):
+1. **Regression check** — Chappell Roan, real TikTok handle, no
+   `spotify_url` — confirmed the existing search-based path unaffected:
+   real 25,261-char report, `spotify_data.artist_name: "Chappell Roan"`,
+   `monthly_listeners: 30555655`, `retention_rate: 46`. Her real URI
+   (`https://open.spotify.com/artist/7GlBOeep6PqTfFi59PTUUN`) captured
+   from this run for tests 2/3.
+2. **Direct-URL happy path** — same artist name, her own real URL
+   (deliberately passed with a `?si=abc123` query string to exercise the
+   regex) as `spotify_url` — resolved to **byte-identical real data**
+   (same URI, same `monthly_listeners`, same `retention_rate`) as test 1,
+   confirming the `mode:"urls"` bypass works end-to-end and the query
+   string is correctly stripped.
+3. **Deliberate mismatch (the core proof)** — artist_name `"MaLu"` (the
+   real 2026-08-16 collision name) + Chappell Roan's real URL as
+   `spotify_url` — `spotify_data.artist_name` came back **"Chappell
+   Roan"**, never "Maluma" (what the old name-search bug would have
+   produced) and never the literal search term "MaLu" — proving the
+   provided link fully overrides name search regardless of what a risky
+   search would have resolved to. As expected (not a bug), the
+   pre-existing 2026-08-16 identity-mismatch guard then correctly fired on
+   the genuine "MaLu" vs. "Chappell Roan" mismatch and nulled
+   `retention_rate`/`ltv_projection`/`growth_trajectory` — confirms the
+   two features compose correctly: the link wins the resolution step, the
+   guard still protects against a genuinely wrong link.
+
+All 3 test rows + their `processed_sessions` rows deleted after, 0 rows
+left. **Not yet committed to git** (both the frontend `Submit.tsx` change
+and this backend workflow patch).
+
 ---
 
 ## 4. NIE FLOW (DO NOT BREAK)
@@ -1957,6 +2346,13 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
 ---
 
 ## 11. ACTIVE TASKS
+
+- [x] ~~Artist Identity MVP — Spotify Artist Link field~~ RESOLVED
+      2026-08-19 — see §4 "RESOLVED (started 2026-08-18, deployed +
+      live-verified 2026-08-19)". Deployed to live n8n, export-diff
+      confirmed exact scope, 3-case live test suite passed (regression,
+      direct-URL happy path, deliberate-mismatch override proof). **Not
+      yet committed to git.**
 
 - [ ] Security audit sweep (2026-08-15) — 5-item honest-status pass. Two
       items clean, one done, two open:
