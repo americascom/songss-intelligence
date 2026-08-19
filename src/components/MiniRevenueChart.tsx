@@ -1,24 +1,17 @@
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { useFormattedMetrics } from '@/hooks/useMetricsData';
 
-// Fallback data when no real data is available
-const fallbackData = [
-  { value: 2400 },
-  { value: 1398 },
-  { value: 4800 },
-  { value: 3908 },
-  { value: 4800 },
-  { value: 3800 },
-  { value: 5300 },
-];
-
 export default function MiniRevenueChart() {
-  const { revenueData, totalRevenue, revenueChange, isLoading } = useFormattedMetrics();
-  
-  // Use real data if available, otherwise fallback
-  const chartData = revenueData.length > 1 ? revenueData : fallbackData;
-  const displayRevenue = totalRevenue !== "$0" ? totalRevenue : "$12.4K";
-  const displayChange = revenueChange !== 0 ? `${revenueChange > 0 ? '+' : ''}${revenueChange}%` : "+18%";
+  const { revenueData, totalRevenue, revenueChange } = useFormattedMetrics();
+
+  // Only ever render real data — no fabricated placeholder numbers.
+  if (revenueData.length < 2 || totalRevenue === "$0") {
+    return null;
+  }
+
+  const chartData = revenueData;
+  const displayRevenue = totalRevenue;
+  const displayChange = `${revenueChange > 0 ? '+' : ''}${revenueChange}%`;
 
   return (
     <div className="bg-card/50 backdrop-blur-sm border border-primary/20 rounded-xl p-4 w-full max-w-[200px]">

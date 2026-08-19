@@ -3,25 +3,16 @@ import { Link } from "react-router-dom";
 import { Music, DollarSign, Users, TrendingUp, BarChart3, Globe, Mail } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Suspense, lazy } from "react";
-import MetricCard from "@/components/MetricCard";
 import DemoChart from "@/components/DemoChart";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import FestivalIcons from "@/components/FestivalIcons";
 import MiniRevenueChart from "@/components/MiniRevenueChart";
 import ArtistSearch from "@/components/ArtistSearch";
-import { useFormattedMetrics } from "@/hooks/useMetricsData";
 
 const Globe3D = lazy(() => import("@/components/Globe3D"));
 
 const Home = () => {
-  const { totalStreams, totalRevenue, totalArtists } = useFormattedMetrics();
-
-  // Use real data if available, otherwise show demo values
-  const displayStreams = totalStreams !== "0" ? totalStreams : "11K+";
-  const displayRevenue = totalRevenue !== "$0" ? totalRevenue : "$5K";
-  const displayArtists = totalArtists !== "0" ? totalArtists : "51";
-
   return (
     <div className="min-h-screen flex flex-col bg-background dark">
       <Header />
@@ -71,7 +62,7 @@ const Home = () => {
                 </Link>
               </div>
               <p className="text-xs text-muted-foreground/70 mt-4 animate-fade-in" style={{ animationDelay: "400ms" }}>
-                AI-powered support · 24/7 · English
+                Support via hello@songssintelligence.com
               </p>
             </div>
 
@@ -104,31 +95,6 @@ const Home = () => {
                 <MiniRevenueChart />
               </div>
             </div>
-          </div>
-
-          {/* Demo Metrics - Below Hero */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto mt-12 md:mt-16">
-            <MetricCard
-              icon={Music}
-              value={displayStreams}
-              label="Daily Streams"
-              trend="+12%"
-              delay={500}
-            />
-            <MetricCard
-              icon={DollarSign}
-              value={displayRevenue}
-              label="Monthly Revenue"
-              trend="+8%"
-              delay={600}
-            />
-            <MetricCard
-              icon={Users}
-              value={displayArtists}
-              label="Active Artists"
-              trend="+3"
-              delay={700}
-            />
           </div>
         </div>
       </section>
@@ -329,8 +295,7 @@ const Home = () => {
               { q: "Is there a free trial?", a: "We offer a free tier with limited access so you can experience the platform before subscribing to a paid plan." },
               { q: "What payment methods do you accept?", a: "All major credit and debit cards, plus international payment methods. Payments are processed securely by AmericasPay, powered by Stripe." },
               { q: "Is my payment secure?", a: "Yes. All transactions are encrypted and processed by AmericasPay — Americascom's payment infrastructure, built on Stripe technology." },
-              { q: "How does AI-powered support work?", a: "Our AI support agent is available 24/7 in English, Portuguese, and Spanish. For Opus Maximus clients, human strategic oversight is also available via email or chat." },
-              { q: "Do you offer support in Portuguese and Spanish?", a: "Yes. Our AI support system is fully trilingual — English, Portuguese, and Spanish." },
+              { q: "How do I get support?", a: "Email hello@songssintelligence.com and our team will get back to you. Opus Maximus clients also get direct strategic advisory access." },
               { q: "How recent is the data?", a: "Data is collected in near real-time from our integrated sources, ensuring your reports reflect the most current available metrics." },
               { q: "Is my artist data private?", a: "Absolutely. Your data is never shared with third parties. All reports are generated exclusively for your account and delivered privately to your email." },
             ].map((item, i) => (
@@ -359,7 +324,7 @@ const Home = () => {
                 <Mail className="w-4 h-4" />
                 hello@songssintelligence.com
               </a>
-              {" "}— our AI support team responds 24/7 in English, Portuguese, and Spanish.
+              .
             </p>
           </div>
         </div>

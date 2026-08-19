@@ -4,15 +4,6 @@ import { useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import { useMetricsMarkers, MetricsMarker } from '@/hooks/useMetricsData';
 
-// Fallback markers positioned for optimal visibility on load (London, New York, Brazil)
-const fallbackMarkers: MetricsMarker[] = [
-  { name: 'London', lat: 51.51, lng: -0.13, streams: '2.4M' },
-  { name: 'New York', lat: 40.71, lng: -74.01, streams: '3.1M' },
-  { name: 'São Paulo', lat: -23.55, lng: -46.63, streams: '1.8M' },
-  { name: 'Los Angeles', lat: 34.05, lng: -118.24, streams: '2.2M' },
-  { name: 'Tokyo', lat: 35.68, lng: 139.69, streams: '1.5M' },
-];
-
 function latLngToVector3(lat: number, lng: number, radius: number) {
   const phi = (90 - lat) * (Math.PI / 180);
   const theta = (lng + 180) * (Math.PI / 180);
@@ -101,10 +92,10 @@ function AnimatedGlobe({ markers }: { markers: MetricsMarker[] }) {
 }
 
 export default function Globe3D() {
-  const { data: markers, isLoading } = useMetricsMarkers();
-  
-  // Use real data if available, otherwise fall back to demo markers
-  const displayMarkers = markers && markers.length > 0 ? markers : fallbackMarkers;
+  const { data: markers } = useMetricsMarkers();
+
+  // Only ever render real markers — no fabricated placeholder data.
+  const displayMarkers = markers ?? [];
 
   return (
     <div 

@@ -79,7 +79,7 @@ const plans = [
     displayName: "Opus Maximus",
     price: "Custom Pricing",
     period: "",
-    description: "White-glove intelligence for labels, investors, and global management. Dedicated AI advisor available 24/7 in English. 1,500 queries/mo — expandable on demand.",
+    description: "White-glove intelligence for labels, investors, and global management. 1,500 queries/mo — expandable on demand.",
     features: [
       "Unlimited seats",
       "1,500 queries/mo — expandable on demand",
