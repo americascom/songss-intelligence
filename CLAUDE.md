@@ -2476,7 +2476,44 @@ null` guard already does exactly the right thing against the new stub.
 Visual layout/positioning (globe size, city-marker style, revenue-card
 placement) deliberately untouched — only the data source changed, per
 Gilberto's explicit scope. `tsc -p tsconfig.app.json --noEmit` and `vite
-build` both clean. **Not yet committed to git.**
+build` both clean. Committed and pushed same day (`1a83a44`).
+
+KNOWN COSMETIC BUG (found 2026-08-19, fix attempted and deliberately
+reverted same day): city marker label cards can visually overlap when two
+markers' projected screen positions coincide near the globe's front-center
+during rotation. Root cause: `Globe3D.tsx`'s `<Html>` marker labels have
+**no occlusion** against the solid globe sphere — a marker rotated to the
+*far* side still renders its label on top of the globe surface instead of
+being hidden, so when a back-side marker's projection lands near a
+front-side one, both labels render and overlap.
+
+**Fix attempted**: added `occlude={[solidSphereRef]}` +
+`zIndexRange={[50, 0]}` to `Html`, correctly hiding back-side labels
+(verified via `tsc`/`vite build`, never committed). **Reverted same
+session, Gilberto's explicit call**: this change did fix the overlap, but
+also changed the globe's perceived "movement" — before this fix, `Html`
+was never occluded at all, so (going back to the original fallback-data
+design) marker label cards stayed *permanently visible* regardless of
+front/back position, only the small dots actually orbited. With occlusion,
+labels visibly pop in/out of view as markers rotate behind the sphere —
+a real behavior change Gilberto didn't want, even though the raw rotation
+math (`globeRef.current.rotation.y = clock.getElapsedTime() * 0.1`) was
+never touched by either version. Confirmed via `git diff 4bf932e` (last
+commit before any of today's Globe3D.tsx changes) that the reverted
+version's only diff from the pre-today file is the real-data wiring above
+— zero rendering/animation differences, `Globe3D` bundle hash matches the
+pre-occlusion build exactly.
+
+**Net result**: the front-center overlap bug is back, as an accepted,
+deliberate tradeoff — do not silently re-add Html occlusion to "fix" it
+in a future session without checking with Gilberto first, since that
+exact fix was already tried and explicitly rejected today for its effect
+on perceived motion, not for being incorrect. If revisited, a real
+alternative worth exploring: something that hides/fades a label only when
+it's truly occluded AND another marker's label is about to occupy the
+same screen space, rather than blanket-occluding every back-side label
+(which is what changed the felt "aliveness" of the always-visible-labels
+look Gilberto prefers).
 
 ---
 

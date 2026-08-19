@@ -37,7 +37,7 @@ function GlobeMarker({ lat, lng, name, listeners }: { lat: number; lng: number; 
 function AnimatedGlobe({ markers }: { markers: MetricsMarker[] }) {
   const globeRef = useRef<THREE.Group>(null);
   const wireframeRef = useRef<THREE.Mesh>(null);
-  
+
   useFrame(({ clock }) => {
     if (globeRef.current) {
       globeRef.current.rotation.y = clock.getElapsedTime() * 0.1;
@@ -67,12 +67,12 @@ function AnimatedGlobe({ markers }: { markers: MetricsMarker[] }) {
       <Sphere args={[0.98, 64, 64]}>
         <primitive object={solidMaterial} attach="material" />
       </Sphere>
-      
+
       {/* Wireframe overlay */}
       <Sphere args={[1, 32, 32]} ref={wireframeRef}>
         <primitive object={wireframeMaterial} attach="material" />
       </Sphere>
-      
+
       {/* Markers */}
       {markers.map((marker) => (
         <GlobeMarker key={marker.name} {...marker} />
