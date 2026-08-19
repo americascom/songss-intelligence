@@ -2410,9 +2410,10 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       fail-loud on missing raw body; 4-case live test suite passed, zero
       side effects; no reconcile pass needed — Gilberto confirmed
       2026-08-14 that Douglas was the only real customer affected during
-      the outage window). STILL PENDING — react-router-dom v7 migration,
-      the sole remaining browser-bundle vuln (major v6→v7, its own
-      session).
+      the outage window). react-router-dom — RESOLVED 2026-08-19, see §11
+      npm audit item — patched to 6.30.6 (v6 line backported the fix,
+      no major v7 bump needed); no known browser-bundle dep vuln remains
+      open.
 - [ ] IBM Granite badge/disclaimer — UI plumbing DONE 2026-08-12, but the
       whole Granite initiative was CANCELLED 2026-08-15 (Gilberto's call:
       too much integration friction for a solo founder relative to the
@@ -2628,21 +2629,55 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       broader dev-tooling batch, then Dependabot security alerts (Gilberto
       checking/enabling directly in GitHub settings — needs his own
       account access, not checkable via API without a token).
-      - [ ] `react-router-dom` — the originally-reported fix (bump
+      - [x] ~~`react-router-dom` — the originally-reported fix (bump
             6.30.2 → 6.30.4, non-major) does NOT fully close the exposure:
             a newer advisory, [GHSA-jjmj-jmhj-qwj2](https://github.com/advisories/GHSA-jjmj-jmhj-qwj2)
             ("Open redirect leading to XSS", moderate), covers the range
             `6.0.0-alpha.0 - 7.17.0` — i.e. all of v6 including 6.30.4.
             The only real fix is `react-router-dom@7.18.2`, a **major**
-            version bump (v6→v7 has real breaking routing-API changes).
-            Deliberately deferred — Gilberto's call, 2026-08-09: this
-            deserves its own dedicated session (migration + full retest),
-            not squeezed into a "simple non-major bump" task. The
-            attempted 6.30.4 patch bump was reverted this session (see
-            below) rather than partially applied. **As of 2026-08-15 this
-            is the SOLE remaining open browser-bundle vulnerability**
-            (d3-color resolved above) — the v7 migration is the one real
-            customer-facing dep exposure left.
+            version bump~~ RESOLVED 2026-08-19, without the major bump.
+            Gilberto asked for the full v6→v7 migration; research first
+            (per his ask, before touching anything) found the maintainers
+            had backported the fix to the v6 line as 6.30.5/6.30.6,
+            released 2026-08-18 — one day before this session, which is
+            why the 2026-08-09 assessment above didn't know about it.
+            Cross-verified 3 ways before trusting it (GitHub's advisory
+            *page* is a JS-rendered version-range widget that gave
+            self-contradictory answers across scrape attempts — same
+            "don't trust the summarized view" lesson as
+            [[project_perplexity_press_media_buzz_design_2026-07-27]]'s
+            advisory-list finding; used the GitHub Advisories **API**
+            instead for the authoritative machine-readable range):
+            1) GHSA API confirms the underlying fix landed in
+            `react-router@7.13.0` via PR #14718; 2) the v6 CHANGELOG's
+            6.30.5/6.30.6 entry is explicitly described as "a cherry-pick
+            of #14718" — the identical fix; 3) OSV.dev independently
+            confirms `react-router-dom@6.30.4` vulnerable,
+            `@6.30.6` clean. Patched `6.30.4`(installed)/`6.30.2`(declared)
+            → `6.30.6` — non-major, zero API surface change, no import
+            changes needed anywhere. `npm install` reproduced the exact
+            "surprising blast radius" from 2026-08-09 (confirmed harmless
+            this time: only 4 packages actually changed version — the
+            react-router-dom/react-router/@remix-run/router chain plus an
+            unrelated `@babel/runtime` bump — the other ~140 touched lines
+            were pre-existing transitive deps missing from the committed
+            lockfile, i.e. the `npm ci` drift noted below, not new/changed
+            packages) — hand-patched just the 3 relevant lockfile entries
+            instead of landing the full regeneration, leaving the
+            `npm ci` drift issue exactly as it was. `tsc -p
+            tsconfig.app.json --noEmit` and `vite build` both clean; dev
+            server smoke test (root, `/dashboard`, a dynamic
+            `/report/:id`, and the catch-all 404 route) all `200` with no
+            transform errors; confirmed the shipped bundle actually
+            contains `6.30.6`. Committed
+            (`fix(deps): patch react-router-dom to 6.30.6...`) and pushed
+            — Vercel auto-deploys from `main`. **As of 2026-08-19 this
+            closes the SOLE remaining open browser-bundle vulnerability**
+            (d3-color resolved 2026-08-15) — no known browser-bundle dep
+            exposure remains open. A true v7 migration (removing loader/
+            data-router API gaps, adopting the new default future-flag
+            behaviors) is still worth doing someday as modernization, but
+            is no longer security-driven — not scheduled.
       - [x] ~~`d3-color` ReDoS ([GHSA-36jr-mh4h-2g58](https://github.com/advisories/GHSA-36jr-mh4h-2g58),
             high)~~ RESOLVED 2026-08-15 — advisory confirmed (WebFetch of
             the GHSA page) as vulnerable `>=1.0.2, <3.1.0`, first patched
