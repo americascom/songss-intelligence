@@ -2344,6 +2344,140 @@ inbox as an unavoidable side effect of proving the SMTP send genuinely
 works — nothing to clean up server-side since this workflow has no
 database writes at all. Not yet committed to git.
 
+RESOLVED (implemented 2026-08-19): **Predictive Globe powered by real
+Last.fm data — closes the "fabricated globe/revenue data" gap flagged in
+`51b0ac9` earlier the same day.** That commit removed the fake-data
+fallback (the globe/mini-revenue-chart depended on a `/metrics` endpoint
+that hard-401s — no such backend route exists) so both components
+correctly rendered nothing rather than invented numbers, but nothing had
+replaced it with a real source yet. This does that for the globe; revenue
+remains intentionally empty (see below — Last.fm has no monetary data,
+and "no number" is the correct behavior here, not a gap to fill).
+
+**Architecture, per Gilberto's explicit design**: Last.fm's free
+`geo.gettoptracks` API (country-level, not literal city-level — Last.fm
+has no city-granularity geo endpoint) polled by a new, separate n8n
+workflow on a schedule (not per-visitor, to stay well within Last.fm's
+free tier and keep the page fast) into a new Supabase table; the frontend
+reads only from Supabase, never calls Last.fm directly.
+
+**New table `public.geo_activity`** (backup first,
+`manual_20260819_191125_pre_geo_activity_table.sql`): `region text PRIMARY
+KEY` (the literal Last.fm `country` param), `city text` (display label —
+each region's principal city, same coordinates already used by the old
+fake-data hook), `lat`/`lng double precision`, `track_count integer`,
+`total_listeners bigint` (real, summed from Last.fm's own `listeners`
+field across the top 10 tracks — **not** `playcount`, which this endpoint
+does not return; confirmed by a real API call before writing any code,
+not assumed), `top_track text`, `updated_at timestamptz`. RLS: `anon`/
+`authenticated` get `SELECT USING(true)` (public marketing page, no auth
+call needed — same pattern as `plan_limits`), only `service_role` can
+write. `NOTIFY pgrst, 'reload schema'` sent as part of the same migration,
+not an afterthought.
+
+**New n8n workflow "Geo Activity — Last.fm Poller"** (id
+`geoActivityLastfm01`, separate from the NIE workflow, deployed via `n8n
+import:workflow` — same lower-risk method as the Opus Maximus workflow,
+appropriate for a brand-new workflow vs. the manual 3-DB-location SQL
+patch method reserved for editing the *existing* NIE workflow). Schedule
+Trigger every 20 minutes → a Code node listing 20 curated
+country/city/lat/lng pairs → `Last.fm Geo Top Tracks` (httpRequest,
+`geo.gettoptracks`, `api_key={{ $env.LASTFM_API_KEY }}` — exact same
+proven pattern as the existing NIE workflow's own `Last.fm` node, just
+`country` instead of `artist`) → `Build Real Rows` (Code node — sums real
+`listeners`, drops any region with zero real tracks/listeners that cycle
+rather than writing a fabricated zero; a region simply keeps its last-real
+row and an older `updated_at` if Last.fm has a transient empty response,
+rather than the marker flapping on/off) → `Upsert to Supabase` (POST
+`.../geo_activity?on_conflict=region`, `Prefer:
+return=minimal,resolution=merge-duplicates`, same hardcoded-`apikey` +
+shared "Supabase Service Role Auth" credential pattern as every other
+Supabase-writing node in this project — see
+[[feedback_hardcoded_apikey_header_all_7_migrated_nodes]]).
+
+**Two real country-name corrections found by testing against the live
+Last.fm API before trusting the list** (not assumed from the old fake-data
+hook's country list, which had never actually been validated against
+Last.fm's real ISO-name requirements): `"South Korea"` → Last.fm rejects
+this (`error 6, country param invalid`); the correct value is `"Korea,
+Republic of"`. All other 19 of the 20 candidate countries worked
+correctly on the first real test.
+
+**Real bug found and fixed via dry-run testing (same isolated-scratch-
+container discipline as every other n8n change this project makes)**: the
+first version of the `Upsert to Supabase` node had the `credentials`
+block attached but was still getting rejected with `401 — "new row
+violates row-level security policy for table geo_activity"` — i.e.
+authenticating as `anon`, not `service_role`, despite the credential being
+attached. Root cause, found by direct comparison against a real working
+production node (`Insert Intelligence Report`): **attaching a
+`credentials.httpHeaderAuth` block alone is not sufficient** — the
+node's own `parameters` must also explicitly declare
+`"authentication": "genericCredentialType"` and `"genericAuthType":
+"httpHeaderAuth"`, or n8n never actually applies the credential to the
+request. Confirmed via a direct curl using the real `SERVICE_ROLE_KEY`
+for both `apikey` and `Authorization` (real `201 Created`, test row
+cleaned up after) that the table/RLS policy were correct all along — the
+bug was purely this missing pair of node parameters. **New standing
+lesson, worth checking on any future new `httpHeaderAuth`-credentialed
+node**: see `feedback_n8n_generic_credential_type_required` in memory.
+
+**Live-verified in the isolated dry-run container** (online-backup scratch
+DB copy, real `LASTFM_API_KEY`/`N8N_BLOCK_ENV_ACCESS_IN_NODE=false`/
+`EXECUTIONS_DATA_SAVE_ON_SUCCESS=all` — the latter two both needed
+explicit setting to match production's actual `docker-compose.yml`, since
+a bare fresh container doesn't have them and silently produces misleading
+"access to env vars denied" errors or truncated execution data
+otherwise): after the auth fix, a full run wrote all 20 real rows to the
+**real production** `geo_activity` table (this table has no separate
+staging environment — same everywhere-shared-Supabase constraint as every
+other dry-run test in this project) — real per-country `total_listeners`
+ranging 424 (China) to 175,627 (United States), real `top_track` values.
+These are genuine first-seed data, not test artifacts — deliberately not
+deleted.
+
+**Deployed to production**: backup first
+(`manual_20260819_212804_pre_geo_activity_workflow.sqlite`), imported via
+`n8n import:workflow`, activated, `docker restart n8n_songss` — clean,
+all 5 active workflows (Lead Magnet, NIE, the inactive Granite test
+harness, Opus Maximus, and this new one) came back with no errors; the
+live NIE/Stripe/Opus pipeline was not disrupted. **Not independently
+live-fired in production this session** — a second production DB write
+(temporarily shortening the schedule interval to force an immediate test
+fire) was correctly declined by the permission layer as an unnecessary
+extra production mutation, given the exact same workflow JSON had just
+been proven end-to-end in the dry-run container immediately beforehand.
+The real 20-minute schedule will fire on its own; worth a quick check next
+session that `geo_activity.updated_at` has actually advanced past
+`2026-08-19T21:27:23` (the dry-run test's timestamp) under its own
+production schedule, not just the manually-triggered dry run.
+
+**Frontend** (`src/hooks/useMetricsData.ts`, fully rewritten —
+`src/components/Globe3D.tsx` label-only change): `useMetricsMarkers()` now
+reads `geo_activity` directly via the Supabase client (`anon`-readable,
+no auth call needed), top 8 by real `total_listeners`, zero fabricated
+fallback — an empty/errored read just yields `[]`, same as
+`Globe3D.tsx`'s pre-existing `markers ?? []` guard. Marker field renamed
+`streams` → `listeners` throughout (the hook, the type, and the on-globe
+label) since Last.fm's real field is listener counts, not literal stream
+counts — matches this project's established honesty-in-labeling precedent
+(e.g. the `monthly_streams` → `monthly_listeners` KPI-tile rename). The
+old `useMetricsSummary()`/`NeuralEngineMetric` fake-`/metrics`-endpoint
+plumbing was deleted entirely (was 401ing on every single page load,
+pure dead weight) rather than left dormant. `useFormattedMetrics()` is
+kept (still imported by `MiniRevenueChart.tsx`) but now a static stub
+that always returns "no data" and makes zero network calls — **Last.fm
+has no monetary data at all**, so per Gilberto's explicit instruction this
+is correct, permanent behavior under this data source, not a gap: the
+revenue card should simply never render rather than show any number,
+invented or otherwise. `MiniRevenueChart.tsx`/`Home.tsx` themselves needed
+no code changes — their existing `if (revenueData.length < 2 ...) return
+null` guard already does exactly the right thing against the new stub.
+Visual layout/positioning (globe size, city-marker style, revenue-card
+placement) deliberately untouched — only the data source changed, per
+Gilberto's explicit scope. `tsc -p tsconfig.app.json --noEmit` and `vite
+build` both clean. **Not yet committed to git.**
+
 ---
 
 ## 5. SUPABASE DATABASE
@@ -2352,6 +2486,10 @@ Tables:
 - intelligence_reports (session_id, customer_email, artist_name, plan_name,
   report_html, report_markdown, geo_hotspots, engagement_metrics, user_id)
 - teams (owner_user_id, member_user_id) — seats for Growth+ plans
+- geo_activity (region PK, city, lat, lng, track_count, total_listeners,
+  top_track, updated_at) — real Last.fm data for the Home page Predictive
+  Globe, polled every 20min by the "Geo Activity — Last.fm Poller" n8n
+  workflow; anon/authenticated SELECT-only, service_role writes
 
 RPC SECURITY DEFINER:
 - get_report_by_session(p_session_id text) — always use this, never direct SELECT

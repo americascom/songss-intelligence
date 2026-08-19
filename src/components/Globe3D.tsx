@@ -15,9 +15,9 @@ function latLngToVector3(lat: number, lng: number, radius: number) {
   );
 }
 
-function GlobeMarker({ lat, lng, name, streams }: { lat: number; lng: number; name: string; streams: string }) {
+function GlobeMarker({ lat, lng, name, listeners }: { lat: number; lng: number; name: string; listeners: string }) {
   const position = latLngToVector3(lat, lng, 1.02);
-  
+
   return (
     <group position={position}>
       <mesh>
@@ -27,7 +27,7 @@ function GlobeMarker({ lat, lng, name, streams }: { lat: number; lng: number; na
       <Html distanceFactor={3} style={{ pointerEvents: 'none' }}>
         <div className="bg-card/90 backdrop-blur-sm border border-primary/30 rounded-lg px-2 py-1 text-xs whitespace-nowrap shadow-lg">
           <div className="font-semibold text-foreground">{name}</div>
-          <div className="text-primary text-[10px]">{streams} streams</div>
+          <div className="text-primary text-[10px]">{listeners} listeners</div>
         </div>
       </Html>
     </group>
