@@ -6,6 +6,7 @@ interface PricingCardProps {
   name: string;
   price: string;
   period: string;
+  priceNote?: string;
   description: string;
   features: string[];
   isPopular?: boolean;
@@ -20,6 +21,7 @@ const PricingCard = ({
   name,
   price,
   period,
+  priceNote,
   description,
   features,
   isPopular = false,
@@ -73,8 +75,13 @@ const PricingCard = ({
           </div>
 
           <div className="mb-6">
-            <span className={`font-bold text-foreground ${isVIP ? (period ? "text-5xl md:text-6xl" : "text-3xl md:text-4xl") : "text-4xl md:text-5xl"}`}>{price}</span>
-            {period && <span className="text-muted-foreground">/{period}</span>}
+            <div>
+              <span className={`font-bold text-foreground ${isVIP ? (period ? "text-5xl md:text-6xl" : "text-3xl md:text-4xl") : "text-4xl md:text-5xl"}`}>{price}</span>
+              {period && <span className="text-muted-foreground">/{period}</span>}
+            </div>
+            {priceNote && (
+              <p className="text-sm text-muted-foreground mt-2">{priceNote}</p>
+            )}
           </div>
         </div>
 

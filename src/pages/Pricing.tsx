@@ -79,6 +79,7 @@ const plans = [
     displayName: "Opus Maximus",
     price: "Custom Pricing",
     period: "",
+    priceNote: "Starting at $12,000/year (or $1,500/month)",
     description: "White-glove intelligence for labels, investors, and global management. 1,500 queries/mo — expandable on demand.",
     features: [
       "Unlimited seats",
@@ -139,6 +140,7 @@ const Pricing = () => {
               name={plans[4].displayName}
               price={plans[4].price}
               period={plans[4].period}
+              priceNote={plans[4].priceNote}
               description={plans[4].description}
               features={plans[4].features}
               isPopular={plans[4].isPopular}
