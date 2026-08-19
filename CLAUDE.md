@@ -2804,15 +2804,39 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
             (via `d3-transition` → Recharts), so a future re-resolution
             could move it — but only forward, never back below 3.1.0.
             Nothing to do.
+      - [x] ~~`js-yaml`~~ RESOLVED 2026-08-19 (Dependabot PR reviewed and
+            landed). Transitive via `@eslint/eslintrc` only, never shipped
+            to the browser. Changelog (4.1.0→4.3.1) confirmed no breaking
+            changes — the intermediate releases are pure security fixes
+            (prototype pollution in the merge operator, two
+            quadratic-complexity DoS fixes). Couldn't merge the Dependabot
+            PR object directly (no `gh` CLI or GitHub API token in this
+            environment, and the PR branch predated 2 later commits on
+            `main` anyway — a raw branch merge would have reverted them).
+            Landed the equivalent fix instead: `npm update js-yaml` against
+            current `main` (isolated version-level diff confirmed only 2
+            packages actually changed version — `js-yaml` and an incidental
+            `@babel/runtime` bump — everything else was the lockfile
+            catching up on ~140 entries already missing for dependencies
+            already declared in `package.json`), `tsc`/`vite build` both
+            clean, identical output bundle hashes. **Bonus**: this
+            incidentally fixed the `npm ci` drift bug below too — verified
+            in an isolated scratch copy that `npm ci` now succeeds cleanly
+            against the updated lockfile (previously failed with `Missing:
+            internmap@1.0.1 from lock file`, see the finding right below).
       - [ ] Remaining dev-tooling batch (`vite`, `rollup`, `esbuild`,
-            `postcss`, `js-yaml`, `lodash`, `glob`, `minimatch`,
-            `picomatch`, `nanoid`, `ajv`, `ws`, `brace-expansion`,
-            `flatted`, `yaml`) — build-time/dev dependencies, not shipped
-            to the customer's browser. `npm audit fix` (non-forced)
-            reported a fix available for all of them as of 2026-08-09, but
-            not run yet given the react-router-dom install's surprising
-            blast radius — worth a careful, isolated diff-check the same
-            way, not assumed safe just because npm calls it "fix available".
+            `postcss`, `lodash`, `glob`, `minimatch`, `picomatch`, `nanoid`,
+            `ajv`, `ws`, `brace-expansion`, `flatted`, `yaml`) —
+            build-time/dev dependencies, not shipped to the customer's
+            browser. `npm audit fix` (non-forced) reported a fix available
+            for all of them as of 2026-08-09, but not run yet given the
+            react-router-dom install's surprising blast radius — worth a
+            careful, isolated diff-check the same way, not assumed safe
+            just because npm calls it "fix available". Since the `npm ci`
+            drift bug is now fixed (see `js-yaml` above), a future pass at
+            this batch should start from a clean `npm ci`-verified lockfile
+            rather than the drifted one these packages were originally
+            flagged against.
       - [x] ~~Dependabot security alerts — not yet confirmed on~~ CONFIRMED
             ACTIVE 2026-08-10: a `git push origin main` surfaced GitHub's
             own Dependabot summary directly in the push output — **34
@@ -2824,7 +2848,7 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
             full per-advisory breakdown still isn't checkable without an
             authenticated `gh`/API token — Gilberto to review the
             Dependabot tab directly for details beyond this summary count.
-      - **Reverted, not committed**: the `react-router-dom@6.30.4` +
+      - **Reverted, not committed** (2026-08-09): the `react-router-dom@6.30.4` +
         broad lockfile change was fully reverted this session
         (`git checkout -- package.json package-lock.json`) — nothing from
         this investigation is live or committed. `node_modules` on disk
@@ -2839,6 +2863,14 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
         session. `node_modules` itself was confirmed still intact/usable
         afterward (`vite`, `react-router-dom` both present) — the app
         isn't broken, only `npm ci` specifically is.
+      - [x] ~~`npm ci` drift (`internmap@1.0.1` missing)~~ RESOLVED
+        2026-08-19, as a side effect of reviewing/landing the `js-yaml`
+        Dependabot PR above — `internmap@1.0.1` (a dependency of
+        `react-simple-maps`/`d3-geo`) was exactly one of the ~140 lockfile
+        entries that were missing for dependencies already declared in
+        `package.json` but never properly locked. `npm ci` now verified
+        to succeed cleanly (isolated scratch copy) against the committed
+        lockfile.
 - [x] ~~Componentize Report.tsx (1,442 lines) — via Cline~~ RESOLVED
       2026-08-01. Cline's initial pass created 12 section components plus
       a shared.tsx (constants/formatters/Section/SectionHeader/
