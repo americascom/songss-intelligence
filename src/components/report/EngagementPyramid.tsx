@@ -5,6 +5,7 @@ import { Section, SectionHeader, C, mono, glass } from "./shared";
 interface PyramidTier {
   tier: string;
   value: string;
+  valueTitle?: string;
   color: string;
   badge?: string;
   badgeTitle?: string;
@@ -47,7 +48,7 @@ export function EngagementPyramid({ engagementPyramid, delay = 0.34 }: Engagemen
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-[10px] uppercase tracking-[0.2em] mb-1" style={{ color: C.gray }}>{t.tier}</div>
-                  <div className={`${mono} text-lg sm:text-xl font-bold`} style={{ color: C.white }}>{t.value}</div>
+                  <div className={`${mono} text-lg sm:text-xl font-bold`} style={{ color: C.white }} title={t.valueTitle}>{t.value}</div>
                 </div>
                 {t.badge && (
                   <span

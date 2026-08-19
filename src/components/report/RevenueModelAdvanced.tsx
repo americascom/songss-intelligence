@@ -1,5 +1,5 @@
 import { DollarSign } from "lucide-react";
-import { Section, SectionHeader, C, mono, glass, fmtUSD } from "./shared";
+import { Section, SectionHeader, C, mono, glass, fmtUSD, LimitedChartState } from "./shared";
 
 interface RevenueStream {
   source: string;
@@ -15,8 +15,8 @@ interface NPVData {
 }
 
 interface RevenueModelAdvancedProps {
-  revStreams: RevenueStream[];
-  npv: NPVData[];
+  revStreams: RevenueStream[] | null;
+  npv: NPVData[] | null;
   delay?: number;
 }
 
@@ -36,6 +36,11 @@ export function RevenueModelAdvanced({ revStreams, npv, delay = 0.40 }: RevenueM
             </span>
           }
         />
+        {!revStreams || !npv ? (
+          <div className="p-6 sm:p-8">
+            <LimitedChartState />
+          </div>
+        ) : (
         <div className="p-6 sm:p-8 space-y-8">
           {/* Revenue streams */}
           <div>
@@ -90,6 +95,7 @@ export function RevenueModelAdvanced({ revStreams, npv, delay = 0.40 }: RevenueM
             </div>
           </div>
         </div>
+        )}
       </div>
     </Section>
   );

@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ArtistIndieReport from "@/components/ArtistIndieReport";
 import { isSampleReportSession } from "@/lib/sampleReports";
 import PeerBenchmarkChart, { type PeerBenchmarkData } from "@/components/PeerBenchmarkChart";
-import { C, mono, glass, Section, SectionHeader, MarkdownCard, fmtCompact, fmtUSD } from "@/components/report/shared";
+import { C, mono, glass, Section, SectionHeader, MarkdownCard, fmtCompact, fmtUSD, LIMITED_LABEL, LIMITED_TOOLTIP } from "@/components/report/shared";
 import { NeuralTrajectory } from "@/components/report/NeuralTrajectory";
 import { TopMarkets } from "@/components/report/TopMarkets";
 import { ThreeMovesCard } from "@/components/report/ThreeMovesCard";
@@ -233,13 +233,21 @@ function ReportInner() {
   const engagementScore: number | null = rawSEI == null ? null : Number(rawSEI);
   const rawFanLoyalty    = (em as any)?.fan_loyalty_index;
   const fanLoyaltyIndex: number | null = rawFanLoyalty == null ? null : Number(rawFanLoyalty);
-  const retentionRate   = Number((em as any)?.retention_rate    ?? (em as any)?.retentionRate   ?? 0) || 48;
+  // retention_rate/ltv_projection/growth_trajectory are code-computed from
+  // real Spotify data and come back `null` (never a fabricated fallback)
+  // whenever that data couldn't be trusted -- including the artist-identity
+  // mismatch guard. Preserve null rather than silently substituting a fake
+  // constant (the `Number(x ?? 0) || fallback` pattern this replaced turns
+  // `null` into `0`, then `0 || 48`/`0 || 8400` into a fabricated number).
+  const rawRetention     = (em as any)?.retention_rate ?? (em as any)?.retentionRate;
+  const retentionRate: number | null = rawRetention == null ? null : Number(rawRetention);
   // monthly_streams was an AI-fabricated free-text estimate (no formula) --
   // same class of bug already fixed for retention_rate/ltv_projection/
   // growth_trajectory. Use the real Spotify anchor those fields already use
   // instead of a second, unrelated fake number.
   const monthlyListeners = Number((report?.spotify_data as any)?.monthly_listeners ?? 0) || 28000;
-  const ltv             = Number((em as any)?.ltv_projection ?? (em as any)?.ltv ?? 0) || 8400;
+  const rawLtv            = (em as any)?.ltv_projection ?? (em as any)?.ltv;
+  const ltv: number | null = rawLtv == null ? null : Number(rawLtv);
 
   const yt              = report?.youtube_data   ?? {};
   const ytSubscribers   = Number(yt?.subscribers ?? 0);
@@ -276,19 +284,20 @@ function ReportInner() {
     : "";
 
   // ── Memoised data ─────────────────────────────────────────────────────────
-  const trajectory = useMemo(() => {
-    const raw = (em as any)?.growth_trajectory ?? (em as any)?.trajectory ?? (em as any)?.neural_trajectory ?? [];
+  // No synthetic-curve fallback: a missing/null growth_trajectory is
+  // "Limited" (data-quality guard suppressed it, or it genuinely can't be
+  // computed), not a reason to fabricate a curve off a fallback listener
+  // count. NeuralTrajectory renders the Limited state itself when null.
+  const trajectory = useMemo((): Array<{ month: string; streams: number }> | null => {
+    const raw = (em as any)?.growth_trajectory ?? (em as any)?.trajectory ?? (em as any)?.neural_trajectory;
     if (Array.isArray(raw) && raw.length) {
       return raw.slice(0, 6).map((r: any, i: number) => ({
         month:   r?.label   ?? r?.month ?? `M${i + 1}`,
         streams: Number(r?.streams ?? r?.value ?? 0),
       }));
     }
-    return Array.from({ length: 6 }, (_, i) => ({
-      month:   `M${i + 1}`,
-      streams: Math.round(monthlyListeners * (0.55 + i * 0.12)),
-    }));
-  }, [em, monthlyListeners]);
+    return null;
+  }, [em]);
 
   const markets = useMemo(() => {
     const raw  = Array.isArray(geo) ? geo : ((geo as any)?.top_cities ?? (geo as any)?.cities ?? (geo as any)?.top ?? (geo as any)?.hotspots ?? []);
@@ -328,12 +337,15 @@ function ReportInner() {
     ];
   }, [geo]);
 
-  const revenueSnapshot = useMemo(() => [
-    { source: "Streaming", revenue: Math.round(ltv * 0.50) },
-    { source: "Merch",     revenue: Math.round(ltv * 0.20) },
-    { source: "Sync",      revenue: Math.round(ltv * 0.16) },
-    { source: "Live",      revenue: Math.round(ltv * 0.14) },
-  ], [ltv]);
+  const revenueSnapshot = useMemo(() => {
+    if (ltv === null) return null;
+    return [
+      { source: "Streaming", revenue: Math.round(ltv * 0.50) },
+      { source: "Merch",     revenue: Math.round(ltv * 0.20) },
+      { source: "Sync",      revenue: Math.round(ltv * 0.16) },
+      { source: "Live",      revenue: Math.round(ltv * 0.14) },
+    ];
+  }, [ltv]);
 
   const recommendations = useMemo(() => {
     const raw = (em as any)?.recommendations ?? (em as any)?.actions ?? [];
@@ -380,9 +392,10 @@ function ReportInner() {
       },
       {
         tier: "Active Superfans",
-        value: `${retentionRate.toFixed(0)}% Retention`,
+        value: retentionRate === null ? LIMITED_LABEL : `${retentionRate.toFixed(0)}% Retention`,
+        valueTitle: retentionRate === null ? LIMITED_TOOLTIP : undefined,
         badge: engagementScore === null ? undefined : `${engagementScore.toFixed(0)} SEI`,
-        color: "#4ECDC4",
+        color: retentionRate === null ? C.warm : "#4ECDC4",
       },
     ];
   }, [report, retentionRate, engagementScore]);
@@ -403,7 +416,7 @@ function ReportInner() {
 
     return [
       { axis: "Streaming Growth", value: growthPct ?? 0,      pending: growthPct === null },
-      { axis: "Community",        value: retentionRate,        pending: false },
+      { axis: "Community",        value: retentionRate ?? 0,   pending: false, limited: retentionRate === null },
       { axis: "Virality",         value: engagementScore ?? 0, pending: engagementScore === null },
       { axis: "Sync Potential",   value: 0,                    pending: true },
       { axis: "Live Performance", value: 0,                    pending: true },
@@ -424,9 +437,10 @@ function ReportInner() {
 
   // ── Enterprise+: NPV ──────────────────────────────────────────────────────
   const npv = useMemo(() => {
+    if (ltv === null) return null;
     let cum = 0;
     return Array.from({ length: 5 }, (_, i) => {
-      const cf   = Math.round((ltv || 25000) * (1 + i * 0.18));
+      const cf   = Math.round(ltv * (1 + i * 0.18));
       const disc = Math.round(cf / Math.pow(1.1, i + 1));
       cum += disc;
       return { year: `Y${i + 1}`, cashflow: cf, discounted: disc, cumulative: cum };
@@ -434,12 +448,15 @@ function ReportInner() {
   }, [ltv]);
 
   // ── Enterprise+: Revenue Streams ──────────────────────────────────────────
-  const revStreams = useMemo(() => [
-    { source: "Streaming Royalties", revenue: Math.round(ltv * 0.45), growth: 18.4 },
-    { source: "Sync & Licensing",    revenue: Math.round(ltv * 0.18), growth: 32.1 },
-    { source: "Merch & D2C",         revenue: Math.round(ltv * 0.16), growth: 11.7 },
-    { source: "Live & Touring",      revenue: Math.round(ltv * 0.21), growth: 24.6 },
-  ], [ltv]);
+  const revStreams = useMemo(() => {
+    if (ltv === null) return null;
+    return [
+      { source: "Streaming Royalties", revenue: Math.round(ltv * 0.45), growth: 18.4 },
+      { source: "Sync & Licensing",    revenue: Math.round(ltv * 0.18), growth: 32.1 },
+      { source: "Merch & D2C",         revenue: Math.round(ltv * 0.16), growth: 11.7 },
+      { source: "Live & Touring",      revenue: Math.round(ltv * 0.21), growth: 24.6 },
+    ];
+  }, [ltv]);
 
   // ── Markdown sections ─────────────────────────────────────────────────────
   const cleanMd   = useMemo(() => stripCodeFence(report?.report_markdown ?? report?.report_html ?? ""), [report]);
@@ -636,9 +653,9 @@ function ReportInner() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4 mb-14">
           {[
             { label: "Social Engagement Index", value: engagementScore === null ? "—" : engagementScore.toFixed(0), icon: Activity, title: engagementScore === null ? "Not enough TikTok data yet to compute this" : "Cumulative engagement relative to audience size" },
-            { label: "Retention Rate",   value: `${retentionRate.toFixed(0)}%`,   icon: Users      },
+            { label: "Retention Rate",   value: retentionRate === null ? LIMITED_LABEL : `${retentionRate.toFixed(0)}%`, icon: Users, valueColor: retentionRate === null ? C.warm : undefined, valueSize: retentionRate === null ? "text-xl" : undefined, title: retentionRate === null ? LIMITED_TOOLTIP : undefined },
             { label: "Monthly Listeners", value: fmtCompact(monthlyListeners),    icon: TrendingUp },
-            { label: "LTV Projection",   value: fmtUSD(ltv),                     icon: DollarSign, title: "Estimated using a global blended benchmark ($0.012/listener/month). Real values vary by geographic distribution and audience retention." },
+            { label: "LTV Projection",   value: ltv === null ? LIMITED_LABEL : fmtUSD(ltv), icon: DollarSign, valueColor: ltv === null ? C.warm : undefined, valueSize: ltv === null ? "text-xl" : undefined, title: ltv === null ? LIMITED_TOOLTIP : "Estimated using a global blended benchmark ($0.012/listener/month). Real values vary by geographic distribution and audience retention." },
             { label: "Industry Buzz",    value: buzzBadge ? buzzBadge.label : "—", icon: Newspaper, valueColor: buzzBadge?.color, title: buzzBadge ? "Recent press & industry coverage sentiment" : "Not enough recent press coverage found" },
             { label: "Fan Loyalty Index", value: fanLoyaltyIndex === null ? "—" : fanLoyaltyIndex.toFixed(0), icon: Heart, title: fanLoyaltyIndex === null ? "Not enough TikTok or Spotify data yet to compute this" : "Blends TikTok engagement depth with cross-platform streaming retention" },
           ].map((k, i) => (
@@ -654,7 +671,7 @@ function ReportInner() {
                 <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: C.gray }}>{k.label}</span>
                 <k.icon className="w-3.5 h-3.5" style={{ color: C.cyan, filter: `drop-shadow(0 0 6px ${C.cyan}AA)` }} />
               </div>
-              <div className={`${mono} text-3xl font-semibold`} style={{ color: (k as any).valueColor || C.white }}>{k.value}</div>
+              <div className={`${mono} ${(k as any).valueSize || "text-3xl"} font-semibold`} style={{ color: (k as any).valueColor || C.white }}>{k.value}</div>
             </motion.div>
           ))}
         </div>

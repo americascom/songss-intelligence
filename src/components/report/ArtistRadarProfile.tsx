@@ -4,13 +4,17 @@ import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   Tooltip, ResponsiveContainer,
 } from "recharts";
-import { Section, SectionHeader, C, mono, glass, tooltipStyle } from "./shared";
+import { Section, SectionHeader, C, mono, glass, tooltipStyle, LIMITED_TOOLTIP } from "./shared";
 import { useIsPrinting, PRINT_CHART_WIDTH } from "@/hooks/useIsPrinting";
 
 interface RadarDataPoint {
   axis: string;
   value: number;
   pending: boolean;
+  // Distinct from `pending`: this axis DOES have a real formula, but this
+  // specific report's value was suppressed by a data-quality guard (e.g.
+  // the Spotify artist-identity mismatch guard) rather than never existing.
+  limited?: boolean;
 }
 
 interface ArtistRadarProfileProps {
@@ -49,7 +53,7 @@ export function ArtistRadarProfile({ radarData, delay = 0.36 }: ArtistRadarProfi
       <Tooltip
         contentStyle={tooltipStyle}
         formatter={(v: any, _n: any, props: any) => [
-          props?.payload?.pending ? "Pending Data" : `${Number(v).toFixed(0)} / 100`,
+          props?.payload?.limited ? "⚠️ Limited" : props?.payload?.pending ? "Pending Data" : `${Number(v).toFixed(0)} / 100`,
           "",
         ]}
       />
@@ -88,7 +92,15 @@ export function ArtistRadarProfile({ radarData, delay = 0.36 }: ArtistRadarProfi
                 style={{ borderColor: "rgba(0,196,181,0.12)", background: "rgba(0,196,181,0.04)" }}
               >
                 <div className="text-[10px] uppercase tracking-[0.15em] mb-1" style={{ color: C.gray }}>{d.axis}</div>
-                {d.pending ? (
+                {d.limited ? (
+                  <span
+                    className={`${mono} text-[10px] font-semibold px-2 py-0.5 rounded-md border`}
+                    style={{ color: C.warm, borderColor: `${C.warm}40`, background: `${C.warm}14` }}
+                    title={LIMITED_TOOLTIP}
+                  >
+                    ⚠️ Limited
+                  </span>
+                ) : d.pending ? (
                   <span
                     className={`${mono} text-[10px] font-semibold px-2 py-0.5 rounded-md border`}
                     style={{ color: C.grayDim, borderColor: "rgba(154,154,154,0.25)", background: "rgba(154,154,154,0.06)" }}

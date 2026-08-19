@@ -3,7 +3,7 @@ import { DollarSign } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList,
 } from "recharts";
-import { Section, C, mono, glass, tooltipStyle, fmtUSD, fmtCompact } from "./shared";
+import { Section, C, mono, glass, tooltipStyle, fmtUSD, fmtCompact, LimitedChartState } from "./shared";
 import { useIsPrinting, PRINT_CHART_WIDTH } from "@/hooks/useIsPrinting";
 
 interface RevenueData {
@@ -12,7 +12,7 @@ interface RevenueData {
 }
 
 interface RevenueSnapshotProps {
-  revenueSnapshot: RevenueData[];
+  revenueSnapshot: RevenueData[] | null;
   delay?: number;
 }
 
@@ -20,7 +20,7 @@ const CHART_HEIGHT = 256; // matches the h-64 container below
 
 export function RevenueSnapshot({ revenueSnapshot, delay = 0.28 }: RevenueSnapshotProps) {
   const isPrinting = useIsPrinting();
-  const chart = (
+  const chart = revenueSnapshot && (
     <BarChart data={revenueSnapshot} margin={{ top: 28, right: 48, left: 0, bottom: 4 }}>
       <defs>
         <linearGradient id="revBar" x1="0" y1="0" x2="0" y2="1">
@@ -56,7 +56,9 @@ export function RevenueSnapshot({ revenueSnapshot, delay = 0.28 }: RevenueSnapsh
           <DollarSign className="w-4 h-4" style={{ color: C.cyan }} />
         </div>
         <div className="h-64">
-          {isPrinting
+          {!chart
+            ? <LimitedChartState />
+            : isPrinting
             ? React.cloneElement(chart, { width: PRINT_CHART_WIDTH, height: CHART_HEIGHT })
             : (
               <ResponsiveContainer width="100%" height="100%">

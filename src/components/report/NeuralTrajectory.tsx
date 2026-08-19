@@ -3,11 +3,11 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { Music } from "lucide-react";
-import { Section, C, mono, glass, tooltipStyle, fmtCompact } from "./shared";
+import { Section, C, mono, glass, tooltipStyle, fmtCompact, LimitedChartState } from "./shared";
 import { useIsPrinting, PRINT_CHART_WIDTH } from "@/hooks/useIsPrinting";
 
 interface NeuralTrajectoryProps {
-  trajectory: Array<{ month: string; streams: number }>;
+  trajectory: Array<{ month: string; streams: number }> | null;
   delay?: number;
 }
 
@@ -15,7 +15,7 @@ const CHART_HEIGHT = 288; // matches the h-72 container below
 
 export function NeuralTrajectory({ trajectory, delay = 0.10 }: NeuralTrajectoryProps) {
   const isPrinting = useIsPrinting();
-  const chart = (
+  const chart = trajectory && (
     <AreaChart data={trajectory} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
       <defs>
         <linearGradient id="trajGrad" x1="0" y1="0" x2="0" y2="1">
@@ -52,7 +52,9 @@ export function NeuralTrajectory({ trajectory, delay = 0.10 }: NeuralTrajectoryP
           <Music className="w-4 h-4" style={{ color: C.cyan }} />
         </div>
         <div className="h-72">
-          {isPrinting
+          {!chart
+            ? <LimitedChartState />
+            : isPrinting
             ? React.cloneElement(chart, { width: PRINT_CHART_WIDTH, height: CHART_HEIGHT })
             : (
               <ResponsiveContainer width="100%" height="100%">

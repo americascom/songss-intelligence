@@ -44,6 +44,39 @@ export function fmtUSD(n: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 }
 
+// ── "Limited" state (retention_rate / ltv_projection / growth_trajectory) ──
+// These 3 fields are code-computed from real Spotify data and go `null`
+// (never a fabricated fallback) whenever that data couldn't be trusted --
+// including the artist-identity mismatch guard (e.g. MaLu/Maluma), where
+// Apify resolved a different real artist entirely. Distinct from the
+// softer "—" / native-tooltip convention used for social_engagement_index /
+// fan_loyalty_index / industry_buzz (which just means "not enough source
+// data yet") -- this is a louder, amber warning specifically for cases
+// where a data-quality guard had to suppress an otherwise-computed number.
+export const LIMITED_TOOLTIP = "This data could not be confirmed for this artist or period.";
+export const LIMITED_LABEL = "⚠️ Limited";
+
+export function LimitedBadge({ size = "sm" }: { size?: "sm" | "md" } = {}) {
+  return (
+    <span
+      className={`${mono} ${size === "md" ? "text-xs px-3 py-1.5 gap-1.5" : "text-[10px] px-2 py-0.5 gap-1"} font-semibold rounded-md border inline-flex items-center`}
+      style={{ color: C.warm, borderColor: `${C.warm}40`, background: `${C.warm}14` }}
+      title={LIMITED_TOOLTIP}
+    >
+      {LIMITED_LABEL}
+    </span>
+  );
+}
+
+export function LimitedChartState() {
+  return (
+    <div className="h-full w-full flex flex-col items-center justify-center gap-3 text-center px-6">
+      <LimitedBadge size="md" />
+      <p className="text-xs max-w-xs" style={{ color: C.grayDim }}>{LIMITED_TOOLTIP}</p>
+    </div>
+  );
+}
+
 // ── Sub-components ───────────────────────────────────────────────────────────
 export function SectionHeader({
   emoji, icon: Icon, title, accent, badge,

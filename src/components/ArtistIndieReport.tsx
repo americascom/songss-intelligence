@@ -45,6 +45,30 @@ const tooltipStyle: React.CSSProperties = {
   backdropFilter: "blur(8px)",
 };
 
+// retention_rate/ltv_projection/growth_trajectory are code-computed from
+// real Spotify data and come back `null` (never a fabricated fallback)
+// whenever that data couldn't be trusted -- including the artist-identity
+// mismatch guard. Distinct from the softer "—" convention used elsewhere
+// (social_engagement_index/fan_loyalty_index) -- this is a louder amber
+// warning specifically for a data-quality guard suppressing a real number.
+const LIMITED_LABEL = "⚠️ Limited";
+const LIMITED_TOOLTIP = "This data could not be confirmed for this artist or period.";
+
+function LimitedChartState() {
+  return (
+    <div className="h-full w-full flex flex-col items-center justify-center gap-3 text-center px-6">
+      <span
+        className={`${mono} text-xs px-3 py-1.5 font-semibold rounded-md border inline-flex items-center gap-1.5`}
+        style={{ color: C.warm, borderColor: `${C.warm}40`, background: `${C.warm}14` }}
+        title={LIMITED_TOOLTIP}
+      >
+        {LIMITED_LABEL}
+      </span>
+      <p className="text-xs max-w-xs" style={{ color: C.grayDim }}>{LIMITED_TOOLTIP}</p>
+    </div>
+  );
+}
+
 function fmtCompact(n: number) {
   return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n);
 }
@@ -236,27 +260,33 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
   const engagementScore: number | null = rawSEI == null ? null : Number(rawSEI);
   const rawFanLoyalty = em.fan_loyalty_index;
   const fanLoyaltyIndex: number | null = rawFanLoyalty == null ? null : Number(rawFanLoyalty);
-  const retentionRate = Number(em.retention_rate ?? em.retentionRate ?? 0) || 48;
+  // Preserve null rather than silently substituting a fake constant (the
+  // `Number(x ?? 0) || fallback` pattern this replaced turns `null` into
+  // `0`, then `0 || 48`/`0 || 4200` into a fabricated number).
+  const rawRetention = em.retention_rate ?? em.retentionRate;
+  const retentionRate: number | null = rawRetention == null ? null : Number(rawRetention);
   // monthly_streams was an AI-fabricated free-text estimate (no formula) --
   // same class of bug already fixed for retention_rate/ltv_projection/
   // growth_trajectory. Use the real Spotify anchor those fields already use
   // instead of a second, unrelated fake number.
   const monthlyListeners = Number(report.spotify_data?.monthly_listeners ?? 0) || 12500;
-  const ltv = Number(em.ltv_projection ?? em.ltv ?? 0) || 4200;
+  const rawLtv = em.ltv_projection ?? em.ltv;
+  const ltv: number | null = rawLtv == null ? null : Number(rawLtv);
 
-  const trajectory = useMemo(() => {
-    const raw = em.growth_trajectory ?? em.trajectory ?? em.neural_trajectory ?? [];
+  // No synthetic-curve fallback: a missing/null growth_trajectory is
+  // "Limited" (data-quality guard suppressed it, or it genuinely can't be
+  // computed), not a reason to fabricate a curve off a fallback listener
+  // count.
+  const trajectory = useMemo((): Array<{ month: string; streams: number }> | null => {
+    const raw = em.growth_trajectory ?? em.trajectory ?? em.neural_trajectory;
     if (Array.isArray(raw) && raw.length) {
       return raw.slice(0, 6).map((r: any, i: number) => ({
         month: r.label ?? r.month ?? `M${i + 1}`,
         streams: Number(r.streams ?? r.value ?? 0),
       }));
     }
-    return Array.from({ length: 6 }, (_, i) => ({
-      month: `M${i + 1}`,
-      streams: Math.round(monthlyListeners * (0.55 + i * 0.12)),
-    }));
-  }, [em, monthlyListeners]);
+    return null;
+  }, [em]);
 
   const markets = useMemo(() => {
     const raw = Array.isArray(geo)
@@ -301,12 +331,15 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
     ];
   }, [geo]);
 
-  const revenueSnapshot = useMemo(() => [
-    { source: "Streaming", revenue: Math.round(ltv * 0.55) },
-    { source: "Merch", revenue: Math.round(ltv * 0.18) },
-    { source: "Sync", revenue: Math.round(ltv * 0.15) },
-    { source: "Live", revenue: Math.round(ltv * 0.12) },
-  ], [ltv]);
+  const revenueSnapshot = useMemo(() => {
+    if (ltv === null) return null;
+    return [
+      { source: "Streaming", revenue: Math.round(ltv * 0.55) },
+      { source: "Merch", revenue: Math.round(ltv * 0.18) },
+      { source: "Sync", revenue: Math.round(ltv * 0.15) },
+      { source: "Live", revenue: Math.round(ltv * 0.12) },
+    ];
+  }, [ltv]);
 
   const recommendations = useMemo(() => {
     const raw = em.recommendations ?? em.actions ?? [];
@@ -409,7 +442,7 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
     year: "numeric", month: "short", day: "numeric",
   });
 
-  const trajectoryChart = (
+  const trajectoryChart = trajectory && (
     <LineChart data={trajectory} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
       <defs>
         <linearGradient id="indieLine" x1="0" y1="0" x2="1" y2="0">
@@ -433,7 +466,7 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
     </LineChart>
   );
 
-  const revenueChart = (
+  const revenueChart = revenueSnapshot && (
     <BarChart data={revenueSnapshot} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
       <defs>
         <linearGradient id="indieBar" x1="0" y1="0" x2="0" y2="1">
@@ -578,9 +611,9 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4 mb-14">
           {[
             { label: "Social Engagement Index", value: engagementScore === null ? "—" : engagementScore.toFixed(0), icon: Activity, title: engagementScore === null ? "Not enough TikTok data yet to compute this" : "Cumulative engagement relative to audience size" },
-            { label: "Retention Rate", value: `${retentionRate.toFixed(0)}%`, icon: Users },
+            { label: "Retention Rate", value: retentionRate === null ? LIMITED_LABEL : `${retentionRate.toFixed(0)}%`, icon: Users, valueColor: retentionRate === null ? C.warm : undefined, valueSize: retentionRate === null ? "text-xl" : undefined, title: retentionRate === null ? LIMITED_TOOLTIP : undefined },
             { label: "Monthly Listeners", value: fmtCompact(monthlyListeners), icon: TrendingUp },
-            { label: "LTV Projection", value: fmtUSD(ltv), icon: DollarSign, title: "Estimated using a global blended benchmark ($0.012/listener/month). Real values vary by geographic distribution and audience retention." },
+            { label: "LTV Projection", value: ltv === null ? LIMITED_LABEL : fmtUSD(ltv), icon: DollarSign, valueColor: ltv === null ? C.warm : undefined, valueSize: ltv === null ? "text-xl" : undefined, title: ltv === null ? LIMITED_TOOLTIP : "Estimated using a global blended benchmark ($0.012/listener/month). Real values vary by geographic distribution and audience retention." },
             { label: "Industry Buzz", value: buzzBadge ? buzzBadge.label : "—", icon: Newspaper, valueColor: buzzBadge?.color, title: buzzBadge ? "Recent press & industry coverage sentiment" : "Not enough recent press coverage found" },
             { label: "Fan Loyalty Index", value: fanLoyaltyIndex === null ? "—" : fanLoyaltyIndex.toFixed(0), icon: Heart, title: fanLoyaltyIndex === null ? "Not enough TikTok or Spotify data yet to compute this" : "Blends TikTok engagement depth with cross-platform streaming retention" },
           ].map((k, i) => (
@@ -596,7 +629,7 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
                 <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: C.gray }}>{k.label}</span>
                 <k.icon className="w-3.5 h-3.5" style={{ color: C.cyan, filter: `drop-shadow(0 0 6px ${C.cyan}AA)` }} />
               </div>
-              <div className={`${mono} text-3xl font-semibold`} style={{ color: (k as any).valueColor || C.white }}>{k.value}</div>
+              <div className={`${mono} ${(k as any).valueSize || "text-3xl"} font-semibold`} style={{ color: (k as any).valueColor || C.white }}>{k.value}</div>
             </motion.div>
           ))}
         </div>
@@ -614,7 +647,9 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
             <Music className="w-4 h-4" style={{ color: C.cyan }} />
           </div>
           <div className="h-72">
-            {isPrinting
+            {!trajectoryChart
+              ? <LimitedChartState />
+              : isPrinting
               ? cloneElement(trajectoryChart, { width: PRINT_CHART_WIDTH, height: 288 })
               : <ResponsiveContainer width="100%" height="100%">{trajectoryChart}</ResponsiveContainer>}
           </div>
@@ -875,7 +910,9 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
             <DollarSign className="w-4 h-4" style={{ color: C.cyan }} />
           </div>
           <div className="h-64">
-            {isPrinting
+            {!revenueChart
+              ? <LimitedChartState />
+              : isPrinting
               ? cloneElement(revenueChart, { width: PRINT_CHART_WIDTH, height: 256 })
               : <ResponsiveContainer width="100%" height="100%">{revenueChart}</ResponsiveContainer>}
           </div>
