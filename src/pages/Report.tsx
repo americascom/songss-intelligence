@@ -875,7 +875,7 @@ function ReportInner() {
                   Need something custom? Our strategy team is ready to build around your specific goals.
                 </p>
                 <a
-                  href="mailto:hello@songssintelligence.com"
+                  href="/opus"
                   className="inline-flex items-center gap-2 rounded-lg px-7 py-4 text-xs font-bold uppercase tracking-[0.2em] transition-all hover:scale-[1.02]"
                   style={{ background: C.cyan, color: C.bg, boxShadow: `0 0 30px ${C.cyan}55` }}
                 >

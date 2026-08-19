@@ -2229,6 +2229,121 @@ eyes in a future session rather than rush it. The field is live and
 populated in `engagement_metrics.fan_loyalty_index` on every new report
 starting now, just not yet shown anywhere in the UI.
 
+RESOLVED (implemented 2026-08-19): **`/opus` lead-capture page + a new,
+separate n8n workflow ("Opus Maximus Lead Capture") — the Pricing page's
+Opus Maximus "Get Started" button and Report.tsx's Enterprise/Opus
+existing-customer footer CTA both now route here instead of a raw `mailto:`
+link.** Deliberately NOT part of the NIE flow — no Supabase writes, no
+Stripe checkout, just a webhook → email notification to
+`admin@songssintelligence.com` so the team can prepare a manual, tailored
+proposal for this white-glove tier.
+
+**Frontend**: new `src/pages/Opus.tsx`, routed at `/opus` in `App.tsx`.
+Card-based form (matches `Auth.tsx`'s Header+Footer+Card shadcn styling,
+not `Submit.tsx`'s raw-hex intake-flow look, since this is a marketing/
+lead-gen page reachable from Pricing, not a mid-payment-flow intake).
+Fields: Name*, Company, Contact Email*, Catalog/Portfolio Size (free-text,
+e.g. "25 artists"), Primary Need (Select: Catalog Valuation / Investment
+Decisions / Compliance / Other — "Other" reveals a required free-text
+"Tell us more" field, reusing the same Select+Textarea pattern already
+established in `Submit.tsx` for Enterprise-tier fields). On submit, POSTs
+JSON (`name`, `company`, `email`, `catalog_size`, `primary_need`,
+`need_details`) to `https://n8n.songssintelligence.com/webhook/opus-lead`
+and shows the exact thank-you copy specified by Gilberto in place of the
+form. `Pricing.tsx`'s Opus Maximus card already had `ctaLink: "/opus"` set
+(pre-existing, routes via `PricingCard`'s internal `<Link>` — no change
+needed there). `Report.tsx`'s enterprise/opus-tier footer CTA
+("Contact Us for Custom Solutions") changed from `mailto:hello@...` to
+`href="/opus"`. `tsc -p tsconfig.app.json --noEmit` and `vite build` both
+clean.
+
+**Backend — found and built on prior same-session groundwork**: mid-task,
+discovered a disposable dry-run n8n container (`n8n_dryrun_opus`, isolated
+`/tmp/n8n_dryrun` volume, its own scratch copy of the DB) already running
+with a structurally-identical, already-execution-tested "Opus Maximus Lead
+Capture" workflow (webhook → `emailSend` via the real "SMTP account"
+credential, id `6JTe1tM0OaFntxjN` — confirmed matches production's real
+credential row, not a dry-run fake) — evidence of this exact task having
+been started earlier the same day (a real
+`manual_20260819_122115_pre_opus_lead_workflow.sqlite` backup on disk
+confirms it), before context was lost to compaction. Investigated rather
+than assumed before building on it (per the standing "investigate
+unfamiliar state" rule) — confirmed the dry-run's SMTP credential ID and
+encryption key genuinely matched live production, so it was safe to trust
+as a real validated starting point, not discarded.
+
+Adjusted its field names to match this session's actual frontend payload
+(dry-run version used a single combined `name_company` field and `notes`;
+this build uses separate `name`/`company` and `need_details` — a UX
+preference, not a correctness fix) and re-validated the edited version
+fresh in the same dry-run container before touching production: 2 curl
+tests (populated fields, and an all-optional-fields-blank edge case) both
+returned clean `200`/`{"status":"ok"}`, `execution_entity.status:
+'success'`, and real SMTP `messageId`/`accepted` responses — confirms an
+actual send succeeded, not just a silent no-op. Also had to clean up a
+path collision: the dry-run's own leftover original workflow
+(`e4ec78d063f144b9`) still had `opus-lead` registered in
+`webhook_entity` even after being deactivated (a stale registration, not
+cleared by `active=false` alone) — deleted outright since it was disposable
+scratch state, not real data.
+
+**Deployed to production**: fresh backup
+(`manual_20260819_175807_pre_opus_lead_workflow_live_deploy.sqlite`,
+taken immediately before the live write despite the earlier same-day
+backup already existing — Golden Rule 6 has no "already backed up
+recently" exception, see
+[[feedback_backup_before_any_db_write]]). Confirmed no `opus-lead` path or
+`Opus`-named workflow existed in production first. Deployed via `n8n
+import:workflow` (not the manual 3-DB-location SQL patch method used for
+the existing NIE workflow — that method exists to handle
+`workflow_history` versioning on an *existing* workflow being edited; this
+is a brand-new, fully separate workflow, so n8n's own CLI import is the
+correct, simpler tool and doesn't touch the NIE workflow's rows at all).
+`n8n update:workflow --active=true` + `docker restart n8n_songss` (CLI
+activation needs a restart to actually register the webhook route — same
+lesson as every other n8n CLI activation in this project's history). Clean
+restart: all 4 workflows (Lead Magnet, NIE, the inactive Granite test
+harness, and this new one) activated with no errors — the live NIE/Stripe
+pipeline was not touched or disrupted.
+
+**Live-verified 3 ways**: 1) direct container-internal POST (bypasses
+Cloudflare, mirrors the established webhook-testing precedent) — clean
+`200`, real execution success. 2) **Real public edge test** — this was the
+one genuine open risk worth checking empirically rather than assuming:
+whether Cloudflare WAF Rule 5 ("Protect n8n Webhook Endpoint") would
+challenge this brand-new path the same way Rule 4 blocked Douglas's
+`/webhook/submit-analysis` CORS preflights (see
+[[project_douglas_real_customer_bugs_2026-08-16]]). Curled both an `OPTIONS`
+preflight and the real `POST` directly against
+`https://n8n.songssintelligence.com/webhook/opus-lead` through the actual
+Cloudflare edge (real `Origin`/`Referer` headers matching what the browser
+sends) — `OPTIONS` → real `204` with correct
+`access-control-allow-origin`, `POST` → real `200`, `{"status":"ok"}`,
+`cf-cache-status: DYNAMIC`, no `cf-mitigated` challenge on either. Rule 5
+does not block this endpoint — no WAF change needed. 3) confirmed via
+`execution_entity` that both production test runs (one internal, one
+through the public edge, both clearly marked `__TEST__` in the name field
+so they're identifiable if Gilberto checks the inbox) completed
+`status: 'success'`.
+
+**Cleanup**: the disposable dry-run container and its `/tmp/n8n_dryrun`
+scratch volume were removed after use; a leftover workflow-export scratch
+file inside `n8n_songss`'s own `/tmp` was also removed (contained only the
+SMTP credential's *name/id* reference, not its actual secret value — same
+non-exposure as any workflow export via the n8n UI).
+
+**Known, not chased**: no bot/spam protection on this new public form
+(no Turnstile, no WAF Referer-scoping rule) — the existing Rule 4 pattern
+used for `/webhook/submit-analysis` was deliberately not extended to
+`/webhook/opus-lead` this session, since the endpoint fully works without
+it and adding WAF scoping is a separate dashboard change; worth adding if
+this endpoint sees abuse. Real test emails (2 from the isolated dry-run,
+2 from production verification, all clearly marked `__TEST__`/diagnostic
+in the `name` field) were sent to the real `admin@songssintelligence.com`
+inbox as an unavoidable side effect of proving the SMTP send genuinely
+works — nothing to clean up server-side since this workflow has no
+database writes at all. Not yet committed to git.
+
 ---
 
 ## 5. SUPABASE DATABASE
