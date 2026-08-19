@@ -18,7 +18,11 @@ export default function Auth() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [recoveryLoading, setRecoveryLoading] = useState(false);
-  const { signIn, signUp, isPasswordRecovery, updatePassword } = useAuth();
+  const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const { signIn, signUp, isPasswordRecovery, resetPasswordForEmail, updatePassword } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,6 +81,95 @@ export default function Auth() {
       setRecoveryLoading(false);
     }
   };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetLoading(true);
+
+    try {
+      const { error } = await resetPasswordForEmail(resetEmail);
+      if (error) {
+        toast.error(error.message);
+      } else {
+        setResetSent(true);
+      }
+    } catch (err) {
+      toast.error('An unexpected error occurred');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  if (forgotPasswordMode) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+
+        <main className="flex-1 flex items-center justify-center px-4 py-12">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold">Reset Password</CardTitle>
+              <CardDescription>
+                {resetSent
+                  ? "Check your email for a link to reset your password."
+                  : "Enter your email and we'll send you a link to reset your password."}
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent>
+              {resetSent ? (
+                <Button
+                  type="button"
+                  className="w-full bg-primary hover:bg-primary/90"
+                  onClick={() => {
+                    setForgotPasswordMode(false);
+                    setResetSent(false);
+                    setResetEmail('');
+                  }}
+                >
+                  Back to Sign In
+                </Button>
+              ) : (
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="resetEmail">Email</Label>
+                    <Input
+                      id="resetEmail"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full bg-primary hover:bg-primary/90"
+                    disabled={resetLoading}
+                  >
+                    {resetLoading ? 'Sending...' : 'Send Reset Link'}
+                  </Button>
+
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => setForgotPasswordMode(false)}
+                      className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      Back to Sign In
+                    </button>
+                  </div>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+        </main>
+
+        <Footer />
+      </div>
+    );
+  }
 
   if (isPasswordRecovery) {
     return (
@@ -194,16 +287,28 @@ export default function Auth() {
                   minLength={6}
                 />
               </div>
-              
-              <Button 
-                type="submit" 
+
+              {isLogin && (
+                <div className="text-right -mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setForgotPasswordMode(true)}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              )}
+
+              <Button
+                type="submit"
                 className="w-full bg-primary hover:bg-primary/90"
                 disabled={loading}
               >
                 {loading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}
               </Button>
             </form>
-            
+
             <div className="mt-6 text-center">
               <button
                 type="button"

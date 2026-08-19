@@ -9,6 +9,7 @@ interface AuthContextType {
   isPasswordRecovery: boolean;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  resetPasswordForEmail: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -66,6 +67,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
+  const resetPasswordForEmail = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth`,
+    });
+    return { error };
+  };
+
   const updatePassword = async (password: string) => {
     const { error } = await supabase.auth.updateUser({ password });
     if (!error) {
@@ -79,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, isPasswordRecovery, signUp, signIn, updatePassword, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, isPasswordRecovery, signUp, signIn, resetPasswordForEmail, updatePassword, signOut }}>
       {children}
     </AuthContext.Provider>
   );
