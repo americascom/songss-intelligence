@@ -65,6 +65,7 @@ export default function Submit() {
   const [report, setReport] = useState<ReportRow | null>(null);
 
   const [artistName, setArtistName] = useState("");
+  const [spotifyUrl, setSpotifyUrl] = useState("");
   const [songName, setSongName] = useState("");
   const [market, setMarket] = useState("");
   const [context, setContext] = useState("");
@@ -187,6 +188,7 @@ export default function Submit() {
         body: JSON.stringify({
           session_id:          report.session_id,
           artist_name:         artistName.trim(),
+          spotify_url:         spotifyUrl.trim(),
           song_name:           songName.trim(),
           tiktok_username:     tiktokUsername.trim() || (((report.engagement_metrics as Record<string, unknown>)?.tiktok_username as string) ?? ""),
           youtube_channel_id:  youtubeChannelId.trim() || (((report.engagement_metrics as Record<string, unknown>)?.youtube_channel_id as string) ?? ""),
@@ -261,6 +263,21 @@ export default function Submit() {
                     className="bg-transparent border-white/10 focus-visible:ring-1"
                     style={{ borderColor: "rgba(255,255,255,0.08)" }}
                   />
+                  <p className="mt-1 text-[11px]" style={{ color: "#5A5A5A" }}>Please enter your artist name exactly as it appears on streaming platforms for the most accurate results.</p>
+                </Field>
+
+                <Field label="Spotify Artist Link" hint="Optional" htmlFor="spotify-url">
+                  <Input
+                    id="spotify-url"
+                    name="spotify-url"
+                    value={spotifyUrl}
+                    onChange={(e) => setSpotifyUrl(e.target.value)}
+                    placeholder="https://open.spotify.com/artist/..."
+                    maxLength={200}
+                    className="bg-transparent border-white/10 focus-visible:ring-1"
+                    style={{ borderColor: "rgba(255,255,255,0.08)" }}
+                  />
+                  <p className="mt-1 text-[11px]" style={{ color: "#5A5A5A" }}>For the most accurate results, paste your Spotify artist profile link (e.g., open.spotify.com/artist/...).</p>
                 </Field>
 
                 <Field label="Song Name" hint="Optional" htmlFor="song-name">
