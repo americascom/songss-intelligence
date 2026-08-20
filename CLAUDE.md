@@ -3430,7 +3430,7 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
 
 ## 12. CONTACTS
 
-Email: hello@songssintelligence.com / admin@songssintelligence.com
+Email: hello@songssintelligence.com
 Company: Americascom, Inc. — 651 N Broad St, Ste 206, Middletown, DE 19709, USA
 Stripe Portal: https://buyer.americaspay.com/p/login/bJe4gz9tjbuTfSa1zL3cc00
 Supabase Studio: https://studio.songssintelligence.com
