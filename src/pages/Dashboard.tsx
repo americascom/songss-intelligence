@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ExternalLink, FileText, TrendingUp, Calendar, User as UserIcon, Plus } from "lucide-react";
+import { ExternalLink, FileText, TrendingUp, Calendar, User as UserIcon, Plus, Settings as SettingsIcon } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/hooks/useAuth";
@@ -117,16 +117,24 @@ const Dashboard = () => {
                 {user.email}
               </p>
             </div>
-            <a
-              href={MANAGE_SUBSCRIPTION_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variant="outline">
-                Manage Subscription
-                <ExternalLink className="w-4 h-4 ml-2" />
-              </Button>
-            </a>
+            <div className="flex items-center gap-3">
+              <Link to="/settings">
+                <Button variant="outline">
+                  <SettingsIcon className="w-4 h-4 mr-2" />
+                  Account Settings
+                </Button>
+              </Link>
+              <a
+                href={MANAGE_SUBSCRIPTION_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="outline">
+                  Manage Subscription
+                  <ExternalLink className="w-4 h-4 ml-2" />
+                </Button>
+              </a>
+            </div>
           </div>
 
           {/* Quota */}

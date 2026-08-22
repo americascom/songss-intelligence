@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
+import Settings from "./pages/Settings";
 import Pricing from "./pages/Pricing";
 import Opus from "./pages/Opus";
 import About from "./pages/About";
@@ -30,6 +31,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/opus" element={<Opus />} />
               <Route path="/about" element={<About />} />
