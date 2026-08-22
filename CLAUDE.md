@@ -2515,6 +2515,148 @@ same screen space, rather than blanket-occluding every back-side label
 (which is what changed the felt "aliveness" of the always-visible-labels
 look Gilberto prefers).
 
+IMPLEMENTED (built 2026-08-20, documented 2026-08-21): **Synthetic
+end-to-end purchase-flow monitoring — detects any n8n restart, fires a
+real full customer-journey test, alerts Telegram only on failure.** Built
+and deployed 2026-08-20 but never written to CLAUDE.md or memory at the
+time — a follow-up session on 2026-08-21 could find no record of it
+anywhere (not in this doc, not in the memory index) despite Telegram/email
+proof it had run successfully the day before, and had to rediscover it via
+a live filesystem/crontab/secrets.env audit. **This entry exists
+specifically to close that gap** — see
+`project_synthetic_monitoring_system_2026-08-20` in memory for the
+rediscovery-session detail.
+
+**Files, all under `/docker/n8n/synthetic_test/`** (none of this lives in
+git — VPS-only, same as `/docker/n8n/backups/` and `secrets.env`):
+- `watch_n8n_restart.sh` (700 root) — cron'd every minute. Polls `docker
+  inspect --format='{{.State.StartedAt}}' n8n_songss` each tick; any
+  change (manual `docker restart`, `--force-recreate`, or an unexpected
+  crash-restart — all three look identical via `StartedAt`, so all three
+  are caught) arms a 120s debounce window (`state/pending_since.txt`), and
+  a further restart before the window elapses re-arms it — coalescing a
+  burst of rapid restarts (e.g. mid-session workflow patching, which this
+  project does constantly) into exactly one test after the *last* one
+  settles, not one per restart. Once debounce settles, polls
+  `http://localhost:5678/healthz` (180s timeout, 5s interval) before
+  dispatching the test. Container-not-running and
+  healthz-never-came-up-after-restart each fire their own distinct
+  Telegram alert (`state/down_alert_sent.flag` dedupes repeated
+  down-alerts so it doesn't spam every minute the container stays down).
+  Uses `flock` on `state/watcher.lock` to skip a tick rather than stack
+  overlapping runs, since a single test run can outlast one 1-minute cron
+  tick.
+- `run_synthetic_test.sh` (700 root, invoked by the watcher or run
+  standalone) — mirrors the REAL two-step customer journey end-to-end, not
+  just the Stripe webhook in isolation (confirmed by decoding a live
+  execution during this script's own build: `Insert Intelligence Report`
+  connects only to a dead-end email node — the Stripe webhook path alone
+  never runs the actual data-gathering/NIE pipeline). Sequence:
+  1. Fires a real, correctly HMAC-SHA256-signed fake
+     `checkout.session.completed` event at `/webhook/stripe-webhook` —
+     signed and sent from *inside* the `n8n_songss` container via a
+     temporary Node script (`docker cp`'d in, deleted after) so
+     `STRIPE_WEBHOOK_SECRET` never leaves the container. Verifies via
+     direct Postgres reads (not just the HTTP response — `Respond to
+     Stripe` fires unconditionally before the signature check even runs,
+     so a 200 alone proves nothing) that a real `auth.users` row and a
+     real `intelligence_reports` row appear within 90s — this brackets
+     account creation AND the welcome-email step, since `Send Welcome
+     Email` sits directly between the two in the real pipeline (§4 above).
+  2. Fires `/webhook/submit-analysis` (same endpoint the real
+     `/submit/:sessionId` page calls) with artist "Chappell Roan" /
+     TikTok handle `chappellroan` — chosen because it's a known-good,
+     already-validated real-data case throughout this project's history.
+     `responseNode` mode means the HTTP call itself blocks until the full
+     10-data-source + NIE pipeline finishes (280s timeout, comfortably
+     under n8n's 300s `EXECUTIONS_TIMEOUT`). Corroborates via Postgres
+     (not just the 200) that `report_markdown` is real (>500 chars, up to
+     a 30s grace period in case `Save Processed Session` commits slightly
+     after `Respond to Submit` fires) and a `processed_sessions` row
+     exists.
+  - Test session IDs are stamped `cs_test_synthetic_monitor_<timestamp>`;
+    a `trap cleanup EXIT` always deletes the `auth.users`/
+    `intelligence_reports`/`processed_sessions` rows it created,
+    regardless of pass or fail — 0 rows left behind on either path.
+  - On any failure, alerts Telegram with a **specific, actionable**
+    diagnosis, not a generic "test failed" — e.g. distinguishes "webhook
+    itself rejected" vs. "welcome-email step failed" (isolates to SMTP/
+    `Generate Welcome Link`) vs. "Submit Trigger never returned 200"
+    (isolates to the NIE pipeline) vs. "200 returned but DB doesn't
+    corroborate a real report" (a genuine API-said-yes-but-nothing-
+    happened gap). The webhook-rejected case explicitly calls out
+    similarity to the 2026-08-15 `$binary` regression (§4 above) that
+    silently blocked every real Stripe payment for 2 weeks, since that's
+    the exact failure mode this test exists to catch early.
+  - **On full success, stays completely silent** — only a local
+    `watcher.log` line, no Telegram message. Deliberate: Telegram should
+    only ever ping for a real problem, not confirm routine health.
+- `send_telegram_alert.sh` (700 root) — thin wrapper around the Telegram
+  Bot API `sendMessage`. Reads `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`
+  from `/docker/n8n/secrets.env` via a literal `sed` read (no shell
+  interpretation of the value — same pattern already used for
+  `offsite_backup.sh`'s GPG passphrase, §3). Never fails the caller: if
+  either var is unset, it just logs locally instead of erroring, so the
+  watcher can be deployed before the bot itself is configured.
+- `watcher.log` (644) — shared timeline log for both scripts (restart
+  detection, debounce, readiness polling, every test's stage-by-stage
+  pass/fail). `cron_stderr.log` (644, separate) — stderr-only capture of
+  the raw cron invocation; empty means the script itself never crashed
+  (distinct from a test *failure*, which logs to `watcher.log` and alerts
+  Telegram instead).
+- `state/` (755) — `last_started_at.txt` (baseline for restart diffing),
+  `pending_since.txt` (transient, only exists mid-debounce),
+  `watcher.lock` (flock target), `down_alert_sent.flag` (transient dedupe
+  marker).
+- `run_synthetic_test.sh.backup_20260820_pre_plus_addressing_fix` — the
+  pre-fix version, kept for reference (see fix #1 below).
+
+**Cron entry** (root's crontab — `crontab -l`; not in any file under
+version control, `/etc/cron.d/`, or `/etc/crontab`):
+```
+* * * * * /docker/n8n/synthetic_test/watch_n8n_restart.sh >> /docker/n8n/synthetic_test/cron_stderr.log 2>&1
+```
+Sits alongside the two pre-existing backup cron jobs (`backup_n8n.sh`
+hourly, `offsite_backup.sh` daily 03:00 — see §3) — 3 total root cron
+entries as of 2026-08-21.
+
+**Telegram bot**: `@songss_monitor_bot`. Credentials live in
+`/docker/n8n/secrets.env` as `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` —
+same visible, git-ignored, 600-perm secrets pattern as every other API key
+in this project (set via `secrets_upsert.py`, the hidden-prompt `getpass`
+helper, so the raw values never hit a terminal transcript).
+
+**Two same-day fixes (2026-08-20), both confirmed applied and currently
+live**:
+1. **Plus-addressing fix.** `TEST_EMAIL` was originally
+   `synthetic-monitor+n8n-restart-${STAMP}@songssintelligence.com` — a
+   plus-address off a `synthetic-monitor` local-part that isn't a real
+   mailbox, so these test-account emails (welcome email, "tell us who to
+   analyze" email) had nowhere real to land. Fixed to
+   `hello+synthetic-monitor-n8n-restart-${STAMP}@songssintelligence.com` —
+   plus-addressed off the real `hello@` inbox (§12 Contacts), so test
+   emails land somewhere real and stay trivially filterable/searchable by
+   the `synthetic-monitor` tag. Confirmed via `diff` against
+   `run_synthetic_test.sh.backup_20260820_pre_plus_addressing_fix` that
+   this is the only change between the two versions.
+2. **Chat-ID fix.** `TELEGRAM_CHAT_ID` in `secrets.env` was originally
+   `479524966` (wrong chat — alerts would have gone nowhere Gilberto could
+   see them), corrected to `8225396128`. Pre-fix `secrets.env` backed up
+   to `secrets.env.pre_telegram_chatid_fix_20260820_133524`.
+
+**Live-verified working end-to-end, confirmed 2026-08-21 by reading
+`watcher.log` directly (not assumed from memory)**: a real restart of
+`n8n_songss` at `2026-08-20T19:11:50Z` was detected, correctly debounced
+120s, health-checked, and dispatched a real synthetic test — passed
+(`report_markdown=2078` chars, `processed_sessions` row confirmed, full
+cleanup). The cron-driven watcher then independently fired 2 more full
+passing runs later the same day (20:17 → `2635` chars, 20:22 → `2682`
+chars) without any restart trigger — a reminder that any org-level restart
+or crash, not just a deliberate one, will trip this. One earlier same-day
+run (13:46, before the chat-ID fix landed) failed cleanly on a real
+timeout — useful negative-path evidence that the failure-diagnosis logic
+works, not only the happy path.
+
 ---
 
 ## 5. SUPABASE DATABASE
