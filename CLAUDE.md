@@ -156,6 +156,42 @@ left disconnected rather than rewired. Live duplicate-Stripe-webhook
 protection may not currently exist at all; worth deciding whether that's a
 real gap to fix or dead code to remove.
 
+### `/root/report-generator` — now the live model backend for the NIE pipeline (confirmed 2026-09-03)
+A FastAPI service (`report-generator`, Docker container, port 8001→8000,
+attached to the `n8n_n8n-net` docker network) that generates all 3 of the
+NIE pipeline's LLM calls — see the "3 LLM calls, not 1" breakdown below.
+Originally found undocumented 2026-08-31 (see CLAUDE_ARCHIVE.md for that
+discovery + the Golden Rule 4 service_role-key-exposure fix from that day).
+As of 2026-09-03 it has been rebuilt, verified against the live model APIs,
+wired into the production workflow, and confirmed working end-to-end via a
+real synthetic purchase-flow test (execution #982) — this is no longer an
+unverified/orphaned service. Full history in memory
+`project_report_generator_luna_opus_routing`.
+
+- **Model routing**: `gpt-5.6-luna` (OpenAI) for every tier except Opus
+  Maximus; `claude-opus-4-8` (Anthropic) for Opus Maximus only. Both models
+  are new enough that their API surfaces had real gotchas found only by
+  testing live (no `temperature` support on either the OpenAI reasoning model
+  or the installed Anthropic SDK 1.3.0; `gpt-5.6-luna` needs
+  `max_completion_tokens` and `reasoning_effort="low"` or it can silently
+  burn its whole token budget on reasoning and return empty). **Re-verify
+  against the live APIs before trusting `main.py`'s handling if either model
+  updates.**
+- **No longer holds Supabase credentials at all** — the earlier Golden Rule 4
+  service_role-key exposure was fixed by removing the write path entirely,
+  not just relocating the key. n8n's existing `Insert Intelligence
+  Report`/`HTTP Request` nodes remain the sole write path to
+  `intelligence_reports`.
+- **Endpoint**: `POST http://report-generator:8000/generate` with
+  `{report_type: "nie_main"|"indie_coach"|"json_extract", ...}`, returns
+  `{"output": "<string>"}`. Ported prompts verbatim from the Gemini nodes it
+  replaced, so branding/formatting is unchanged.
+- n8n's `NIE — Neural Intelligence Engine`, `NIE — Indie Coach`, and `AI
+  Agent` nodes are now `httpRequest` nodes calling this service (were
+  `@n8n/n8n-nodes-langchain.agent` on Gemini before 2026-09-03). The 2
+  `Google Gemini Chat Model` sub-nodes are left in place but disconnected,
+  not deleted, for cheap rollback.
+
 ### Real, computed metrics (all deterministic from real `structured_data`, NOT AI-guessed)
 These were reworked one at a time (Jul–Aug 2026) to replace AI "estimate by
 tone" free-text with code-computed formulas anchored on real fetched data.
@@ -189,9 +225,12 @@ Full formulas/derivations in ARCHIVE + the named memory files. All null
   premium `NIE — Neural Intelligence Engine` report regardless of tier — now
   only affects `digital_score` + `geo_hotspots` (the metrics above are
   code-computed and no longer read from it). Tracked in §11.
-- **Pipeline never differentiated models by tier** — every tier runs the same
-  hardcoded `gemini-2.5-flash`; §7's Haiku/Sonnet/Opus claims were never true.
-  Tracked in §11.
+- ~~Pipeline never differentiated models by tier~~ — RESOLVED 2026-09-03: the
+  pipeline now routes through `/root/report-generator` (§4) with real
+  per-tier model selection (`gpt-5.6-luna` default, `claude-opus-4-8` for
+  Opus Maximus). §7's specific Haiku/Sonnet/Opus table text is still stale
+  and needs rewriting to match — tracked in §11 — but the underlying
+  "every tier is hardcoded to one model" gap itself is closed.
 - **`apikey` header still hardcoded** on all 9 Supabase-writing nodes (the
   `Authorization` header is credential-backed; n8n's `httpHeaderAuth` injects
   only one header, so `apikey` stays raw — a known Golden Rule 4 structural
@@ -257,11 +296,16 @@ Enterprise: $299/mo | 150 queries | Sonnet + GPT-4o
 Opus Maximus: $1,500/mo or $12k/yr | 1,500 queries | Opus (Taylor Made — no self-service)
 Opus + Compliance: $3,000/mo or $24k/yr | 1,500 queries | Opus + IBM watsonx
 
-CAVEAT (open, tracked in §11): the per-tier model claims above have never
-reflected the pipeline — every tier runs the same hardcoded `gemini-2.5-flash`.
-Either build real per-tier routing or rewrite this table. The IBM Granite
-initiative referenced in older docs was CANCELLED 2026-08-15 (dead plumbing
-left in place; nothing sets `granite_powered` true).
+CAVEAT (open, tracked in §11): the per-tier model names above (Haiku/Sonnet/
+GPT-4o/Opus/watsonx) do not reflect the pipeline. As of 2026-09-03 the NIE
+workflow routes through `/root/report-generator` (§4) with a real but simpler
+two-way split — `gpt-5.6-luna` for every tier except Opus Maximus,
+`claude-opus-4-8` for Opus Maximus only — not the four-way Haiku/Sonnet/Opus
+breakdown this table describes. Per-tier routing now genuinely exists (it
+didn't before 2026-09-03), but this table's specific model names are stale
+and still need rewriting to match. The IBM Granite initiative referenced in
+older docs was CANCELLED 2026-08-15 (dead plumbing left in place; nothing
+sets `granite_powered` true).
 
 ---
 
@@ -325,6 +369,13 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
   assuming they're live; commit if confirmed good.
 
 ### n8n / backend
+- [ ] **OpenAI Migration (HALTED)** — 2026-08-28 attempt to replace Gemini Brand Intelligence
+      node with OpenAI via Code node + this.helpers.httpRequest() discovered pre-existing
+      report-generation pipeline failure + database corruption across all backups. Halted.
+      See `memory/openai_migration_2026_08_28.md` for full analysis. PLAN: Restore clean
+      pre-2026-08-28 backup, verify original pipeline works, THEN retry OpenAI migration
+      carefully with incremental testing. Prompts preserved in /tmp/ for tomorrow. DO NOT
+      ATTEMPT RECOVERY TONIGHT.
 - [ ] **Content Automation — Video Captioning** (`contentAutomationCaption01`)
       — inactive. Drive folder ID repointed to "ParaPostar Songss NIE"
       (`1NSQyPD8e8bYLJdFY2zxPg8RdZaUDSJfs`) 2026-08-23. Before go-live:
@@ -335,9 +386,11 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       premium NIE report regardless of tier (now only affects `digital_score`
       + `geo_hotspots`). Part of the LTV/predictive-metrics rework; the three
       metric formulas themselves are DONE.
-- [ ] **Pricing table model differentiation never existed** — Haiku/Sonnet/Opus
-      per-tier claims are false; all tiers run hardcoded `gemini-2.5-flash`.
-      Either build real per-tier routing or rewrite §7. Its own session.
+- [ ] **§7 pricing table text is stale** — per-tier model routing now genuinely
+      exists (`gpt-5.6-luna` default / `claude-opus-4-8` for Opus Maximus via
+      `/root/report-generator`, done 2026-09-03, see §4), but §7's own
+      Haiku/Sonnet/Opus/watsonx text was never updated to match and still
+      describes the old four-way split. Just needs the table text rewritten.
 - [ ] **Supabase pooler/realtime/functions crash loops** — non-blocking, not on
       the live customer path. pooler: Cloak/cipher key mismatch; realtime: Ecto
       migration error; edge-functions: no entrypoint (never deployed). All
