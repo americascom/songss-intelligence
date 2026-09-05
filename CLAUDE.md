@@ -221,10 +221,46 @@ Full formulas/derivations in ARCHIVE + the named memory files. All null
   succeeded and real Postgres writes happened. Real work persists; only n8n's
   own execution history is wrong. Likely delayed, not lost. See ARCHIVE +
   `project_execution_entity_finalization_investigation_2026-07-17`.
-- **Extraction step tier-blindness** (open): `Edit Fields` always reads the
-  premium `NIE — Neural Intelligence Engine` report regardless of tier — now
-  only affects `digital_score` + `geo_hotspots` (the metrics above are
-  code-computed and no longer read from it). Tracked in §11.
+- **Extraction step tier-blindness / real tier-depth gating** (IN PROGRESS,
+  2026-09-05, see `project_tier_depth_ceiling_fix_2026-09-05` for full
+  detail): this was more severe than previously documented here — it wasn't
+  just `digital_score`/`geo_hotspots`, essentially the entire numeric/visual
+  report (retention, LTV, growth trajectory, revenue charts) was identical
+  across every tier, with real depth differentiation now added server-side
+  in `Code in JavaScript` (new `TIER_DEPTH` ladder truncates `geo_hotspots`
+  and `growth_trajectory` per tier before persisting) — **LIVE in n8n prod,
+  verified for Indie**, untested-live for Growth/Pro, **blocked for
+  Enterprise+/Opus** by an unrelated pre-existing bug below. Also added:
+  `retention_rate`/`fan_loyalty_index` ceiling flags (cap-and-flag fix for
+  the 100%-looks-fabricated issue — real math, not a data bug, see the
+  memory for the Billie Eilish trace); a new IF node so `GPT-4o —
+  Financial Analysis`/`Gemini — Brand Intelligence` are only called for
+  Enterprise+ instead of every tier and discarded; real (not fabricated)
+  `revenue_economics` sourced from that GPT-4o call, gated Enterprise+ only.
+  Frontend changes (`Report.tsx`/`ArtistIndieReport.tsx`) done, typechecked,
+  **not yet committed to git**.
+- **CRITICAL — GPT-4o — Financial Analysis's OpenAI key is invalid** (found
+  2026-09-05 while verifying the above, pre-existing/unrelated to it):
+  correction to this entry's earlier text — the node's `Authorization`
+  header was already `Bearer {{ $env.OPENAI_API_KEY }}` (not a hardcoded
+  literal; confirmed identical in both `workflow_entity.nodes` and the
+  latest `workflow_history` row, so no rewiring was needed/is a Rule-4
+  exposure). The real problem is the key value itself: OpenAI returns a
+  genuine `401 invalid_api_key` ("Incorrect API key provided") directly,
+  which cascades into a hard failure of `NIE — Neural Intelligence Engine`
+  for any tier that reads this node's output. Previously invisible because
+  only Enterprise/Opus Maximus/Opus + Compliance ever consume it — **any
+  real customer on those tiers currently gets a failed report generation**.
+  Gilberto set a fresh key via `secrets_upsert.py` 2026-09-05 and n8n was
+  force-recreated to load it (confirmed via SHA-256 hash the container is
+  reading that exact value, no whitespace/newline corruption, correct
+  `sk-proj-` prefix/length) — **that key still gets rejected by OpenAI
+  itself**, confirmed via a real Enterprise-tier synthetic purchase-flow
+  test (session `cs_test_synthetic_enterprise_20260905_131210`, execution
+  #1128). Needs Gilberto to re-check/regenerate the key in the OpenAI
+  dashboard (platform.openai.com/account/api-keys) — nothing left to fix
+  on our end until then; re-verification takes under 2 minutes once a
+  working key is confirmed.
 - ~~Pipeline never differentiated models by tier~~ — RESOLVED 2026-09-03: the
   pipeline now routes through `/root/report-generator` (§4) with real
   per-tier model selection (`gpt-5.6-luna` default, `claude-opus-4-8` for
@@ -382,10 +418,23 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       (1) Gilberto connects Google Drive OAuth2 + Anthropic creds via n8n UI;
       (2) confirm that Drive account can access the new folder; (3) end-to-end
       test (upload video → caption .txt lands back) before activating. See §4.
-- [ ] **Extraction step tier-blindness** — `Edit Fields` always reads the
-      premium NIE report regardless of tier (now only affects `digital_score`
-      + `geo_hotspots`). Part of the LTV/predictive-metrics rework; the three
-      metric formulas themselves are DONE.
+- [ ] **Tier-depth/ceiling fix — IN PROGRESS (2026-09-05)** — see §4 and
+      memory `project_tier_depth_ceiling_fix_2026-09-05` for full detail.
+      n8n workflow patch is LIVE (3-DB-location method, backed up first),
+      verified end-to-end for Indie tier. Blocked on Enterprise+ verification
+      by the CRITICAL pre-existing OpenAI-key item in §4 (unrelated bug this
+      surfaced, not caused) — the node's header was already wired to
+      `$env.OPENAI_API_KEY` (no rewiring needed), but the key value itself
+      is rejected by OpenAI (401 invalid_api_key), confirmed via a real
+      Enterprise-tier synthetic test (execution #1128) even after Gilberto
+      set a fresh key + n8n was force-recreated 2026-09-05. Frontend changes
+      (`Report.tsx`, `ArtistIndieReport.tsx`, `shared.tsx`, deleted
+      `RevenueSnapshot.tsx`) committed 2026-09-05 since they're unrelated to
+      this key issue. Remaining steps: (1) Gilberto re-checks/regenerates
+      the key in the OpenAI dashboard, (2) `docker compose up -d
+      --force-recreate n8n` again once a corrected key is set (env_file
+      change), (3) re-verify Enterprise live, (4) fold this §11 entry + §4's
+      text into resolved history once Enterprise is verified.
 - [ ] **§7 pricing table text is stale** — per-tier model routing now genuinely
       exists (`gpt-5.6-luna` default / `claude-opus-4-8` for Opus Maximus via
       `/root/report-generator`, done 2026-09-03, see §4), but §7's own

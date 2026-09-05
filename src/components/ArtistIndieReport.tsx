@@ -1,13 +1,13 @@
 import { useMemo, cloneElement } from "react";
 import { motion } from "framer-motion";
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from "recharts";
 import {
   Download, Sparkles, Heart, TrendingUp, Users, DollarSign,
   Activity, MapPin, Lightbulb, Music, ArrowUpRight, Youtube, Instagram,
-  ShieldCheck, Radio, Calculator, Film, Award, AlertTriangle, Newspaper,
+  ShieldCheck, Radio, Calculator, Film, Award, AlertTriangle, Newspaper, Lock,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import PeerBenchmarkChart, { type PeerBenchmarkData } from "@/components/PeerBenchmarkChart";
@@ -53,6 +53,14 @@ const tooltipStyle: React.CSSProperties = {
 // warning specifically for a data-quality guard suppressing a real number.
 const LIMITED_LABEL = "⚠️ Limited";
 const LIMITED_TOOLTIP = "This data could not be confirmed for this artist or period.";
+// retention_rate/fan_loyalty_index are weighted-average ratio signals that
+// clamp at 100 -- real for legacy/global-superstar artists whose cumulative
+// Spotify followers exceed current monthly listeners (confirmed via a real
+// Billie Eilish report landing on exactly 100 for both). The clamp is
+// correct math, but a bare "100%" reads as a suspicious fabricated round
+// number for exactly the artists most likely to hit it. "100%+" plus this
+// tooltip makes the ceiling visible instead of silent.
+const CEILING_TOOLTIP = "This artist's cross-platform following has surpassed our measurement ceiling — a very strong loyalty signal, not a data error.";
 
 function LimitedChartState() {
   return (
@@ -265,6 +273,8 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
   // `0`, then `0 || 48`/`0 || 4200` into a fabricated number).
   const rawRetention = em.retention_rate ?? em.retentionRate;
   const retentionRate: number | null = rawRetention == null ? null : Number(rawRetention);
+  const retentionRateCeiling: boolean = !!em.retention_rate_ceiling;
+  const fanLoyaltyIndexCeiling: boolean = !!em.fan_loyalty_index_ceiling;
   // monthly_streams was an AI-fabricated free-text estimate (no formula) --
   // same class of bug already fixed for retention_rate/ltv_projection/
   // growth_trajectory. Use the real Spotify anchor those fields already use
@@ -330,16 +340,6 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
       { country: "United Kingdom", city: "London", score: 71, opportunity: "Editorial radar candidate" },
     ];
   }, [geo]);
-
-  const revenueSnapshot = useMemo(() => {
-    if (ltv === null) return null;
-    return [
-      { source: "Streaming", revenue: Math.round(ltv * 0.55) },
-      { source: "Merch", revenue: Math.round(ltv * 0.18) },
-      { source: "Sync", revenue: Math.round(ltv * 0.15) },
-      { source: "Live", revenue: Math.round(ltv * 0.12) },
-    ];
-  }, [ltv]);
 
   const recommendations = useMemo(() => {
     const raw = em.recommendations ?? em.actions ?? [];
@@ -466,21 +466,6 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
     </LineChart>
   );
 
-  const revenueChart = revenueSnapshot && (
-    <BarChart data={revenueSnapshot} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
-      <defs>
-        <linearGradient id="indieBar" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={C.cyanSoft} />
-          <stop offset="100%" stopColor={C.cyan} />
-        </linearGradient>
-      </defs>
-      <CartesianGrid stroke={C.border} strokeDasharray="2 4" vertical={false} />
-      <XAxis dataKey="source" stroke={C.gray} fontSize={11} tickLine={false} axisLine={{ stroke: C.border }} />
-      <YAxis stroke={C.gray} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${fmtCompact(v)}`} />
-      <Tooltip contentStyle={tooltipStyle} cursor={{ fill: `${C.cyan}10` }} formatter={(v: any) => fmtUSD(Number(v))} />
-      <Bar dataKey="revenue" fill="url(#indieBar)" radius={[8, 8, 0, 0]} animationDuration={1400} />
-    </BarChart>
-  );
 
   return (
     <div className="indie-report-root min-h-screen relative overflow-hidden" style={{ background: C.bg, color: C.white }}>
@@ -611,11 +596,11 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4 mb-14">
           {[
             { label: "Social Engagement Index", value: engagementScore === null ? "—" : engagementScore.toFixed(0), icon: Activity, title: engagementScore === null ? "Not enough TikTok data yet to compute this" : "Cumulative engagement relative to audience size" },
-            { label: "Retention Rate", value: retentionRate === null ? LIMITED_LABEL : `${retentionRate.toFixed(0)}%`, icon: Users, valueColor: retentionRate === null ? C.warm : undefined, valueSize: retentionRate === null ? "text-xl" : undefined, title: retentionRate === null ? LIMITED_TOOLTIP : undefined },
+            { label: "Retention Rate", value: retentionRate === null ? LIMITED_LABEL : `${retentionRate.toFixed(0)}${retentionRateCeiling ? "%+" : "%"}`, icon: Users, valueColor: retentionRate === null ? C.warm : undefined, valueSize: retentionRate === null ? "text-xl" : undefined, title: retentionRate === null ? LIMITED_TOOLTIP : retentionRateCeiling ? CEILING_TOOLTIP : undefined },
             { label: "Monthly Listeners", value: fmtCompact(monthlyListeners), icon: TrendingUp },
             { label: "LTV Projection", value: ltv === null ? LIMITED_LABEL : fmtUSD(ltv), icon: DollarSign, valueColor: ltv === null ? C.warm : undefined, valueSize: ltv === null ? "text-xl" : undefined, title: ltv === null ? LIMITED_TOOLTIP : "Estimated using a global blended benchmark ($0.012/listener/month). Real values vary by geographic distribution and audience retention." },
             { label: "Industry Buzz", value: buzzBadge ? buzzBadge.label : "—", icon: Newspaper, valueColor: buzzBadge?.color, title: buzzBadge ? "Recent press & industry coverage sentiment" : "Not enough recent press coverage found" },
-            { label: "Fan Loyalty Index", value: fanLoyaltyIndex === null ? "—" : fanLoyaltyIndex.toFixed(0), icon: Heart, title: fanLoyaltyIndex === null ? "Not enough TikTok or Spotify data yet to compute this" : "Blends TikTok engagement depth with cross-platform streaming retention" },
+            { label: "Fan Loyalty Index", value: fanLoyaltyIndex === null ? "—" : `${fanLoyaltyIndex.toFixed(0)}${fanLoyaltyIndexCeiling ? "+" : ""}`, icon: Heart, title: fanLoyaltyIndex === null ? "Not enough TikTok or Spotify data yet to compute this" : fanLoyaltyIndexCeiling ? CEILING_TOOLTIP : "Blends TikTok engagement depth with cross-platform streaming retention" },
           ].map((k, i) => (
             <motion.div
               key={k.label}
@@ -900,22 +885,20 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
           </div>
         </div>
 
-        {/* Revenue Snapshot */}
-        <div className="rounded-xl border p-6 mb-14" style={glass}>
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>Revenue Snapshot</h3>
-              <p className="text-xs mt-1" style={{ color: C.gray }}>Where the money is coming in today</p>
-            </div>
-            <DollarSign className="w-4 h-4" style={{ color: C.cyan }} />
+        {/* Revenue Stream Breakdown — locked (real per-category data requires a
+            per-artist GPT-4o financial-analyst pass, only run for Enterprise+;
+            this used to be a fabricated fixed-percentage split of the one real
+            LTV number with no data behind it -- removed rather than relabeled,
+            see CLAUDE.md §4/§11 2026-09-04). */}
+        <div className="rounded-xl border p-6 mb-14 text-center" style={glass}>
+          <div className="mb-4 flex items-center justify-center gap-2">
+            <Lock className="w-3.5 h-3.5" style={{ color: C.gray }} />
+            <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.gray }}>Revenue Stream Breakdown</h3>
           </div>
-          <div className="h-64">
-            {!revenueChart
-              ? <LimitedChartState />
-              : isPrinting
-              ? cloneElement(revenueChart, { width: PRINT_CHART_WIDTH, height: 256 })
-              : <ResponsiveContainer width="100%" height="100%">{revenueChart}</ResponsiveContainer>}
-          </div>
+          <p className="text-xs max-w-sm mx-auto leading-relaxed" style={{ color: C.grayDim }}>
+            A real, per-artist financial analysis broken out by revenue category unlocks at Enterprise.
+            Your LTV Projection above is real and available on every plan.
+          </p>
         </div>
 
         {/* YouTube Presence */}

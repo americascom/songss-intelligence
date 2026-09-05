@@ -56,6 +56,15 @@ export function fmtUSD(n: number) {
 export const LIMITED_TOOLTIP = "This data could not be confirmed for this artist or period.";
 export const LIMITED_LABEL = "⚠️ Limited";
 
+// retention_rate/fan_loyalty_index are weighted-average ratio signals that
+// clamp at 100 -- real for legacy/global-superstar artists whose cumulative
+// Spotify followers exceed current monthly listeners (confirmed via a real
+// Billie Eilish report landing on exactly 100 for both). The clamp is
+// correct math, but a bare "100%" reads as a suspicious fabricated round
+// number for exactly the artists most likely to hit it. "100%+" plus this
+// tooltip makes the ceiling visible instead of silent.
+export const CEILING_TOOLTIP = "This artist's cross-platform following has surpassed our measurement ceiling — a very strong loyalty signal, not a data error.";
+
 export function LimitedBadge({ size = "sm" }: { size?: "sm" | "md" } = {}) {
   return (
     <span

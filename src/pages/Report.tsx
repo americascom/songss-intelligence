@@ -1,3 +1,7 @@
+
+
+
+
 import { useEffect, useMemo, useState, Component } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import { useParams } from "react-router-dom";
@@ -12,12 +16,11 @@ import { supabase } from "@/integrations/supabase/client";
 import ArtistIndieReport from "@/components/ArtistIndieReport";
 import { isSampleReportSession } from "@/lib/sampleReports";
 import PeerBenchmarkChart, { type PeerBenchmarkData } from "@/components/PeerBenchmarkChart";
-import { C, mono, glass, Section, SectionHeader, MarkdownCard, fmtCompact, fmtUSD, LIMITED_LABEL, LIMITED_TOOLTIP } from "@/components/report/shared";
+import { C, mono, glass, Section, SectionHeader, MarkdownCard, fmtCompact, fmtUSD, LIMITED_LABEL, LIMITED_TOOLTIP, CEILING_TOOLTIP } from "@/components/report/shared";
 import { NeuralTrajectory } from "@/components/report/NeuralTrajectory";
 import { TopMarkets } from "@/components/report/TopMarkets";
 import { ThreeMovesCard } from "@/components/report/ThreeMovesCard";
 import { CuratorPitch } from "@/components/report/CuratorPitch";
-import { RevenueSnapshot } from "@/components/report/RevenueSnapshot";
 import { YouTubePresence } from "@/components/report/YouTubePresence";
 import { InstagramPresence } from "@/components/report/InstagramPresence";
 import { IndustryBuzzTracker } from "@/components/report/IndustryBuzzTracker";
@@ -167,6 +170,7 @@ interface ReportRow {
   digital_score: number | null;
   geo_hotspots: any;
   engagement_metrics: any;
+  revenue_economics: any;
   report_markdown: string | null;
   report_html: string | null;
   created_at: string;
@@ -241,6 +245,8 @@ function ReportInner() {
   // `null` into `0`, then `0 || 48`/`0 || 8400` into a fabricated number).
   const rawRetention     = (em as any)?.retention_rate ?? (em as any)?.retentionRate;
   const retentionRate: number | null = rawRetention == null ? null : Number(rawRetention);
+  const retentionRateCeiling: boolean = !!(em as any)?.retention_rate_ceiling;
+  const fanLoyaltyIndexCeiling: boolean = !!(em as any)?.fan_loyalty_index_ceiling;
   // monthly_streams was an AI-fabricated free-text estimate (no formula) --
   // same class of bug already fixed for retention_rate/ltv_projection/
   // growth_trajectory. Use the real Spotify anchor those fields already use
@@ -323,7 +329,7 @@ function ReportInner() {
       if (maxScore > 0) return Math.max(40, Math.round((n / maxScore) * 100));
       return 70;
     };
-    const arr = list.slice(0, 3).map((r: any, i: number) => ({
+    const arr = list.slice(0, 10).map((r: any, i: number) => ({
       country:     r?.country ?? r?.name ?? r?.city ?? "—",
       city:        r?.city && r?.country && r.city !== r.country ? r.city : null,
       score:       normalize(rawScores[i], i),
@@ -336,16 +342,6 @@ function ReportInner() {
       { country: "United Kingdom",city: "London",      score: 73, opportunity: "Editorial radar candidate" },
     ];
   }, [geo]);
-
-  const revenueSnapshot = useMemo(() => {
-    if (ltv === null) return null;
-    return [
-      { source: "Streaming", revenue: Math.round(ltv * 0.50) },
-      { source: "Merch",     revenue: Math.round(ltv * 0.20) },
-      { source: "Sync",      revenue: Math.round(ltv * 0.16) },
-      { source: "Live",      revenue: Math.round(ltv * 0.14) },
-    ];
-  }, [ltv]);
 
   const recommendations = useMemo(() => {
     const raw = (em as any)?.recommendations ?? (em as any)?.actions ?? [];
@@ -448,15 +444,24 @@ function ReportInner() {
   }, [ltv]);
 
   // ── Enterprise+: Revenue Streams ──────────────────────────────────────────
+  // Real, per-artist GPT-4o financial-analyst output (report-generator's
+  // build_json_extract_prompt), not a fabricated fixed-percentage split of
+  // ltv_projection (what this replaced -- there was no real per-category
+  // data behind the old 45/18/16/21 split at all). n8n only calls that
+  // GPT-4o analysis for Enterprise+/Opus Maximus in the first place, and
+  // the "Code in JavaScript" node nulls this out server-side for every
+  // other tier regardless of what the model returned -- see CLAUDE.md §4.
+  // null (never a fabricated fallback) when the tier doesn't qualify or the
+  // real financial call didn't return usable data.
   const revStreams = useMemo(() => {
-    if (ltv === null) return null;
-    return [
-      { source: "Streaming Royalties", revenue: Math.round(ltv * 0.45), growth: 18.4 },
-      { source: "Sync & Licensing",    revenue: Math.round(ltv * 0.18), growth: 32.1 },
-      { source: "Merch & D2C",         revenue: Math.round(ltv * 0.16), growth: 11.7 },
-      { source: "Live & Touring",      revenue: Math.round(ltv * 0.21), growth: 24.6 },
-    ];
-  }, [ltv]);
+    const streams = (report?.revenue_economics as any)?.streams;
+    if (!Array.isArray(streams) || !streams.length) return null;
+    return streams.map((s: any) => ({
+      source: s?.source ?? "Revenue",
+      revenue: Number(s?.revenue ?? 0),
+      growth: s?.growth_pct == null ? 0 : Number(s?.growth_pct),
+    }));
+  }, [report]);
 
   // ── Markdown sections ─────────────────────────────────────────────────────
   const cleanMd   = useMemo(() => stripCodeFence(report?.report_markdown ?? report?.report_html ?? ""), [report]);
@@ -653,11 +658,11 @@ function ReportInner() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4 mb-14">
           {[
             { label: "Social Engagement Index", value: engagementScore === null ? "—" : engagementScore.toFixed(0), icon: Activity, title: engagementScore === null ? "Not enough TikTok data yet to compute this" : "Cumulative engagement relative to audience size" },
-            { label: "Retention Rate",   value: retentionRate === null ? LIMITED_LABEL : `${retentionRate.toFixed(0)}%`, icon: Users, valueColor: retentionRate === null ? C.warm : undefined, valueSize: retentionRate === null ? "text-xl" : undefined, title: retentionRate === null ? LIMITED_TOOLTIP : undefined },
+            { label: "Retention Rate",   value: retentionRate === null ? LIMITED_LABEL : `${retentionRate.toFixed(0)}${retentionRateCeiling ? "%+" : "%"}`, icon: Users, valueColor: retentionRate === null ? C.warm : undefined, valueSize: retentionRate === null ? "text-xl" : undefined, title: retentionRate === null ? LIMITED_TOOLTIP : retentionRateCeiling ? CEILING_TOOLTIP : undefined },
             { label: "Monthly Listeners", value: fmtCompact(monthlyListeners),    icon: TrendingUp },
             { label: "LTV Projection",   value: ltv === null ? LIMITED_LABEL : fmtUSD(ltv), icon: DollarSign, valueColor: ltv === null ? C.warm : undefined, valueSize: ltv === null ? "text-xl" : undefined, title: ltv === null ? LIMITED_TOOLTIP : "Estimated using a global blended benchmark ($0.012/listener/month). Real values vary by geographic distribution and audience retention." },
             { label: "Industry Buzz",    value: buzzBadge ? buzzBadge.label : "—", icon: Newspaper, valueColor: buzzBadge?.color, title: buzzBadge ? "Recent press & industry coverage sentiment" : "Not enough recent press coverage found" },
-            { label: "Fan Loyalty Index", value: fanLoyaltyIndex === null ? "—" : fanLoyaltyIndex.toFixed(0), icon: Heart, title: fanLoyaltyIndex === null ? "Not enough TikTok or Spotify data yet to compute this" : "Blends TikTok engagement depth with cross-platform streaming retention" },
+            { label: "Fan Loyalty Index", value: fanLoyaltyIndex === null ? "—" : `${fanLoyaltyIndex.toFixed(0)}${fanLoyaltyIndexCeiling ? "+" : ""}`, icon: Heart, title: fanLoyaltyIndex === null ? "Not enough TikTok or Spotify data yet to compute this" : fanLoyaltyIndexCeiling ? CEILING_TOOLTIP : "Blends TikTok engagement depth with cross-platform streaming retention" },
           ].map((k, i) => (
             <motion.div
               key={k.label}
@@ -777,8 +782,27 @@ function ReportInner() {
         {/* ── Curator Pitch ─────────────────────────────────────────────────── */}
         <CuratorPitch curatorPitch={curatorPitch} />
 
-        {/* ── Revenue Snapshot ──────────────────────────────────────────────── */}
-        <RevenueSnapshot revenueSnapshot={revenueSnapshot} />
+        {/* ── Revenue Stream Breakdown — locked below Enterprise ──────────────
+            Real per-category detail needs a per-artist GPT-4o financial-
+            analyst pass, which n8n only runs for Enterprise+/Opus Maximus.
+            Used to be a fabricated fixed-percentage split of ltv_projection
+            shown to every tier -- removed rather than relabeled, see
+            CLAUDE.md §4/§11 2026-09-04. Enterprise+ sees the real breakdown
+            further below via RevenueModelAdvanced instead. */}
+        {!has(tier, "enterprise") && (
+          <Section delay={0.28}>
+            <div className="rounded-xl border p-6 mb-14 text-center" style={glass}>
+              <div className="mb-4 flex items-center justify-center gap-2">
+                <Lock className="w-3.5 h-3.5" style={{ color: C.gray }} />
+                <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.gray }}>Revenue Stream Breakdown</h3>
+              </div>
+              <p className="text-xs max-w-sm mx-auto leading-relaxed" style={{ color: C.grayDim }}>
+                A real, per-artist financial analysis broken out by revenue category unlocks at Enterprise.
+                Your LTV Projection above is real and available on every plan.
+              </p>
+            </div>
+          </Section>
+        )}
 
         {/* ── YouTube Presence ──────────────────────────────────────────────── */}
         {hasYouTubeData && (
