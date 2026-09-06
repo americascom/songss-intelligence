@@ -372,6 +372,19 @@ RPC SECURITY DEFINER (never direct SELECT on intelligence_reports):
   bands) and IFPI macro market_context are narrative-only, tagged
   `not_artist_growth`, never blended into the real delta.
 
+`src/lib/tractionNarrative.ts` (added 2026-09-06) — `generateTractionNarrative()`
+turns the two RPCs above into executive-level prose ("Current Traction
+Assessment" block in `RevenueModelAdvanced.tsx`). Deliberately a
+**deterministic template function, not an LLM call** — it can only ever
+state a number/source/category present in its typed input, never invent
+one, which was the whole point given this feature exists specifically to
+replace a fabricated NPV assumption. Structurally guarantees a growth
+percentage is only ever printed when `observed_growth.status === "observed"`
+(every other code path returns before touching `.value` at all — see the
+function body comment). 7 scenario tests (no vitest/jest in this repo, so
+plain-assertion + esbuild/node, same pattern as the SQL tests above) in
+`src/lib/__tests__/tractionNarrative.test.ts`.
+
 Public view:
 - public_geo_hotspots (geo_hotspots, created_at) — for NeuralWorldMap component
 

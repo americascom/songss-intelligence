@@ -866,7 +866,7 @@ function ReportInner() {
             <TikTokDSPCorrelation tiktokDSP={tiktokDSP} />
 
             {/* Revenue Model Advanced */}
-            <RevenueModelAdvanced revStreams={revStreams} sessionId={session_id} />
+            <RevenueModelAdvanced revStreams={revStreams} sessionId={session_id} artistName={report.artist_name || "Your Artist Report"} />
 
             {/* Acquisition Targets & Partners */}
             {acquireHtml ? (

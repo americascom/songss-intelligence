@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { DollarSign, TrendingUp } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { DollarSign, TrendingUp, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { generateTractionNarrative } from "@/lib/tractionNarrative";
 import {
   Section, SectionHeader, C, mono, glass, fmtUSD, LimitedChartState,
   CurrentTractionCard, ObservedGrowthCard, type CurrentTraction, type ObservedGrowth,
@@ -15,10 +16,11 @@ interface RevenueStream {
 interface RevenueModelAdvancedProps {
   revStreams: RevenueStream[] | null;
   sessionId?: string;
+  artistName?: string;
   delay?: number;
 }
 
-export function RevenueModelAdvanced({ revStreams, sessionId, delay = 0.40 }: RevenueModelAdvancedProps) {
+export function RevenueModelAdvanced({ revStreams, sessionId, artistName, delay = 0.40 }: RevenueModelAdvancedProps) {
   // Current Traction / Observed Growth own their own fetch rather than being
   // pre-computed props like their siblings -- this component only mounts for
   // Enterprise+ viewers in the first place, so a lower tier never triggers
@@ -42,6 +44,15 @@ export function RevenueModelAdvanced({ revStreams, sessionId, delay = 0.40 }: Re
     })();
     return () => { stopped = true; };
   }, [sessionId]);
+
+  // Narrative is generated only once real traction data exists -- never a
+  // placeholder-filled prose block for data that isn't there yet. Pure
+  // template function (no LLM call): see src/lib/tractionNarrative.ts for
+  // why that's a deliberate fabrication-risk-elimination choice.
+  const narrative = useMemo(() => {
+    if (!traction || traction.status !== "available" || !artistName) return null;
+    return generateTractionNarrative({ artistName, traction, growth });
+  }, [artistName, traction, growth]);
 
   return (
     <Section delay={delay}>
@@ -93,6 +104,19 @@ export function RevenueModelAdvanced({ revStreams, sessionId, delay = 0.40 }: Re
               30-day delta, only once genuine snapshot history exists --
               never a fabricated or estimated percentage in the meantime).
               See get_current_traction()/get_observed_growth() RPCs. */}
+          {narrative && (
+            <div className="rounded-xl border p-6" style={{ borderColor: C.border, background: "rgba(255,255,255,0.02)" }}>
+              <div className="flex items-center gap-2 mb-4">
+                <FileText className="w-3.5 h-3.5" style={{ color: C.warm }} />
+                <div className="text-[10px] uppercase tracking-[0.2em]" style={{ color: C.warm }}>Current Traction Assessment</div>
+              </div>
+              <div className="space-y-3">
+                {narrative.split("\n\n").map((para, i) => (
+                  <p key={i} className="text-sm leading-relaxed" style={{ color: "#D8D8D8" }}>{para}</p>
+                ))}
+              </div>
+            </div>
+          )}
           <div>
             <div className="text-[10px] uppercase tracking-[0.2em] mb-4" style={{ color: C.gray }}>Current Traction</div>
             <CurrentTractionCard traction={traction} />
