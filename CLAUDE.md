@@ -337,18 +337,46 @@ Tables:
   Globe, polled every 20min by the "Geo Activity — Last.fm Poller" n8n
   workflow; anon/authenticated SELECT-only, service_role writes
 - plan_limits (per-plan_key quota values) — anon/authenticated SELECT
+- artist_metric_snapshots (added 2026-09-06, see `project_artist_traction_growth_2026-09-06`)
+  — immutable per-source/metric historical observations, one row per
+  (artist_key, source, metric_name, UTC day), powers real Observed Growth.
+  No `artists` table exists, so `artist_key` is a text identity substitute
+  (`spotify:<id>` when Spotify resolved, else `name:<normalized>`), not a
+  UUID FK. Deny-all RLS (service_role only) — read only via the RPCs below.
+  Populated by a trigger on intelligence_reports (`trg_capture_artist_
+  metric_snapshots`), not by n8n — fires on the exact same insert/update n8n
+  already performs, zero workflow changes. Only 7 real controlled-vocabulary
+  metrics exist today (spotify_followers/monthly_listeners, youtube_
+  subscribers/channel_views, tiktok_followers/engagement_rate, instagram_
+  followers) — Last.fm/MusicBrainz/Deezer/SoundCloud/Shazam/Genius are
+  fetched but only feed the LLM's prose, never persisted as numbers;
+  Boomplay/Audiomack aren't in this pipeline at all.
 
 RPC SECURITY DEFINER (never direct SELECT on intelligence_reports):
 - get_report_by_session(p_session_id text)
 - get_quota_status() — team-pooled quota {plan_name, used, monthly_limit}
 - request_new_report(p_artist_name) — quota-checked new report row
 - pool_owner_id / pool_member_ids — internal team-pooling helpers
+- get_current_traction(p_session_id text) — added 2026-09-06. Real, weighted
+  0-100 classification from whatever of the 7 real signals above resolved
+  for this artist; weights re-normalize when a source is missing. Never
+  called "growth" — replaces the old NPV Projection Pending Data state in
+  `RevenueModelAdvanced.tsx` (Enterprise+ only).
+- get_observed_growth(p_session_id text, p_metric_name text default
+  'spotify_monthly_listeners') — added 2026-09-06. Real MoM delta between
+  two snapshots 28-35 days apart for the same artist_key/metric; returns
+  `collecting_history`/`insufficient_comparable_history` (never a fabricated
+  percentage) until that real history exists — which for virtually every
+  artist today means it stays in that state until they get re-analyzed a
+  month+ later. Optional benchmark classification (Orphiq/Push Music growth
+  bands) and IFPI macro market_context are narrative-only, tagged
+  `not_artist_growth`, never blended into the real delta.
 
 Public view:
 - public_geo_hotspots (geo_hotspots, created_at) — for NeuralWorldMap component
 
-RLS: enabled on all 5 public tables. Direct reads on intelligence_reports
-blocked for anon. Always use RPC.
+RLS: enabled on all public tables including artist_metric_snapshots. Direct
+reads on intelligence_reports blocked for anon. Always use RPC.
 
 ---
 
@@ -453,6 +481,19 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
   assuming they're live; commit if confirmed good.
 
 ### n8n / backend
+- [ ] **Artist Traction/Growth system — Phase 2 follow-ups** (built
+      2026-09-06, see `project_artist_traction_growth_2026-09-06`): Phase 1
+      (Current Traction, real signal snapshots, Observed Growth eligibility
+      gating) is live and verified. Deliberately NOT built this session,
+      each its own future piece: (1) a scheduled daily/weekly polling job
+      to re-fetch metrics independently of report purchases, so history
+      accumulates faster than "only when someone buys a re-analysis"; (2)
+      persisting Last.fm/MusicBrainz (and any other already-fetched-but-
+      discarded source) as real structured columns so they can join the
+      controlled vocabulary — requires an n8n workflow change, Golden Rule
+      1 confirmation needed first; (3) a real `artists` identity table if
+      artist-identity resolution ever needs to be more robust than the
+      current text `artist_key` substitute.
 - [ ] **OpenAI Migration (HALTED)** — 2026-08-28 attempt to replace Gemini Brand Intelligence
       node with OpenAI via Code node + this.helpers.httpRequest() discovered pre-existing
       report-generation pipeline failure + database corruption across all backups. Halted.

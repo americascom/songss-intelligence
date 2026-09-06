@@ -866,7 +866,7 @@ function ReportInner() {
             <TikTokDSPCorrelation tiktokDSP={tiktokDSP} />
 
             {/* Revenue Model Advanced */}
-            <RevenueModelAdvanced revStreams={revStreams} />
+            <RevenueModelAdvanced revStreams={revStreams} sessionId={session_id} />
 
             {/* Acquisition Targets & Partners */}
             {acquireHtml ? (
