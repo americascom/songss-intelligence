@@ -499,12 +499,34 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       confirm real bug vs tree-sitter artifact (neither reported broken live).
 
 ### Security / deps / infra
-- [ ] **npm dependency audit** — browser-bundle vulns all CLOSED (react-router-dom
-      6.30.6, d3-color 3.1.0, js-yaml). Remaining: dev-tooling batch (vite,
-      rollup, esbuild, postcss, lodash, etc. — build-time only, not shipped);
-      do a careful isolated diff-check, not a blind `npm audit fix`. Dependabot
-      alerts (34: 15 high / 17 mod / 2 low) — Gilberto reviews the tab directly
-      (needs his GitHub access). See `project_npm_audit_2026-08-09` + §11 ARCHIVE.
+- [ ] **npm dependency audit** — 2026-09-06: ran `npm audit fix` (no
+      `--force`), resolved 16 of 21 npm-audit findings via pure transitive
+      bumps (`package.json` untouched, `package-lock.json` only);
+      typechecked + built clean; committed (`83045e1`). Corrects the prior
+      "browser-bundle vulns all CLOSED" claim below, which was **wrong** —
+      2 real production-bundle issues remain open, each scheduled as its
+      own dedicated session rather than rushed:
+      1. **`react-router-dom` 6.30.6** — still inside the vulnerable range
+         for two advisories published *after* the earlier fix (open-redirect
+         bypass, SSR-hydration constructor injection). Real fix is a v6→v7
+         major bump (`react-router-dom@7.18.3`) — breaking API changes,
+         needs its own testing pass.
+      2. **`d3-color` ReDoS** — a *second*, separate vulnerable copy at
+         v2.0.0 nested inside `d3-transition`/`d3-zoom`, pulled in by
+         `react-simple-maps` (used in `NeuralWorldMap.tsx`, Home page
+         globe) — distinct from the already-fixed top-level `d3-color@3.1.0`.
+         No patched 2.x release exists upstream (checked the registry:
+         only `2.0.0`/`2.0.0-rc.1` were ever published), so `npm audit fix`
+         can't resolve it alone. Real fix needs an `overrides` pin to
+         `d3-color@^3.1.0` (or a `d3-zoom`/`react-simple-maps` major bump),
+         then a visual check that the globe still renders correctly.
+      Remaining after the fix: `vite`/`esbuild` (dev-tooling only, build-time,
+      not shipped — needs a `vite@8` major bump, not urgent). Dependabot's
+      own alert tab (~40 as of 2026-09-05) still needs Gilberto's own
+      GitHub access to review exactly — no `gh` CLI / `GITHUB_TOKEN` in this
+      environment, so `npm audit` is used as a proxy and won't map 1:1.
+      See `project_npm_audit_2026-09-06` + `project_npm_audit_2026-08-09` +
+      §11 ARCHIVE.
 - [ ] **MFA on Supabase Studio** (also Kong port rebind — see
       `project_supabase_studio_hardening_2026-07-08`).
 - [ ] **Team quota pooling** — logic DONE + live-verified; no invite/team-mgmt UI
