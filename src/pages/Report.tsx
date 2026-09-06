@@ -232,7 +232,9 @@ function ReportInner() {
   const em  = report?.engagement_metrics  ?? {};
   const geo = report?.geo_hotspots        ?? {};
 
-  const snie            = Number(report?.digital_score          ?? 0) || 72;
+  // No fabricated fallback: null (never a fake "72") when digital_score
+  // itself is missing/null in the row. Real value can legitimately be 0.
+  const snie: number | null = report?.digital_score == null ? null : Number(report.digital_score);
   const rawSEI           = (em as any)?.social_engagement_index;
   const engagementScore: number | null = rawSEI == null ? null : Number(rawSEI);
   const rawFanLoyalty    = (em as any)?.fan_loyalty_index;
@@ -251,7 +253,12 @@ function ReportInner() {
   // same class of bug already fixed for retention_rate/ltv_projection/
   // growth_trajectory. Use the real Spotify anchor those fields already use
   // instead of a second, unrelated fake number.
-  const monthlyListeners = Number((report?.spotify_data as any)?.monthly_listeners ?? 0) || 28000;
+  // No fabricated fallback: a real 0 here means the Spotify identity guard
+  // zeroed it (artist-name mismatch) or Spotify never resolved -- treat as
+  // "not confirmed" (null), same as the guard's own intent, rather than
+  // masking it with a fake listener count.
+  const rawMonthlyListeners = Number((report?.spotify_data as any)?.monthly_listeners ?? 0);
+  const monthlyListeners: number | null = rawMonthlyListeners > 0 ? rawMonthlyListeners : null;
   const rawLtv            = (em as any)?.ltv_projection ?? (em as any)?.ltv;
   const ltv: number | null = rawLtv == null ? null : Number(rawLtv);
 
@@ -323,27 +330,35 @@ function ReportInner() {
       parseNum(r?.score ?? r?.potential ?? r?.potential_score ?? r?.velocity ?? r?.value ?? null)
     );
     const maxScore  = Math.max(0, ...rawScores.filter((n): n is number => n != null));
-    const normalize = (n: number | null, idx: number): number => {
-      if (n == null) return [84, 78, 73][idx] ?? 70;
+    // No fabricated fallback: null (never a fake [84,78,73]-style constant)
+    // when a real market exists but its score didn't parse -- rendered as
+    // "--" rather than a number that looks as real as a genuine one.
+    const normalize = (n: number | null): number | null => {
+      if (n == null) return null;
       if (n <= 100)  return Math.round(n);
       if (maxScore > 0) return Math.max(40, Math.round((n / maxScore) * 100));
-      return 70;
+      return null;
     };
-    const arr = list.slice(0, 10).map((r: any, i: number) => ({
+    // No fabricated fallback markets: an empty geo_hotspots means arr is
+    // already [] here -- previously substituted 3 hardcoded fake cities
+    // (US/Los Angeles, Brazil/São Paulo, UK/London) identical for every
+    // artist. TopMarkets already shows a "Market Pending" placeholder for
+    // any missing slot, so [] just lets that existing path fire honestly.
+    return list.slice(0, 3).map((r: any, i: number) => ({
       country:     r?.country ?? r?.name ?? r?.city ?? "—",
       city:        r?.city && r?.country && r.city !== r.country ? r.city : null,
-      score:       normalize(rawScores[i], i),
+      score:       normalize(rawScores[i]),
       opportunity: r?.opportunity ?? r?.insight ?? r?.note ?? null,
     }));
-    if (arr.length) return arr;
-    return [
-      { country: "United States", city: "Los Angeles", score: 84, opportunity: "Strong sync & editorial potential" },
-      { country: "Brazil",        city: "São Paulo",   score: 78, opportunity: "Growing playlist traction" },
-      { country: "United Kingdom",city: "London",      score: 73, opportunity: "Editorial radar candidate" },
-    ];
   }, [geo]);
 
-  const recommendations = useMemo(() => {
+  // No boilerplate-as-personalized fallback: 3 generic tips presented under
+  // a per-artist "Three Moves That Matter" heading (one of which used to
+  // quote markets[0]?.country -- a fake market when the markets fallback
+  // fired, and just "undefined" now that markets no longer fabricates one)
+  // read as real analysis. null (renders PendingDataState) when fewer than
+  // 3 real recommendations came back from the model.
+  const recommendations = useMemo((): Array<{ title: string; body: string }> | null => {
     const raw = (em as any)?.recommendations ?? (em as any)?.actions ?? [];
     if (Array.isArray(raw) && raw.length >= 3) {
       return raw.slice(0, 3).map((r: any) =>
@@ -352,12 +367,8 @@ function ReportInner() {
           : { title: r?.title ?? r?.action ?? "Next step", body: r?.body ?? r?.description ?? "" }
       );
     }
-    return [
-      { title: "Lean into your top market",      body: `Your strongest signal is in ${markets[0]?.country}. Plan one release event or playlist push focused there in the next 30 days.` },
-      { title: "Show up consistently for fans",  body: "Retention climbs when fans hear from you weekly. Try one short video and one story post per week for the next month." },
-      { title: "Open a second revenue door",     body: "Streaming is paying, but a small merch drop or a sync pitch can meaningfully lift your LTV. Pick one and ship it." },
-    ];
-  }, [em, markets]);
+    return null;
+  }, [em]);
 
   // ── Growth+: Engagement Pyramid (replaces Conversion Funnel) ────────────────
   // Real, grounded 3-tier depth model. Tier widths below are static visual
@@ -421,27 +432,18 @@ function ReportInner() {
   }, [em, retentionRate, engagementScore]);
 
   // ── Enterprise+: TikTok × DSP ─────────────────────────────────────────────
-  const tiktokDSP = useMemo(() => {
+  // No real per-artist TikTok-to-DSP correlation data source exists yet --
+  // previously fabricated a fake 12-week dataset via Math.sin() noise
+  // whenever em.tiktok_dsp/viral_correlation was absent, which was every
+  // single time (nothing in the n8n pipeline ever sets either field).
+  // Removed entirely rather than repeating the "estimate by tone" pattern
+  // already fixed elsewhere; null (never a fabricated fallback) until a
+  // real data source is wired up. TikTokDSPCorrelation renders its own
+  // Pending state when this is null. Approved by Gilberto 2026-09-05.
+  const tiktokDSP = useMemo((): Array<{ week: string; tiktok: number; dsp: number }> | null => {
     const raw = (em as any)?.tiktok_dsp ?? (em as any)?.viral_correlation ?? [];
-    if (Array.isArray(raw) && raw.length) return raw;
-    return Array.from({ length: 12 }, (_, i) => ({
-      week:   `W${i + 1}`,
-      tiktok: Math.round(2000 + i * 900  + Math.sin(i)        * 1200),
-      dsp:    Math.round(20000 + i * 4800 + Math.sin(i * 0.7) * 3000),
-    }));
+    return Array.isArray(raw) && raw.length ? raw : null;
   }, [em]);
-
-  // ── Enterprise+: NPV ──────────────────────────────────────────────────────
-  const npv = useMemo(() => {
-    if (ltv === null) return null;
-    let cum = 0;
-    return Array.from({ length: 5 }, (_, i) => {
-      const cf   = Math.round(ltv * (1 + i * 0.18));
-      const disc = Math.round(cf / Math.pow(1.1, i + 1));
-      cum += disc;
-      return { year: `Y${i + 1}`, cashflow: cf, discounted: disc, cumulative: cum };
-    });
-  }, [ltv]);
 
   // ── Enterprise+: Revenue Streams ──────────────────────────────────────────
   // Real, per-artist GPT-4o financial-analyst output (report-generator's
@@ -517,7 +519,12 @@ function ReportInner() {
       return t.length > 40 && !t.startsWith("<") && !t.startsWith("#") && !t.startsWith("`") && !isTableParagraph(t);
     });
     if (firstPara) return mdToHtml(firstPara.trim());
-    return "Your sound bridges intimacy and momentum — a rare combination that resonates with playlist curators looking for authentic voices with crossover appeal.";
+    // No boilerplate-as-personalized fallback: the removed hardcoded
+    // sentence was identical for every artist, every session, presented
+    // under "Your Curator Pitch" as if written for that specific artist.
+    // null (renders PendingDataState) when no real per-artist text could
+    // be extracted from the model's markdown.
+    return null;
   }, [cleanMd]);
 
   if (loading) {
@@ -638,17 +645,34 @@ function ReportInner() {
           </h1>
           <div className="inline-flex flex-col items-center">
             <div className="text-[10px] uppercase tracking-[0.3em] mb-3" style={{ color: C.cyan }}>SNIE™ Score</div>
-            <div
-              className={`${mono} text-[120px] sm:text-[180px] font-bold leading-none`}
-              style={{ color: C.white, textShadow: `0 0 40px ${C.cyan}66, 0 0 80px ${C.cyan}33` }}
-            >
-              {snie}
-            </div>
-            <div className="text-xs mt-2" style={{ color: C.gray }}>out of 100</div>
+            {snie === null ? (
+              <div className="flex flex-col items-center gap-4 py-4">
+                <span
+                  className={`${mono} text-3xl sm:text-4xl font-bold px-8 py-4 rounded-2xl border inline-flex items-center gap-3`}
+                  style={{ color: C.warm, borderColor: `${C.warm}40`, background: `${C.warm}14` }}
+                  title={LIMITED_TOOLTIP}
+                >
+                  {LIMITED_LABEL}
+                </span>
+                <p className="text-xs max-w-xs" style={{ color: C.grayDim }}>{LIMITED_TOOLTIP}</p>
+              </div>
+            ) : (
+              <>
+                <div
+                  className={`${mono} text-[120px] sm:text-[180px] font-bold leading-none`}
+                  style={{ color: C.white, textShadow: `0 0 40px ${C.cyan}66, 0 0 80px ${C.cyan}33` }}
+                >
+                  {snie}
+                </div>
+                <div className="text-xs mt-2" style={{ color: C.gray }}>out of 100</div>
+              </>
+            )}
           </div>
-          <p className="mt-6 text-[11px] max-w-md mx-auto leading-relaxed italic" style={{ color: C.grayDim }}>
-            SNIE™ Score reflects real-time streaming and market data at the moment of analysis. Scores may vary between reports as platform data updates continuously.
-          </p>
+          {snie !== null && (
+            <p className="mt-6 text-[11px] max-w-md mx-auto leading-relaxed italic" style={{ color: C.grayDim }}>
+              SNIE™ Score reflects real-time streaming and market data at the moment of analysis. Scores may vary between reports as platform data updates continuously.
+            </p>
+          )}
           <p className="mt-6 text-base max-w-xl mx-auto leading-relaxed" style={{ color: C.gray }}>
             Neural intelligence engine analysis — data-driven insights built for action.
           </p>
@@ -659,7 +683,7 @@ function ReportInner() {
           {[
             { label: "Social Engagement Index", value: engagementScore === null ? "—" : engagementScore.toFixed(0), icon: Activity, title: engagementScore === null ? "Not enough TikTok data yet to compute this" : "Cumulative engagement relative to audience size" },
             { label: "Retention Rate",   value: retentionRate === null ? LIMITED_LABEL : `${retentionRate.toFixed(0)}${retentionRateCeiling ? "%+" : "%"}`, icon: Users, valueColor: retentionRate === null ? C.warm : undefined, valueSize: retentionRate === null ? "text-xl" : undefined, title: retentionRate === null ? LIMITED_TOOLTIP : retentionRateCeiling ? CEILING_TOOLTIP : undefined },
-            { label: "Monthly Listeners", value: fmtCompact(monthlyListeners),    icon: TrendingUp },
+            { label: "Monthly Listeners", value: monthlyListeners === null ? LIMITED_LABEL : fmtCompact(monthlyListeners), icon: TrendingUp, valueColor: monthlyListeners === null ? C.warm : undefined, valueSize: monthlyListeners === null ? "text-xl" : undefined, title: monthlyListeners === null ? LIMITED_TOOLTIP : undefined },
             { label: "LTV Projection",   value: ltv === null ? LIMITED_LABEL : fmtUSD(ltv), icon: DollarSign, valueColor: ltv === null ? C.warm : undefined, valueSize: ltv === null ? "text-xl" : undefined, title: ltv === null ? LIMITED_TOOLTIP : "Estimated using a global blended benchmark ($0.012/listener/month). Real values vary by geographic distribution and audience retention." },
             { label: "Industry Buzz",    value: buzzBadge ? buzzBadge.label : "—", icon: Newspaper, valueColor: buzzBadge?.color, title: buzzBadge ? "Recent press & industry coverage sentiment" : "Not enough recent press coverage found" },
             { label: "Fan Loyalty Index", value: fanLoyaltyIndex === null ? "—" : `${fanLoyaltyIndex.toFixed(0)}${fanLoyaltyIndexCeiling ? "+" : ""}`, icon: Heart, title: fanLoyaltyIndex === null ? "Not enough TikTok or Spotify data yet to compute this" : fanLoyaltyIndexCeiling ? CEILING_TOOLTIP : "Blends TikTok engagement depth with cross-platform streaming retention" },
@@ -842,7 +866,7 @@ function ReportInner() {
             <TikTokDSPCorrelation tiktokDSP={tiktokDSP} />
 
             {/* Revenue Model Advanced */}
-            <RevenueModelAdvanced revStreams={revStreams} npv={npv} />
+            <RevenueModelAdvanced revStreams={revStreams} />
 
             {/* Acquisition Targets & Partners */}
             {acquireHtml ? (

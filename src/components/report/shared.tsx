@@ -86,6 +86,28 @@ export function LimitedChartState() {
   );
 }
 
+// "Pending Data" (gray) is semantically distinct from "⚠️ Limited" (amber):
+// Limited means a data-quality guard suppressed an otherwise-real, working
+// signal (e.g. the Spotify identity-mismatch guard); Pending means the
+// feature itself has no real data source implemented yet -- there was never
+// a real number to suppress. Matches ArtistRadarProfile's existing
+// pending-axis styling. Introduced 2026-09-05 replacing the TikTok x DSP
+// Correlation and NPV Projection fabricated-data fallbacks.
+export function PendingDataState({ message }: { message: string }) {
+  return (
+    <div className="h-full w-full flex flex-col items-center justify-center gap-3 text-center px-6">
+      <span
+        className={`${mono} text-xs px-3 py-1.5 font-semibold rounded-md border inline-flex items-center gap-1.5`}
+        style={{ color: C.grayDim, borderColor: "rgba(154,154,154,0.25)", background: "rgba(154,154,154,0.06)" }}
+        title={message}
+      >
+        Pending Data
+      </span>
+      <p className="text-xs max-w-xs" style={{ color: C.grayDim }}>{message}</p>
+    </div>
+  );
+}
+
 // ── Sub-components ───────────────────────────────────────────────────────────
 export function SectionHeader({
   emoji, icon: Icon, title, accent, badge,

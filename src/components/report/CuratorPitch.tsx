@@ -1,8 +1,8 @@
 import { Heart } from "lucide-react";
-import { Section, C, glass } from "./shared";
+import { Section, C, glass, PendingDataState } from "./shared";
 
 interface CuratorPitchProps {
-  curatorPitch: string;
+  curatorPitch: string | null;
   delay?: number;
 }
 
@@ -17,11 +17,15 @@ export function CuratorPitch({ curatorPitch, delay = 0.26 }: CuratorPitchProps) 
             <Heart className="w-4 h-4" style={{ color: C.cyan }} />
             <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>Your Curator Pitch</h3>
           </div>
-          <div
-            className="prose prose-invert max-w-none prose-p:leading-[1.85] prose-p:text-[15px] prose-strong:text-white"
-            style={{ color: "#D8D8D8" }}
-            dangerouslySetInnerHTML={{ __html: curatorPitch }}
-          />
+          {curatorPitch === null ? (
+            <PendingDataState message="A personalized curator pitch needs more real per-artist content from the model — check back as more data resolves." />
+          ) : (
+            <div
+              className="prose prose-invert max-w-none prose-p:leading-[1.85] prose-p:text-[15px] prose-strong:text-white"
+              style={{ color: "#D8D8D8" }}
+              dangerouslySetInnerHTML={{ __html: curatorPitch }}
+            />
+          )}
         </div>
       </div>
     </Section>

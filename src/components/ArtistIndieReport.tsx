@@ -12,6 +12,7 @@ import {
 import { Link } from "react-router-dom";
 import PeerBenchmarkChart, { type PeerBenchmarkData } from "@/components/PeerBenchmarkChart";
 import { useIsPrinting, PRINT_CHART_WIDTH } from "@/hooks/useIsPrinting";
+import { PendingDataState } from "@/components/report/shared";
 
 const C = {
   bg: "#070707",
@@ -263,7 +264,9 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
     ? BUZZ_SENTIMENT_STYLE[buzzSentiment]
     : null;
 
-  const snie = Number(report.digital_score ?? 0) || 72;
+  // No fabricated fallback: null (never a fake "72") when digital_score
+  // itself is missing/null in the row. Real value can legitimately be 0.
+  const snie: number | null = report.digital_score == null ? null : Number(report.digital_score);
   const rawSEI = em.social_engagement_index;
   const engagementScore: number | null = rawSEI == null ? null : Number(rawSEI);
   const rawFanLoyalty = em.fan_loyalty_index;
@@ -279,7 +282,12 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
   // same class of bug already fixed for retention_rate/ltv_projection/
   // growth_trajectory. Use the real Spotify anchor those fields already use
   // instead of a second, unrelated fake number.
-  const monthlyListeners = Number(report.spotify_data?.monthly_listeners ?? 0) || 12500;
+  // No fabricated fallback: a real 0 here means the Spotify identity guard
+  // zeroed it (artist-name mismatch) or Spotify never resolved -- treat as
+  // "not confirmed" (null), same as the guard's own intent, rather than
+  // masking it with a fake listener count.
+  const rawMonthlyListeners = Number(report.spotify_data?.monthly_listeners ?? 0);
+  const monthlyListeners: number | null = rawMonthlyListeners > 0 ? rawMonthlyListeners : null;
   const rawLtv = em.ltv_projection ?? em.ltv;
   const ltv: number | null = rawLtv == null ? null : Number(rawLtv);
 
@@ -320,49 +328,45 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
       parseNum(r?.score ?? r?.potential ?? r?.potential_score ?? r?.velocity ?? r?.value)
     );
     const maxScore = Math.max(0, ...rawScores.filter((n): n is number => n != null));
-    const normalize = (n: number | null, idx: number): number => {
-      if (n == null) return [82, 76, 71][idx] ?? 70;
+    // No fabricated fallback: null (never a fake [82,76,71]-style constant)
+    // when a real market exists but its score didn't parse -- rendered as
+    // "--" rather than a number that looks as real as a genuine one.
+    const normalize = (n: number | null): number | null => {
+      if (n == null) return null;
       if (n <= 100) return Math.round(n);
       if (maxScore > 0) return Math.max(40, Math.round((n / maxScore) * 100));
-      return 70;
+      return null;
     };
 
-    const arr = list.slice(0, 3).map((r: any, i: number) => ({
+    // No fabricated fallback markets: an empty geo_hotspots means arr is
+    // already [] here -- previously substituted 3 hardcoded fake cities
+    // (US/Los Angeles, Brazil/São Paulo, UK/London) identical for every
+    // artist. TopMarkets/the inline per-slot renderer below already show a
+    // "Market Pending" placeholder for any missing slot, so [] just lets
+    // that existing path fire honestly instead.
+    return list.slice(0, 3).map((r: any, i: number) => ({
       country: r?.country ?? r?.name ?? r?.city ?? "—",
       city: r?.city && r?.country && r.city !== r.country ? r.city : null,
-      score: normalize(rawScores[i], i),
+      score: normalize(rawScores[i]),
       opportunity: r?.opportunity ?? r?.insight ?? r?.note ?? null,
     }));
-    if (arr.length) return arr;
-    return [
-      { country: "United States", city: "Los Angeles", score: 82, opportunity: "Strong sync potential" },
-      { country: "Brazil", city: "São Paulo", score: 76, opportunity: "Growing playlist traction" },
-      { country: "United Kingdom", city: "London", score: 71, opportunity: "Editorial radar candidate" },
-    ];
   }, [geo]);
 
-  const recommendations = useMemo(() => {
+  // No boilerplate-as-personalized fallback: 3 generic tips presented under
+  // a per-artist "Three Moves That Matter" heading (one of which used to
+  // quote markets[0]?.country -- a fake market when #3's fallback fired,
+  // and just "undefined" now that #3 no longer fabricates one) read as
+  // real analysis. null (renders PendingDataState) when fewer than 3 real
+  // recommendations came back from the model.
+  const recommendations = useMemo((): Array<{ title: string; body: string }> | null => {
     const raw = em.recommendations ?? em.actions ?? [];
     if (Array.isArray(raw) && raw.length >= 3) {
       return raw.slice(0, 3).map((r: any) =>
         typeof r === "string" ? { title: r, body: "" } : { title: r.title ?? r.action ?? "Next step", body: r.body ?? r.description ?? "" }
       );
     }
-    return [
-      {
-        title: "Lean into your top market",
-        body: `Your strongest signal is in ${markets[0]?.country}. Plan one release event or playlist push focused there in the next 30 days.`,
-      },
-      {
-        title: "Show up consistently for fans",
-        body: "Retention climbs when fans hear from you weekly. Try one short video and one story post per week for the next month.",
-      },
-      {
-        title: "Open a second revenue door",
-        body: "Streaming is paying, but a small merch drop or a sync pitch can meaningfully lift your LTV. Pick one and ship it.",
-      },
-    ];
-  }, [em, markets]);
+    return null;
+  }, [em]);
 
   const cleanMd = useMemo(
     () => stripCodeFence(report.report_markdown || report.report_html || ""),
@@ -435,7 +439,12 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
       });
     if (firstPara) return mdToHtml(firstPara.trim());
 
-    return "Your sound bridges intimacy and momentum — a rare combination that resonates with playlist curators looking for authentic voices with crossover appeal.";
+    // No boilerplate-as-personalized fallback: the removed hardcoded
+    // sentence was identical for every artist, every session, presented
+    // under "Your Curator Pitch" as if written for that specific artist.
+    // null (renders PendingDataState) when no real per-artist text could
+    // be extracted from the model's markdown.
+    return null;
   }, [cleanMd]);
 
   const reportDate = new Date(report.created_at).toLocaleDateString("en-US", {
@@ -568,24 +577,39 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
 
           <div className="inline-flex flex-col items-center">
             <div className="text-[10px] uppercase tracking-[0.3em] mb-3" style={{ color: C.cyan }}>SNIE™ Score</div>
-            <div className="relative">
-              <div
-                className={`${mono} snie-number text-[120px] sm:text-[180px] font-bold leading-none`}
-                style={{
-                  color: C.white,
-                  WebkitTextFillColor: C.white,
-                  textShadow: `0 0 40px ${C.cyan}66, 0 0 80px ${C.cyan}33`,
-                }}
-              >
-                {snie}
+            {snie === null ? (
+              <div className="flex flex-col items-center gap-4 py-4">
+                <span
+                  className={`${mono} text-3xl sm:text-4xl font-bold px-8 py-4 rounded-2xl border inline-flex items-center gap-3`}
+                  style={{ color: C.warm, borderColor: `${C.warm}40`, background: `${C.warm}14` }}
+                  title={LIMITED_TOOLTIP}
+                >
+                  {LIMITED_LABEL}
+                </span>
+                <p className="text-xs max-w-xs" style={{ color: C.grayDim }}>{LIMITED_TOOLTIP}</p>
               </div>
-              <div className="text-xs mt-2" style={{ color: C.gray }}>out of 100</div>
-            </div>
+            ) : (
+              <div className="relative">
+                <div
+                  className={`${mono} snie-number text-[120px] sm:text-[180px] font-bold leading-none`}
+                  style={{
+                    color: C.white,
+                    WebkitTextFillColor: C.white,
+                    textShadow: `0 0 40px ${C.cyan}66, 0 0 80px ${C.cyan}33`,
+                  }}
+                >
+                  {snie}
+                </div>
+                <div className="text-xs mt-2" style={{ color: C.gray }}>out of 100</div>
+              </div>
+            )}
           </div>
 
-          <p className="mt-6 text-[11px] max-w-md mx-auto leading-relaxed italic" style={{ color: C.grayDim }}>
-            SNIE™ Score reflects real-time streaming and market data at the moment of analysis. Scores may vary between reports as platform data and market conditions update continuously.
-          </p>
+          {snie !== null && (
+            <p className="mt-6 text-[11px] max-w-md mx-auto leading-relaxed italic" style={{ color: C.grayDim }}>
+              SNIE™ Score reflects real-time streaming and market data at the moment of analysis. Scores may vary between reports as platform data and market conditions update continuously.
+            </p>
+          )}
 
           <p className="mt-8 text-base max-w-xl mx-auto leading-relaxed" style={{ color: C.gray }}>
             A warm read on where you are, what's working, and the next moves that matter most.
@@ -597,7 +621,7 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
           {[
             { label: "Social Engagement Index", value: engagementScore === null ? "—" : engagementScore.toFixed(0), icon: Activity, title: engagementScore === null ? "Not enough TikTok data yet to compute this" : "Cumulative engagement relative to audience size" },
             { label: "Retention Rate", value: retentionRate === null ? LIMITED_LABEL : `${retentionRate.toFixed(0)}${retentionRateCeiling ? "%+" : "%"}`, icon: Users, valueColor: retentionRate === null ? C.warm : undefined, valueSize: retentionRate === null ? "text-xl" : undefined, title: retentionRate === null ? LIMITED_TOOLTIP : retentionRateCeiling ? CEILING_TOOLTIP : undefined },
-            { label: "Monthly Listeners", value: fmtCompact(monthlyListeners), icon: TrendingUp },
+            { label: "Monthly Listeners", value: monthlyListeners === null ? LIMITED_LABEL : fmtCompact(monthlyListeners), icon: TrendingUp, valueColor: monthlyListeners === null ? C.warm : undefined, valueSize: monthlyListeners === null ? "text-xl" : undefined, title: monthlyListeners === null ? LIMITED_TOOLTIP : undefined },
             { label: "LTV Projection", value: ltv === null ? LIMITED_LABEL : fmtUSD(ltv), icon: DollarSign, valueColor: ltv === null ? C.warm : undefined, valueSize: ltv === null ? "text-xl" : undefined, title: ltv === null ? LIMITED_TOOLTIP : "Estimated using a global blended benchmark ($0.012/listener/month). Real values vary by geographic distribution and audience retention." },
             { label: "Industry Buzz", value: buzzBadge ? buzzBadge.label : "—", icon: Newspaper, valueColor: buzzBadge?.color, title: buzzBadge ? "Recent press & industry coverage sentiment" : "Not enough recent press coverage found" },
             { label: "Fan Loyalty Index", value: fanLoyaltyIndex === null ? "—" : `${fanLoyaltyIndex.toFixed(0)}${fanLoyaltyIndexCeiling ? "+" : ""}`, icon: Heart, title: fanLoyaltyIndex === null ? "Not enough TikTok or Spotify data yet to compute this" : fanLoyaltyIndexCeiling ? CEILING_TOOLTIP : "Blends TikTok engagement depth with cross-platform streaming retention" },
@@ -682,7 +706,7 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className={`${mono} text-[10px] uppercase tracking-[0.2em]`} style={{ color: C.gray }}>#{i + 1}</div>
-                    <div className={`${mono} text-2xl font-semibold`} style={{ color: C.cyan }}>{m.score}</div>
+                    <div className={`${mono} text-2xl font-semibold`} style={{ color: m.score === null ? C.grayDim : C.cyan }}>{m.score === null ? "—" : m.score}</div>
                   </div>
                   <div className="text-xl font-semibold mb-1" style={{ color: C.white }}>{m.country}</div>
                   {m.city && <div className="text-sm" style={{ color: C.gray }}>{m.city}</div>}
@@ -704,28 +728,34 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
             <Lightbulb className="w-4 h-4" style={{ color: C.warm }} />
             <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.warm }}>Three Moves That Matter</h3>
           </div>
-          <div className="space-y-3">
-            {recommendations.map((r: any, i: number) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 + i * 0.1, duration: 0.6 }}
-                className="rounded-xl border p-6 flex gap-5"
-                style={glass}
-              >
-                <div
-                  className={`${mono} shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold`}
-                  style={{ background: `${C.cyan}15`, color: C.cyan, border: `1px solid ${C.cyan}55` }}
+          {recommendations === null ? (
+            <div className="rounded-xl border p-6" style={glass}>
+              <PendingDataState message="Personalized recommendations need more source signal for this artist — check back as more data resolves." />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recommendations.map((r, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 + i * 0.1, duration: 0.6 }}
+                  className="rounded-xl border p-6 flex gap-5"
+                  style={glass}
                 >
-                  {i + 1}
-                </div>
-                <div className="min-w-0">
-                  <div className="text-lg font-semibold mb-1.5" style={{ color: C.white }}>{r.title}</div>
-                  {r.body && <div className="text-sm leading-relaxed" style={{ color: C.gray }}>{r.body}</div>}
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                  <div
+                    className={`${mono} shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold`}
+                    style={{ background: `${C.cyan}15`, color: C.cyan, border: `1px solid ${C.cyan}55` }}
+                  >
+                    {i + 1}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-lg font-semibold mb-1.5" style={{ color: C.white }}>{r.title}</div>
+                    {r.body && <div className="text-sm leading-relaxed" style={{ color: C.gray }}>{r.body}</div>}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── DIGITAL HYGIENE INDEX ─────────────────────────────────────── */}
@@ -877,11 +907,15 @@ export default function ArtistIndieReport({ report, isSample = false }: { report
               <Heart className="w-4 h-4" style={{ color: C.cyan }} />
               <h3 className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.cyan }}>Your Curator Pitch</h3>
             </div>
-            <div
-              className="curator-pitch-content prose prose-invert max-w-none prose-p:leading-[1.85] prose-p:text-[15px] prose-strong:text-white prose-a:text-[#00C4B5]"
-              style={{ color: "#D8D8D8" }}
-              dangerouslySetInnerHTML={{ __html: curatorPitch }}
-            />
+            {curatorPitch === null ? (
+              <PendingDataState message="A personalized curator pitch needs more real per-artist content from the model — check back as more data resolves." />
+            ) : (
+              <div
+                className="curator-pitch-content prose prose-invert max-w-none prose-p:leading-[1.85] prose-p:text-[15px] prose-strong:text-white prose-a:text-[#00C4B5]"
+                style={{ color: "#D8D8D8" }}
+                dangerouslySetInnerHTML={{ __html: curatorPitch }}
+              />
+            )}
           </div>
         </div>
 

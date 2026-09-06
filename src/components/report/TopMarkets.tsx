@@ -5,7 +5,7 @@ import { Section, C, mono, glass } from "./shared";
 interface Market {
   country: string;
   city: string | null;
-  score: number;
+  score: number | null;
   opportunity: string | null;
 }
 
@@ -47,7 +47,7 @@ export function TopMarkets({ markets, delay = 0.12 }: TopMarketsProps) {
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className={`${mono} text-[10px] uppercase tracking-[0.2em]`} style={{ color: C.gray }}>#{i + 1}</div>
-                  <div className={`${mono} text-2xl font-semibold`} style={{ color: C.cyan }}>{m.score}</div>
+                  <div className={`${mono} text-2xl font-semibold`} style={{ color: m.score === null ? C.grayDim : C.cyan }}>{m.score === null ? "—" : m.score}</div>
                 </div>
                 <div className="text-xl font-semibold mb-1" style={{ color: C.white }}>{m.country}</div>
                 {m.city && <div className="text-sm" style={{ color: C.gray }}>{m.city}</div>}

@@ -272,6 +272,53 @@ Full formulas/derivations in ARCHIVE + the named memory files. All null
   `Authorization` header is credential-backed; n8n's `httpHeaderAuth` injects
   only one header, so `apikey` stays raw — a known Golden Rule 4 structural
   gap). See `feedback_hardcoded_apikey_header_all_7_migrated_nodes`.
+- ~~TikTok × DSP Correlation / NPV Projection were 100% fabricated~~ —
+  RESOLVED 2026-09-05/06 (see `project_fabricated_data_audit_2026-09` for
+  full detail): a systematic audit (triggered by finding the old Revenue
+  Snapshot and TikTok×DSP fabrications) found `Report.tsx`'s `tiktokDSP`
+  fell back to a fake `Math.sin()`-noise 12-week dataset on **every single
+  report** (`em.tiktok_dsp`/`viral_correlation` never exist anywhere in the
+  pipeline — confirmed against a real Enterprise sample row), and `npv`
+  applied two undisclosed made-up constants (18%/yr growth, 10% discount)
+  to the one real `ltv` number, marketed as "NPV financial modeling." Both
+  now show an honest `PendingDataState` ("Pending Data", gray — distinct
+  from the amber "⚠️ Limited" used for data-quality-guard suppression)
+  instead of fabricating. New shared `PendingDataState` component in
+  `shared.tsx`. Verified against real Supabase data (Enterprise sample row
+  confirms both fields absent → Pending path fires), typechecked clean.
+- ~~5 more fabricated-data findings from the same audit~~ — RESOLVED
+  2026-09-06 (see `project_fabricated_data_audit_2026-09` for full detail):
+  all 5 launch-blocking items fixed in both `Report.tsx` and
+  `ArtistIndieReport.tsx`, zero exceptions per Gilberto's directive.
+  1. **SNIE™ Score hardcoded fallback `72`** — replaced with null-preserving
+     `digital_score == null ? null : Number(...)`.
+  2. **Monthly Listeners hardcoded fallback** (`12500`/`28000`) — replaced
+     with null-preserving logic so the Spotify identity-guard's zero no
+     longer gets converted back into a fake listener count.
+  3. **Fabricated fallback markets** (hardcoded US/Brazil/UK) — removed;
+     empty `geo_hotspots` now renders the existing per-slot "Market Pending"
+     placeholder honestly. Bonus fix found during verification: the old
+     `normalize()` was also stamping a fake `[84,78,73]`-style score onto
+     **real** markets whenever `geo_hotspots` had no `.score` field (true of
+     every live row checked) — now shows "—" instead of a fabricated number.
+  4. **Compounding fabricated recommendation text** — the boilerplate
+     "Three Moves" fallback (which quoted finding 3's fake country) is
+     gone; renders the new gray `PendingDataState` when fewer than 3 real
+     recommendations exist.
+  5. **Curator Pitch fallback text** — the identical hardcoded sentence is
+     gone; renders `PendingDataState` only when no real per-artist text can
+     be extracted from the model's markdown.
+  Verified against the real Enterprise sample row (Billie Eilish,
+  `cs_test_a15W...`): `digital_score`/`monthly_listeners` real → render as
+  real; `geo_hotspots` real but scoreless → "—" per market; `em.recommendations`/
+  `actions` both `null` → Pending branch fires; real `## Executive Summary`
+  in `report_markdown` → `curatorPitch` still extracts genuine text (Pending
+  path only fires when truly nothing real exists). Typechecked clean.
+  Lower-priority items from the same audit (not launch-blocking per
+  Gilberto, tracked in the memory not here, still open): `geo_hotspots[].value`
+  AI-invented dollar estimates (persisted, not currently rendered), unused
+  `engagement_metrics.engagement_score` AI passthrough, and the static
+  "$100 Budget" illustrative badge.
 
 RESOLVED history (Stripe signature gate + its $binary regression, all the
 metric reworks, Industry Buzz Tracker, Spotify Artist Link, and every bug
