@@ -558,13 +558,34 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       bumps (`package.json` untouched, `package-lock.json` only);
       typechecked + built clean; committed (`83045e1`). Corrects the prior
       "browser-bundle vulns all CLOSED" claim below, which was **wrong** —
-      2 real production-bundle issues remain open, each scheduled as its
-      own dedicated session rather than rushed:
-      1. **`react-router-dom` 6.30.6** — still inside the vulnerable range
-         for two advisories published *after* the earlier fix (open-redirect
-         bypass, SSR-hydration constructor injection). Real fix is a v6→v7
-         major bump (`react-router-dom@7.18.3`) — breaking API changes,
-         needs its own testing pass.
+      2 real production-bundle issues were found; 1 is now resolved
+      (item 1 below), 1 remains open:
+      1. ~~`react-router-dom` 6.30.6 → 7.18.3~~ — RESOLVED 2026-09-08 (see
+         `project_react_router_v7_migration_2026-09-08` for full detail):
+         confirmed necessary (no 6.x patch exists or ever will — 6.30.6 was
+         the last-ever 6.x release, both fixed advisories land only at
+         `7.18.0+`); of the two, only GHSA-wrjc-x8rr-h8h6/CVE-2026-53669
+         (open redirect via backslash in `<Link>`/`useNavigate`) applies to
+         us — the SSR-hydration CVE is vendor-confirmed exempt since we're
+         pure Declarative Mode (`BrowserRouter`/`Routes`/`Route`, no data
+         router). Pinned exact `"react-router-dom": "7.18.3"` (matches the
+         prior exact-pin convention for this package). Confirmed live:
+         `react-router-dom@7.18.3`'s own shipped `dist/index.js` is a pure
+         `require("react-router")` re-export — no API/import changes needed
+         across all 17 files that touch it. `tsc -p tsconfig.app.json
+         --noEmit` clean, `vite build` clean (only the pre-existing,
+         unrelated Tailwind `@import`-order CSS warning). Dev-server route
+         check (`curl` against `/`, `/dashboard`, `/settings`, `/pricing`,
+         `/auth`, `/submit/test123`, `/report/test123`, `/nonexistent-route`)
+         all 200, SPA fallback intact. **Caveat**: no real browser was
+         available in that session (no Chrome extension connected, no
+         headless browser installed) — the `navigate()`-after-async spots in
+         `Auth.tsx`/`Dashboard.tsx`/`Settings.tsx`/`Submit.tsx` (the
+         `v7_startTransition`-default behavior change) were verified by
+         reading the code against the v7 API, not by clicking through in a
+         live DOM with console-error checking. Low residual risk given the
+         confirmed pure-re-export finding, but a real click-through is still
+         worth doing opportunistically next time a browser is available.
       2. **`d3-color` ReDoS** — a *second*, separate vulnerable copy at
          v2.0.0 nested inside `d3-transition`/`d3-zoom`, pulled in by
          `react-simple-maps` (used in `NeuralWorldMap.tsx`, Home page
