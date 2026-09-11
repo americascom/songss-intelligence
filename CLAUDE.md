@@ -602,8 +602,8 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       confirm real bug vs tree-sitter artifact (neither reported broken live).
 
 ### Security / deps / infra
-- [ ] **SONGSS Security Agent — monthly dependency-scan n8n workflow, built but
-      INACTIVE** (2026-09-10/11, see `project_security_agent_workflow_2026-09-11`):
+- [ ] **SONGSS Security Agent — manual test PASSED 2026-09-11, activation
+      still blocked** (see `project_security_agent_workflow_2026-09-11`):
       Schedule Trigger (`0 9 1 * *`) → SSH node → Code node → Telegram node,
       workflow id `Hf0imVxyBDY1bI5D`, credential `SONGSS Security Agent SSH`
       id `Lus50febsFVarx94` (forced-command-restricted key, live-verified it
@@ -611,14 +611,24 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       `cat /etc/shadow` test was confirmed ignored). Notify-only by design:
       runs `npm audit`/`pip-audit` read-only on the host, never applies fixes,
       never touches git/npm/pip credentials — Gilberto applies approved fixes
-      manually via Claude Code afterward. **Before activating**: `n8n execute
-      --id=...` CLI can't be used to test it (conflicts with the live server's
-      Task Broker on port 5679 — do NOT stop the live n8n server to force this,
-      it runs the production NIE pipeline). Gilberto needs to manually click
-      "Execute Workflow" in the n8n editor once and confirm both (1) no
-      node errors and (2) the Telegram message actually arrives on
-      @songss_monitor_bot, before the workflow gets activated for the real
-      monthly schedule.
+      manually via Claude Code afterward. Two real bugs found+fixed en route:
+      SSH node missing `"authentication": "privateKey"` in its parameters
+      (credential was wired right, just no explicit mode — patched via the
+      standard DB method), and the SSH credential's Host field pointing at
+      `127.0.0.1` (resolves to the n8n container itself on `n8n_n8n-net`, not
+      the VPS host — Gilberto fixed via the UI, pointing it at the bridge
+      gateway `172.18.0.1`). After both fixes, Gilberto's manual "Execute
+      Workflow" test succeeded end-to-end and the Telegram message arrived on
+      @songss_monitor_bot. **Still not activated**: the editor's Active
+      toggle doesn't appear for this workflow, cause unidentified — ruled out
+      trigger/connection integrity, `triggerCount` (confirmed via n8n's own
+      source it's only set by activation itself, not a gate), Schedule
+      Trigger `typeVersion` support, and project/sharing permissions (matches
+      the known-active NIE workflow's row exactly). Paused, not urgent —
+      manual execution is fully confirmed working. Next session: diff
+      `workflow_entity` column-by-column against the NIE workflow, check the
+      n8n frontend's own activation-eligibility logic, rule out a browser-side
+      cause (cache/viewport) before assuming backend.
 - [ ] **npm dependency audit** — 2026-09-06: ran `npm audit fix` (no
       `--force`), resolved 16 of 21 npm-audit findings via pure transitive
       bumps (`package.json` untouched, `package-lock.json` only);
