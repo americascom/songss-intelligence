@@ -104,6 +104,18 @@ Secrets: /docker/n8n/secrets.env (600, git-ignored) holds all n8n API keys +
   falsely passes; always `tsc -p tsconfig.app.json --noEmit`.
 - **Verify CLI semantics before running** an unfamiliar subcommand for a
   read-only question (`n8n user-management:reset` once wiped the owner account).
+- **Any node-as-PID1 container without `init: true` leaks zombies from its own
+  Docker `HEALTHCHECK`** — a `CMD-SHELL` healthcheck that spawns a subprocess
+  every few seconds (e.g. `node -e "fetch(...)"`) never gets reaped if PID 1
+  doesn't handle `SIGCHLD`. Found on `supabase-meta` 2026-09-11 (~3,800 zombies,
+  slow CPU-load leak, easily mistaken for an unrelated container crash-looping —
+  it was misreported as imgproxy/Kong at first, both of which were actually
+  fine). Fix: add `init: true` to the service in `docker-compose.yml`, then
+  `docker compose up -d --force-recreate <svc>` (compose-file changes need
+  force-recreate, not `restart`). See `project_supabase_meta_zombie_fix_2026-09-11`.
+  **Also**: after any `docker restart`/`stop`, verify `.State.Status`/
+  `.State.Running` explicitly — a hung restart can leave a container stopped
+  without `restart: unless-stopped` re-triggering.
 - **Never `SELECT *` on credential/token tables** (once printed 3 live tokens).
 - **`git push` shows the live Dependabot summary** in its output.
 
@@ -409,6 +421,24 @@ reads on intelligence_reports blocked for anon. Always use RPC.
   from config-file-only on 2026-07-30) — config file at /docker/n8n/.n8n/config
   must always match it exactly, or n8n refuses to start (hard validation).
   Key value: never commit or print either location.
+- Supabase `JWT_SECRET`/`ANON_KEY`/`SERVICE_ROLE_KEY`: rotated 5 times
+  (2026-07-28, 08-11, 08-13, 09-08, 09-10 — #5 forced by a transcript
+  exposure of #4's keys during a "Forgot password" incident investigation).
+  See ARCHIVE for the full procedure. No JWKS/dual-key rotation is
+  configured on this instance, so rotating `JWT_SECRET` always invalidates
+  every logged-in session — no zero-downtime path exists. The n8n
+  workflow's `versionId` (one of the 3 patch locations for the 9 hardcoded
+  `apikey` headers) moves every time the workflow is edited — re-verify it
+  live via `workflow_entity`/`workflow_history` before trusting any
+  previously-recorded value, including this doc's.
+- **The "Geo Activity — Last.fm Poller" workflow has its own separate
+  hardcoded `apikey` header** (on its "Upsert to Supabase" node) — not one
+  of the 9 NIE-workflow nodes, easy to forget. Rotation #5 (2026-09-10)
+  found it, patched. Its `Authorization` header is credential-backed via
+  the same shared "Supabase Service Role Auth" credential as the NIE
+  workflow, so only the `apikey` field needs its own patch going forward.
+  This node's history table has only 1 `workflow_history` row (no separate
+  `activeVersionId`), so it's a 2-location patch, not 3.
 
 ---
 
@@ -530,10 +560,29 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       `/root/report-generator`, done 2026-09-03, see §4), but §7's own
       Haiku/Sonnet/Opus/watsonx text was never updated to match and still
       describes the old four-way split. Just needs the table text rewritten.
-- [ ] **Supabase pooler/realtime/functions crash loops** — non-blocking, not on
-      the live customer path. pooler: Cloak/cipher key mismatch; realtime: Ecto
-      migration error; edge-functions: no entrypoint (never deployed). All
-      authenticate to Postgres fine before failing. Needs its own session.
+- [ ] **Supabase pooler/realtime/functions/analytics crash loops** — non-blocking,
+      not on the live customer path. pooler: Cloak/cipher key mismatch; realtime:
+      Ecto migration error; edge-functions: no entrypoint (never deployed);
+      analytics (Logflare): same category, `relation "oban_jobs"/"system_metrics"
+      does not exist` — missing Ecto migrations, recurs after every
+      `docker compose up -d --force-recreate` that touches the Supabase stack
+      (confirmed again 2026-09-11, load avg ~50 on this 2-core VPS from the
+      restart-crash churn alone). All authenticate to Postgres fine before
+      failing. **2026-09-11 mitigation, session-scoped only**: `docker update
+      --restart=no supabase-analytics` stopped the churn (load ~50→~30) but does
+      NOT fix the underlying missing migrations — the next full-stack
+      `docker compose up -d --force-recreate` (e.g. a future JWT rotation) will
+      reset the restart policy back to whatever `docker-compose.yml` declares
+      and the crash loop will resume. Needs its own session to actually run the
+      missing migrations.
+- [ ] **supabase-meta HEALTHCHECK exceeds its 5s timeout** — pre-existing,
+      unrelated to the 2026-09-11 zombie-leak fix (§3). The healthcheck itself
+      (`node -e "fetch('http://localhost:8080/health')..."`) spawns a full
+      Node/V8 process every 5s and that spawn alone can exceed the 5s timeout,
+      reporting `unhealthy` even though the server is confirmed up and logging
+      normally. Not urgent/not blocking. Fix options: raise the timeout, or
+      replace with a lighter check (no `wget`/`curl` in this image — would
+      need a smaller probe). See `project_supabase_meta_zombie_fix_2026-09-11`.
 - [ ] **IBM Granite dead plumbing cleanup** — initiative CANCELLED 2026-08-15.
       `granite_powered` column + Report.tsx badge/Terms §20 left as harmless
       dead plumbing (nothing sets the flag). §7 still has stale Granite language
@@ -553,6 +602,23 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       confirm real bug vs tree-sitter artifact (neither reported broken live).
 
 ### Security / deps / infra
+- [ ] **SONGSS Security Agent — monthly dependency-scan n8n workflow, built but
+      INACTIVE** (2026-09-10/11, see `project_security_agent_workflow_2026-09-11`):
+      Schedule Trigger (`0 9 1 * *`) → SSH node → Code node → Telegram node,
+      workflow id `Hf0imVxyBDY1bI5D`, credential `SONGSS Security Agent SSH`
+      id `Lus50febsFVarx94` (forced-command-restricted key, live-verified it
+      can only ever run `/root/security_agent_scan.sh` — an injected
+      `cat /etc/shadow` test was confirmed ignored). Notify-only by design:
+      runs `npm audit`/`pip-audit` read-only on the host, never applies fixes,
+      never touches git/npm/pip credentials — Gilberto applies approved fixes
+      manually via Claude Code afterward. **Before activating**: `n8n execute
+      --id=...` CLI can't be used to test it (conflicts with the live server's
+      Task Broker on port 5679 — do NOT stop the live n8n server to force this,
+      it runs the production NIE pipeline). Gilberto needs to manually click
+      "Execute Workflow" in the n8n editor once and confirm both (1) no
+      node errors and (2) the Telegram message actually arrives on
+      @songss_monitor_bot, before the workflow gets activated for the real
+      monthly schedule.
 - [ ] **npm dependency audit** — 2026-09-06: ran `npm audit fix` (no
       `--force`), resolved 16 of 21 npm-audit findings via pure transitive
       bumps (`package.json` untouched, `package-lock.json` only);

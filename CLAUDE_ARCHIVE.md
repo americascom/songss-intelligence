@@ -3204,6 +3204,191 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       REST/Auth `200`s from that origin + old-key `401`. All scratch
       files (bundles, HTML fetches) deleted after use. See memory
       `project_service_role_key_transcript_exposure_2026-08-11`.
+- [ ] Supabase `JWT_SECRET`/`ANON_KEY`/`SERVICE_ROLE_KEY` rotation
+      (2026-09-08) — backend/n8n legs DONE, frontend legs pending
+      Gilberto (see bottom of this entry). 4th rotation of this trio,
+      same procedure as 2026-07-28/08-11/08-13 above, but **routine
+      security hygiene, not an exposure incident** — and, unlike all 3
+      prior rotations, run with real customers live (Gilberto's explicit
+      call: proceed now anyway, accepting that every logged-in customer's
+      session gets invalidated immediately — this instance still has no
+      JWKS/dual-key rotation, so there is no zero-downtime path here).
+
+      **Pre-flight re-verification against the live system** (not just
+      trusting the archived write-ups) caught one real drift: the n8n
+      workflow's live `versionId` had moved to `c0277fa4-1d1e-466f-
+      b31c-2bd8afec1b45` (last edited 2026-08-24 by Gilberto directly) —
+      the `c8a04b97-...` value this doc had cited since 2026-07-18 was
+      stale. `activeVersionId` (`a09c4898-...`, from the original
+      2026-07-07 import) was unchanged, and exactly 2 `workflow_history`
+      rows still existed matching both IDs, so the 3-location patch
+      method still applied, just against the corrected live value.
+      Node count had also drifted to 64 (docs said 63) — not chased,
+      just used as today's real baseline. Also confirmed:
+      `/root/report-generator`'s separate `secrets.env` holds no Supabase
+      credential at all (its write path was removed in the 2026-09-03
+      rebuild, see §4) — not a leg of this rotation; the newer
+      `ANON_KEY_ASYMMETRIC`/`SERVICE_ROLE_KEY_ASYMMETRIC`/`JWT_JWKS`/
+      `JWT_KEYS`/`SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY` vars in
+      `/root/supabase/.env` are still all empty (legacy static-JWT path
+      only, unchanged since the 2026-07-28 finding).
+
+      **Handling discipline, tightened further after the 2026-08-11/08-13
+      transcript-exposure incidents**: no command in this rotation ever
+      embedded a secret value in its own text — new keys were generated
+      by a Python script that self-verified its HS256 implementation
+      against the *live* `ANON_KEY`'s literal signature bytes (not a
+      re-serialization, which the first self-check attempt this session
+      correctly flagged as a false-MISMATCH before being fixed) and wrote
+      results straight to a 600-perm file; the `.env`/n8n-credential/
+      workflow-node patches all ran via small scripts that read values
+      from files at runtime rather than any `sed`/`cat` with the value
+      inlined; verification curl calls read keys into shell variables
+      from files and printed only HTTP status codes.
+
+      **Done**: backups (`.env`, `pg_dumpall`, n8n sqlite `.backup`, a
+      pre-rotation `n8n export:workflow`), all timestamped
+      `20260908_232516`. New values self-verified against the real live
+      `ANON_KEY`'s literal bytes (correcting an initial false-mismatch
+      from a naive re-serialization check), sanity-checked to verify
+      under the new secret and fail under the old one.
+      `docker compose up -d --force-recreate db auth rest storage meta
+      analytics studio kong` — `supabase-analytics` crash-looped again
+      immediately after (confirmed via its logs to be the exact same
+      pre-existing `relation "system_metrics" does not exist` Ecto issue
+      tracked in §11, not a rotation regression). **Live-verified**: new
+      anon key → `200` on a real `plan_limits` REST call, old anon key →
+      `401` negative control, Auth health → `200`. n8n credential
+      `Aqlm0Ocboq2dZEIl` updated via `n8n import:credentials`, re-exported
+      to confirm the new value matches exactly and differs from the old.
+      All 9 hardcoded `apikey` headers patched via the 3-location method
+      (dry run against a scratch DB copy first), `docker restart
+      n8n_songss` (no env var changed). Export-diff confirmed: 64→64
+      nodes, `connections` byte-identical, *exactly* the same 9 nodes as
+      every prior rotation changed and nothing else.
+
+      **Live end-to-end test**: disposable session
+      (`cs_test_jwt_rotation_verify_20260908`, Chappell Roan, real TikTok
+      handle) — first attempt hit Cloudflare's Managed Challenge on the
+      public `/webhook/submit-analysis` endpoint (§8 rule 4 working as
+      designed against a script with no browser Referer), so fired
+      directly at n8n's internal port instead, matching how prior
+      rotations' "internal" tests were actually done. Second attempt hit
+      a 409 "already generated" — caused by pre-populating the test row's
+      `artist_name` at insert time, which the real flow only sets via the
+      `Update Artist Name` step itself; fixed by nulling `artist_name`
+      before firing the webhook. Clean `200`/`{"status":"ok"}` on retry,
+      real `digital_score: 52`, 2,856-char `report_markdown`, real
+      Spotify/TikTok data, `processed_sessions` row present. **New
+      cleanup step this rotation surfaced**: the `artist_metric_snapshots`
+      trigger (added 2026-09-06, postdates the first 3 rotations) fired
+      on the test and wrote 7 real-valued rows into the real Chappell
+      Roan's growth-history table — deleted after, since leaving them
+      would have planted a fake data point in a real artist's Observed
+      Growth history. Test `intelligence_reports` + `processed_sessions`
+      rows deleted too, 0 rows left anywhere.
+
+      **Frontend legs**: landing page `.env` updated + rebuilt
+      (bundle-grep confirmed new key present, old absent) — deploy
+      pending a Cloudflare token from Gilberto. Vercel app env var update
+      + redeploy also pending Gilberto's action (no dashboard access from
+      this environment). Both are the last open piece of this rotation;
+      see §11 if this doc is read before they're closed out.
+- [x] ~~Supabase `JWT_SECRET`/`ANON_KEY`/`SERVICE_ROLE_KEY` rotation #5~~
+      RESOLVED (2026-09-10, backend+n8n legs; frontend legs pending
+      Gilberto same as #4). Triggered mid-investigation of a real customer
+      report ("Forgot password" → "Não autorizado"): diagnosing that bug
+      surfaced that rotation #4's `ANON_KEY`/`SERVICE_ROLE_KEY` had been
+      printed into the session transcript twice — once via a `kong.yml`
+      grep that pulled adjacent key lines, once via a full node-`parameters`
+      JSON dump that included a hardcoded `apikey` header. Gilberto's call:
+      rotate again immediately rather than accept the exposure, same
+      disciplined process as #1-4.
+
+      **Root cause of the original bug, found before the rotation started**
+      (kept here since it's the reason #5 happened at all): rotation #4
+      never fully closed. GoTrue's own log had zero real `/recover`
+      requests since its 09-08 restart; Kong's access log showed the real
+      browser attempts getting a `401` from Kong itself
+      (`WWW-Authenticate: Key`) — the production Vercel app was still
+      shipping #4's *pre-rotation* anon key, because "Vercel env var
+      update + redeploy" was the one leg #4 left pending Gilberto's action
+      and it was never done. Confirmed via SHA-256 hash comparison (not
+      value comparison) between the repo's `.env` and Kong's live
+      `kong.yml` consumer key. Same investigation also found a second,
+      independent gap: the "Geo Activity — Last.fm Poller" workflow's
+      "Upsert to Supabase" node has its own hardcoded `apikey` header,
+      never covered by the "9 hardcoded apikey headers" swept in #1/#4 —
+      it turned out to hold a key from *before* even #4 (its hash matched
+      neither #4's nor any prior rotation's backed-up value), so it had
+      been silently 401ing every 20 minutes for longer than just since
+      #4. Both are now documented in §6/CLAUDE.md so future rotations
+      don't miss them again.
+
+      **New handling discipline this rotation, added specifically because
+      of what caused it**: no diagnostic command was allowed to dump a
+      whole structure that might contain a secret-shaped sibling field
+      (whole `kong.yml` blocks, whole node `parameters`/`credentials`
+      objects) — every DB/JSON query named the exact non-secret field(s)
+      needed, with equality checked via SHA-256 hash comparison, never a
+      raw value printed to "confirm it looks right." See memory
+      `feedback_diagnostic_output_minimization` (a generalization of the
+      older `feedback_never_display_secret_file_contents`, which only
+      covered whole secrets *files*, not a query that incidentally
+      surfaces one field of a larger structure).
+
+      **Done, live-verified, same pattern as #1-4**: backups (`.env`,
+      `pg_dumpall`, n8n sqlite `.backup`, workflow exports for *both*
+      the NIE workflow and Geo Activity workflow, timestamped
+      `20260910_120842`). New `JWT_SECRET`/`ANON_KEY`/`SERVICE_ROLE_KEY`
+      generated + self-verified (literal-byte HS256 check against the
+      live #4 keys, same fixed method from #4 — no naive re-serialization
+      mismatch this time). `docker compose up -d --force-recreate db auth
+      rest storage meta analytics studio kong` — `supabase-analytics`
+      and `supabase-pooler` briefly cycled, confirmed the same
+      pre-existing unrelated crash-loop issue tracked in §11, not a
+      rotation regression. **Live-verified**: new anon key → real `200`
+      on `/auth/v1/health` and `/rest/v1/plan_limits`; old anon key →
+      real `401` on both (negative control). n8n credential
+      `Aqlm0Ocboq2dZEIl` re-imported via `n8n import:credentials`,
+      re-exported to confirm the new value matches the new
+      `SERVICE_ROLE_KEY` exactly. All 9 NIE-workflow `apikey` headers
+      patched via the 3-location method (`workflow_entity.nodes` +
+      both `workflow_history` rows, `versionId c0277fa4-...`/
+      `activeVersionId a09c4898-...` — no drift from #4's recorded
+      values this time) plus, new this rotation, the Geo Activity
+      workflow's 1 node via the 2-location method (its single
+      `workflow_history` row, `versionId c8211b90-...`). `docker restart
+      n8n_songss`, export-diffed both workflows against pre-patch
+      exports: node counts unchanged (64/5), `connections`
+      byte-identical, exactly the expected 9 + 1 nodes changed, every
+      changed node's `apikey` hash-confirmed to equal the new key.
+
+      **Live end-to-end verification**: the Geo Activity workflow's next
+      natural 20-minute tick (12:40:27 UTC) logged real `200`s on all 20
+      `POST /rest/v1/geo_activity` upserts — first success since the
+      outage began. Disposable NIE session
+      (`cs_test_jwt_rotation_verify_20260910`, Chappell Roan) fired at
+      n8n's internal webhook port: `200 {"status":"ok"}`, real
+      `digital_score: 74`, 45,482-char `report_markdown`,
+      `processed_sessions` row present — confirms the pipeline's
+      Supabase writes work under the new keys end-to-end. No
+      `artist_metric_snapshots` rows were created this run (Spotify
+      didn't resolve for this test), so no extra cleanup needed there;
+      test `intelligence_reports`/`processed_sessions` rows deleted,
+      0 remain. All scratch files holding plaintext new-key values
+      (workflow exports, credential-import JSON) shredded after use.
+
+      **Frontend legs — same open item as #4, now doubled up**: local
+      repo `.env` and `/root/songss-landing-page/.env` both updated
+      (old values backed up), landing page rebuilt and bundle-grepped
+      (new key present, old absent). Landing page deploy still needs a
+      Cloudflare token from Gilberto; the Vercel app still needs
+      Gilberto's dashboard access — same blocker as #4, except this
+      time Gilberto has explicitly said he'll copy the key from the
+      local `.env` file himself and verify the exact value before
+      considering it done, rather than relying on this environment to
+      confirm it (no Vercel access here either way).
 - [ ] Syntax errors found during graphify Pass 1 extraction (2026-08-10) —
       `graphify extract . --code-only` reported 2 source files with syntax
       errors, partially extracted rather than fully parsed:
