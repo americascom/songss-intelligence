@@ -589,33 +589,41 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       to drop. Low priority; same "leave the unused field" pattern.
 
 ### Frontend
-- [ ] **URGENT, customer-facing: app.songssintelligence.com login still
-      broken** (open since 2026-09-11, see
+- [x] ~~URGENT, customer-facing: app.songssintelligence.com login still
+      broken~~ — RESOLVED 2026-09-14 (open since 2026-09-11, see
       `project_app_login_vercel_build_mystery_2026-09-11` +
-      `project_vercel_to_cloudflare_workers_migration_2026-09-13`). Original
-      401 was Vercel deterministically serving a wrong, unrelated bundle
-      (leaked Anthropic key, now revoked). 2026-09-13: migrated hosting to a
-      **Cloudflare Worker with static assets** (classic Cloudflare Pages no
-      longer exists as a dashboard option — confirmed live that day). Build
-      pipeline fixed (removed 2 stale Bun lockfiles left over from original
-      Lovable.dev scaffolding that were confusing Cloudflare's package-manager
-      detection; `wrangler.json` added mirroring `/root/songss-landing-page`'s
-      pattern) and preview-verified clean (real Supabase key embedded, no
-      leaked key). DNS/routing is live via a **Worker Route** (the native
-      Custom Domain UI stayed broken with an unexplained "No zones match"
-      error — cross-account and partial-zone theories both individually
-      disproven with hard API evidence, root cause never found). **Current
-      symptom: login shows "Failed to fetch" in-browser** (different from
-      the original 401) — suspected CORS/mixed-content, unconfirmed.
-      **Next step: check browser DevTools Console on the live domain for the
-      exact error before deciding a fix.** Also noted but not yet acted on:
-      Supabase Auth's `SITE_URL` env var is set to the landing page
-      (`https://songssintelligence.com`), not the app — hasn't caused an
-      observed failure yet since the frontend passes explicit `redirectTo`
-      values, but is a real misconfiguration worth fixing once login itself
-      is unblocked. Vercel project left untouched throughout as a rollback
-      path (though reverting to it restores the original bundle bug, not a
-      working state).
+      `project_vercel_to_cloudflare_workers_migration_2026-09-13`). Chain:
+      original 401 was Vercel deterministically serving a wrong, unrelated
+      bundle (leaked Anthropic key, now revoked) → 2026-09-13 migrated
+      hosting to a **Cloudflare Worker with static assets** (Worker name
+      `songss-app`; classic Cloudflare Pages no longer exists as a dashboard
+      option), DNS/routing live via a **Worker Route** (native Custom Domain
+      UI stayed broken with an unexplained "No zones match" error, root
+      cause never found) → final symptom "Failed to fetch" in-browser.
+      **Root cause**: the Worker Route pattern was
+      `*.songssintelligence.com/*` — broad enough to also match
+      `api.songssintelligence.com`, silently routing Kong's API traffic
+      (including auth OPTIONS preflights) to the app's static-asset Worker
+      instead of the origin. A third-party diagnosis (Hostinger's Kodee)
+      blamed Kong CORS config instead; disproven by hitting Kong's container
+      directly (bypassing Cloudflare), which already returned correct
+      `Access-Control-Allow-Origin` headers — no kong.yml edit or
+      supabase-kong restart was needed or made. **Fix**: narrowed the Worker
+      Route to `app.songssintelligence.com/*`. Verified live: login +
+      dashboard working end-to-end. **Confirmed isolated**: the landing page
+      (`songss-landing-page` Worker, www./apex `songssintelligence.com`)
+      uses a **Custom Domain** binding, not a wildcard Route, so it was never
+      affected by the broad pattern and needed no change. **Still open, not
+      yet acted on**: Supabase Auth's `SITE_URL` env var is set to the
+      landing page (`https://songssintelligence.com`), not the app — hasn't
+      caused an observed failure since the frontend passes explicit
+      `redirectTo` values, but is a real misconfiguration worth fixing
+      opportunistically. **Lesson**: scope any future Worker Route on this
+      zone to its exact hostname, never a `*.songssintelligence.com`
+      wildcard — the zone hosts several independently-routed services
+      (`api.`, `www.`, `n8n.`, `app.`, `studio.`) and a broad Worker Route
+      silently swallows traffic meant for the others with no Firewall Event
+      logged to flag it.
 - [ ] **Fan Loyalty Index — frontend display** — backend formula live+populated
       (2026-08-01); no KPI tile/section yet. Placement/design deferred by
       Gilberto to a fresh-eyes session.
