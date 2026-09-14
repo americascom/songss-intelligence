@@ -589,24 +589,33 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       to drop. Low priority; same "leave the unused field" pattern.
 
 ### Frontend
-- [ ] **URGENT, customer-facing: app.songssintelligence.com login + Forgot
-      Password both fail with 401 Unauthorized** (2026-09-11, see
-      `project_app_login_vercel_build_mystery_2026-09-11`). Root cause traced
-      to Vercel deterministically serving a completely wrong, unrelated JS
-      bundle — verified via direct alias-independent per-deployment URL, not
-      a domain/DNS/Cloudflare/cache issue (all individually ruled out with
-      hard evidence). Along the way found (and Gilberto immediately revoked)
-      a **leaked Anthropic API key hardcoded in that wrong bundle** — that
-      sub-thread is closed. Root Directory, Build Command override, and
-      Git-repo connection were all checked and are correct, which is what
-      makes this confusing — normally one of those three explains
-      deterministic wrong output. **Next steps**: (1) disconnect/reconnect
-      the Git repository in Vercel Project Settings → Git as a low-risk
-      first try; (2) if that fails, consider migrating hosting to Cloudflare
-      Pages. Once any fix produces a genuinely different bundle hash, still
-      need to complete the one verification step never reached this
-      session: hash-compare the frontend's embedded
-      `VITE_SUPABASE_PUBLISHABLE_KEY` against Kong's live `ANON_KEY`.
+- [ ] **URGENT, customer-facing: app.songssintelligence.com login still
+      broken** (open since 2026-09-11, see
+      `project_app_login_vercel_build_mystery_2026-09-11` +
+      `project_vercel_to_cloudflare_workers_migration_2026-09-13`). Original
+      401 was Vercel deterministically serving a wrong, unrelated bundle
+      (leaked Anthropic key, now revoked). 2026-09-13: migrated hosting to a
+      **Cloudflare Worker with static assets** (classic Cloudflare Pages no
+      longer exists as a dashboard option — confirmed live that day). Build
+      pipeline fixed (removed 2 stale Bun lockfiles left over from original
+      Lovable.dev scaffolding that were confusing Cloudflare's package-manager
+      detection; `wrangler.json` added mirroring `/root/songss-landing-page`'s
+      pattern) and preview-verified clean (real Supabase key embedded, no
+      leaked key). DNS/routing is live via a **Worker Route** (the native
+      Custom Domain UI stayed broken with an unexplained "No zones match"
+      error — cross-account and partial-zone theories both individually
+      disproven with hard API evidence, root cause never found). **Current
+      symptom: login shows "Failed to fetch" in-browser** (different from
+      the original 401) — suspected CORS/mixed-content, unconfirmed.
+      **Next step: check browser DevTools Console on the live domain for the
+      exact error before deciding a fix.** Also noted but not yet acted on:
+      Supabase Auth's `SITE_URL` env var is set to the landing page
+      (`https://songssintelligence.com`), not the app — hasn't caused an
+      observed failure yet since the frontend passes explicit `redirectTo`
+      values, but is a real misconfiguration worth fixing once login itself
+      is unblocked. Vercel project left untouched throughout as a rollback
+      path (though reverting to it restores the original bundle bug, not a
+      working state).
 - [ ] **Fan Loyalty Index — frontend display** — backend formula live+populated
       (2026-08-01); no KPI tile/section yet. Placement/design deferred by
       Gilberto to a fresh-eyes session.
