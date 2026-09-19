@@ -624,6 +624,22 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       (`api.`, `www.`, `n8n.`, `app.`, `studio.`) and a broad Worker Route
       silently swallows traffic meant for the others with no Firewall Event
       logged to flag it.
+      **RECURRED 2026-09-18** (see `project_app_login_dns_route_recurrence_2026-09-18`):
+      login broke again with "Unauthorized." Root cause this time: the
+      `app` DNS record had reverted to a plain **CNAME, DNS-only (grey
+      cloud)**, pointing straight at the raw `songss-intelligence.wwtvplay.workers.dev`
+      preview URL — bypassing Cloudflare's edge (and therefore the Worker
+      Route) entirely. The Worker Route itself was also missing/needed
+      recreating. **Why the record reverted or the Route disappeared
+      between 2026-09-14 and 2026-09-18 was never identified** — no config
+      change from this project's side is on record; treat as a real open
+      question, not a closed one. **Fix (Gilberto, via dashboard)**:
+      (1) toggled the `app` DNS record to **Proxied** (orange cloud); (2)
+      recreated the Worker Route `app.songssintelligence.com/*` → Worker
+      `songss-app`. Verified live: login + dashboard working end-to-end
+      again. **Standing operational note**: both the DNS proxy status AND
+      the Worker Route must independently exist and be correct for this
+      domain to work — if login breaks again, check both, not just one.
 - [ ] **Fan Loyalty Index — frontend display** — backend formula live+populated
       (2026-08-01); no KPI tile/section yet. Placement/design deferred by
       Gilberto to a fresh-eyes session.
