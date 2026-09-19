@@ -14,6 +14,7 @@ interface QuotaStatus {
   plan_name: string;
   used: number;
   monthly_limit: number;
+  subscription_status: string | null;
 }
 
 interface Report {
@@ -44,11 +45,10 @@ const Dashboard = () => {
     const fetchReports = async () => {
       if (!user?.email) return;
       setLoading(true);
-      const { data, error } = await supabase
-        .from("intelligence_reports")
-        .select("id, session_id, artist_name, plan_name, created_at, customer_email")
-        .eq("customer_email", user.email)
-        .order("created_at", { ascending: false });
+      // get_my_reports() gates on subscription status (empty result for a
+      // canceled/inactive one) instead of a direct RLS-scoped select -- see
+      // CLAUDE.md §5. Row scope is unchanged: still customer_email = own email.
+      const { data, error } = await (supabase.rpc("get_my_reports" as any) as any);
       if (!error && data) setReports(data as Report[]);
       setLoading(false);
     };
@@ -197,6 +197,20 @@ const Dashboard = () => {
               {loading ? (
                 <div className="py-12 text-center text-muted-foreground animate-pulse">
                   Loading reports...
+                </div>
+              ) : reports.length === 0 && quota && !["active", "trialing", "past_due"].includes(quota.subscription_status ?? "") ? (
+                <div className="py-12 text-center">
+                  <p className="text-muted-foreground mb-4">
+                    Your subscription is {quota.subscription_status ?? "inactive"}. Reactivate
+                    it to view your reports and generate new ones.
+                  </p>
+                  <a
+                    href={MANAGE_SUBSCRIPTION_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button className="gradient-primary">Manage Subscription</Button>
+                  </a>
                 </div>
               ) : reports.length === 0 ? (
                 <div className="py-12 text-center">

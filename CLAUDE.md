@@ -349,6 +349,24 @@ Tables:
   Globe, polled every 20min by the "Geo Activity — Last.fm Poller" n8n
   workflow; anon/authenticated SELECT-only, service_role writes
 - plan_limits (per-plan_key quota values) — anon/authenticated SELECT
+- subscriptions (added 2026-09-19, see `project_subscription_lifecycle_2026-09-19`)
+  — one row per Stripe subscription, owner-centric (team members resolve
+  status via `pool_owner_id` against the owner's row, same pattern
+  `get_quota_status`/`request_new_report` already use). `status` stores
+  Stripe's own value verbatim (`active`/`trialing`/`past_due`/`unpaid`/
+  `canceled`/…), not a boolean. Deny-all RLS (service_role only), same
+  pattern as `teams`/`artist_metric_snapshots` — no RPC reads it yet
+  (Phase 1 is capture + cancellation-sync only; the `is_subscription_active`/
+  `get_my_reports` enforcement RPCs from the original design are NOT yet
+  built — tracked in §11). Populated by 2 new NIE-workflow nodes, not a
+  trigger: `Insert Subscription Row` (parallel branch off `Create Supabase
+  User`, captures `stripe_customer_id`/`stripe_subscription_id` from the
+  Stripe Checkout Session object at `checkout.session.completed` time) and
+  `Update Subscription Status` (parallel branch off `Signature Valid?`,
+  flips `status` to `canceled` on `customer.subscription.deleted`). Both
+  use the dynamic `={{ $env.SUPABASE_SERVICE_ROLE_KEY }}` expression for
+  their `apikey` header instead of a hardcoded literal — deliberately NOT
+  added to the hardcoded-apikey rotation checklist.
 - artist_metric_snapshots (added 2026-09-06, see `project_artist_traction_growth_2026-09-06`)
   — immutable per-source/metric historical observations, one row per
   (artist_key, source, metric_name, UTC day), powers real Observed Growth.
@@ -383,6 +401,26 @@ RPC SECURITY DEFINER (never direct SELECT on intelligence_reports):
   month+ later. Optional benchmark classification (Orphiq/Push Music growth
   bands) and IFPI macro market_context are narrative-only, tagged
   `not_artist_growth`, never blended into the real delta.
+
+- get_subscription_status() / is_subscription_active() — added 2026-09-19,
+  see `project_subscription_lifecycle_2026-09-19`. Real enforcement RPCs
+  reading the `subscriptions` table: resolves the pool owner (same
+  `pool_owner_id` pattern as `get_quota_status`/`request_new_report`),
+  returns the raw Stripe status text / a boolean gate. `past_due` counts as
+  active (grace period — Stripe is still retrying); only
+  `canceled`/`unpaid`/`incomplete_expired` actually revoke.
+- get_my_reports() — added 2026-09-19. Replaces `Dashboard.tsx`'s old
+  direct `.from("intelligence_reports").select(...)` — same exact row
+  scope (`customer_email = auth.email()`), now gated by
+  `is_subscription_active()`: returns nothing for a canceled/inactive
+  subscription instead of the real rows.
+- `request_new_report()`/`get_quota_status()` (existing, modified
+  2026-09-19): the former now raises before the quota check if the
+  subscription isn't active; the latter's return row gained a
+  `subscription_status` field so the frontend can show *why* access is
+  blocked. A one-time backfill inserted a synthetic `status='active'` row
+  for every pre-existing `customer_email` so this rollout didn't lock
+  anyone out — only real future cancellations revoke anything now.
 
 `src/lib/tractionNarrative.ts` (added 2026-09-06) — `generateTractionNarrative()`
 turns the two RPCs above into executive-level prose ("Current Traction
@@ -421,24 +459,44 @@ reads on intelligence_reports blocked for anon. Always use RPC.
   from config-file-only on 2026-07-30) — config file at /docker/n8n/.n8n/config
   must always match it exactly, or n8n refuses to start (hard validation).
   Key value: never commit or print either location.
-- Supabase `JWT_SECRET`/`ANON_KEY`/`SERVICE_ROLE_KEY`: rotated 5 times
-  (2026-07-28, 08-11, 08-13, 09-08, 09-10 — #5 forced by a transcript
-  exposure of #4's keys during a "Forgot password" incident investigation).
-  See ARCHIVE for the full procedure. No JWKS/dual-key rotation is
+- Supabase `JWT_SECRET`/`ANON_KEY`/`SERVICE_ROLE_KEY`: rotated 8 times
+  (2026-07-28, 08-11, 08-13, 09-08, 09-10, 09-17, 09-19 x2 — #5 forced by a
+  transcript exposure of #4's keys during a "Forgot password" incident
+  investigation; #7 AND #8 both forced by unfiltered node-JSON dumps
+  exposing the apikey header, back to back in the same 2026-09-19 session —
+  #7 exposed #6's key, #8 exposed #7's key minutes later, same root cause
+  both times). **#6 (2026-09-17) was completed but never documented until
+  #7's session found it** — verified retroactively via `iat`-claim
+  comparison across every location (never by re-printing the actual keys)
+  before trusting it as a baseline; always re-verify live rather than
+  assume this doc is current. **Since #8: node JSON is never displayed
+  unredacted** — any header/field named apikey/authorization/password/
+  secret/token is blanked before display, even when only checking JSON
+  *shape* not values (the narrower iat/role-only decode habit from #5
+  didn't cover that case, which is exactly how #7→#8 happened). See ARCHIVE
+  for the full procedure. No JWKS/dual-key rotation is
   configured on this instance, so rotating `JWT_SECRET` always invalidates
   every logged-in session — no zero-downtime path exists. The n8n
   workflow's `versionId` (one of the 3 patch locations for the 9 hardcoded
-  `apikey` headers) moves every time the workflow is edited — re-verify it
-  live via `workflow_entity`/`workflow_history` before trusting any
-  previously-recorded value, including this doc's.
+  `apikey` headers) moves every time the workflow is edited (last known:
+  `59e43853-...`, 2026-09-14) — re-verify it live via
+  `workflow_entity`/`workflow_history` before trusting any previously-
+  recorded value, including this doc's.
 - **The "Geo Activity — Last.fm Poller" workflow has its own separate
   hardcoded `apikey` header** (on its "Upsert to Supabase" node) — not one
   of the 9 NIE-workflow nodes, easy to forget. Rotation #5 (2026-09-10)
-  found it, patched. Its `Authorization` header is credential-backed via
-  the same shared "Supabase Service Role Auth" credential as the NIE
-  workflow, so only the `apikey` field needs its own patch going forward.
-  This node's history table has only 1 `workflow_history` row (no separate
-  `activeVersionId`), so it's a 2-location patch, not 3.
+  found it, patched; #6, #7, and #8 all included it correctly. Its
+  `Authorization` header is credential-backed via the same shared "Supabase
+  Service Role Auth" credential as the NIE workflow, so only the `apikey`
+  field needs its own patch going forward. This node's history table has
+  only 1 `workflow_history` row (no separate `activeVersionId`), so it's a
+  2-location patch, not 3.
+- **Diagnostic discipline (binding since #5, re-broken once in #7's own
+  session before #7 started)**: no command may dump a whole structure that
+  might contain a secret-shaped sibling field (whole node `parameters`/
+  `credentials` objects, whole `kong.yml` blocks) — name the exact
+  non-secret field needed, or compare via SHA-256/JWT-`iat` rather than
+  printing a raw value. See `feedback_diagnostic_output_minimization`.
 
 ---
 
@@ -550,6 +608,37 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
   assuming they're live; commit if confirmed good.
 
 ### n8n / backend
+- [ ] **Subscription lifecycle — Phase 1 (capture + cancellation) AND
+      Phase 2 (enforcement) both LIVE** (2026-09-19, see
+      `project_subscription_lifecycle_2026-09-19` — this was Checkpoint 3 of
+      the payment/account architecture review, see
+      `project_payment_account_architecture_audit_2026-09-19`). Phase 1: new
+      `subscriptions` table (§5) + 2 new NIE-workflow nodes (`Insert
+      Subscription Row`, `Update Subscription Status`) capturing Stripe
+      subscription state at checkout and syncing `status` to `canceled` on
+      `customer.subscription.deleted` — tested via disposable
+      Stripe-signature-valid webhook calls, both branches passed first try.
+      Phase 2: `is_subscription_active()`/`get_my_reports()`/
+      `get_subscription_status()` RPCs (§5) actually gate
+      `request_new_report()` and replace `Dashboard.tsx`'s direct select —
+      verified at the SQL level for active/canceled/past_due (grace-period
+      policy: `past_due` still counts as active). One-time backfill gave
+      every pre-existing account a synthetic active row so this rollout
+      locked nobody out. Frontend (`Dashboard.tsx`) typechecked + built
+      clean; **no live browser click-through done** (no browser available
+      in this environment) — only SQL-level RPC testing and a clean
+      build/typecheck, so verify the actual empty-state UI in a browser
+      opportunistically.
+      **Deliberately still open, each its own future piece**: (1)
+      `customer.subscription.updated` sync for plan upgrade/downgrade; (2)
+      `invoice.payment_failed` dunning — deliberately not hand-rolled,
+      relies on Stripe's own `status` transitions via `.updated` instead
+      (see design rationale in the memory file); (3) the Stripe/AmericasPay
+      webhook endpoint needs `customer.subscription.updated`/`.deleted`
+      added to its subscribed-events list for any of this to receive real
+      events — checked via disposable direct-signed test calls only, not
+      confirmed against a real Stripe test-mode event (no Stripe dashboard
+      access from this environment).
 - [ ] **Artist Traction/Growth system — Phase 2 follow-ups** (built
       2026-09-06, see `project_artist_traction_growth_2026-09-06`): Phase 1
       (Current Traction, real signal snapshots, Observed Growth eligibility
@@ -615,6 +704,19 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       to drop. Low priority; same "leave the unused field" pattern.
 
 ### Frontend
+- [ ] **JWT rotation #8 frontend deploy pending Gilberto** (2026-09-19, see
+      §6 + ARCHIVE — supersedes an identical #7 pending-deploy item from
+      earlier the same session, itself superseded before Gilberto ever
+      deployed it): both `.env` files patched and both bundles rebuilt +
+      byte-confirmed to contain the #8 anon key; `wrangler deploy` for
+      `songss-app` and the landing-page Worker left to Gilberto to run
+      himself. **Correction to how this was described after #7**: an
+      old/rotated-out anon key is NOT silently accepted — Kong/GoTrue
+      reject it with a real `401` (verified live, negative control both
+      rotations). Low-impact only because checkouts are closed and no real
+      customer traffic depends on either Worker right now, not because the
+      old key still works. Confirm the deploy actually happened next
+      session — until it does, both Workers are serving a dead key.
 - [ ] **Disconnect Cloudflare Git integration from the wrong Worker
       (`songss-intelligence`)** — found 2026-09-19, see §9. Decided:
       go fully manual (`npm run build && wrangler deploy` to `songss-app`),
