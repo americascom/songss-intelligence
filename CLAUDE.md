@@ -478,7 +478,33 @@ sets `granite_powered` true).
 
 ## 9. DEPLOY
 
-App (Vercel): push to main → automatic deploy
+App (`app.songssintelligence.com`): migrated off Vercel 2026-09-13/14 to a
+Cloudflare Worker with static assets (Worker name `songss-app`, matching
+`wrangler.json`'s `name` field — see
+`project_vercel_to_cloudflare_workers_migration_2026-09-13`). **MANUAL via
+terminal only**, same pattern as the landing page below:
+  export CLOUDFLARE_API_TOKEN=<create on the spot, revoke after use>
+  cd /root/songss-intelligence && npm run build && npx wrangler deploy
+
+WARNING: do NOT rely on Cloudflare's Git integration for this repo. A
+  separate, wrongly-named Worker called **`songss-intelligence`** exists —
+  created because Cloudflare's "Connect to Git" flow auto-created a Worker
+  from the *repo name* before `wrangler.json` existed in the repo (added
+  partway through the migration, commit `c08c65b`). That Git integration
+  silently auto-deployed every push to `main` to `songss-intelligence`,
+  which has no route bound to it — `app.songssintelligence.com/*` was and
+  is only ever routed to `songss-app`. Found 2026-09-19 when two commits in
+  a row never went live despite deploying cleanly; fixed by a one-off
+  manual `wrangler deploy` to `songss-app` (confirmed live via bundle-hash
+  match) and a decision to disconnect Git from `songss-intelligence`
+  entirely going forward, matching the landing page's already-manual
+  pattern rather than trying to retarget the Git integration.
+  **Open follow-up, dashboard-only, not yet done**: actually disconnect
+  Git from `songss-intelligence` in the Cloudflare dashboard (Workers &
+  Pages → `songss-intelligence` → Settings → Build) — decided but not
+  executed as of 2026-09-19. Until that happens, `songss-intelligence`
+  will keep silently auto-deploying every push; it is safe to ignore since
+  nothing routes to it, but don't mistake it for the real deploy.
 Landing page: MANUAL via terminal only:
   export CLOUDFLARE_API_TOKEN=<create on the spot, revoke after use>
   cd /root/songss-landing-page && npm run build
@@ -487,7 +513,7 @@ Landing page: MANUAL via terminal only:
    scripts/ensure-wrangler.mjs — the old manual `cp` step is no longer needed)
 
 WARNING: no_bundle was removed from wrangler.json — do NOT add it back
-WARNING: Cloudflare CI is disconnected — always deploy manually
+WARNING: Cloudflare CI is disconnected — always deploy manually (both app and landing page)
 WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
   do NOT remove it. Cloudflare's default assets handling 307-redirects any
   request for a literal `*.html` path to its extensionless equivalent, which
@@ -589,6 +615,15 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       to drop. Low priority; same "leave the unused field" pattern.
 
 ### Frontend
+- [ ] **Disconnect Cloudflare Git integration from the wrong Worker
+      (`songss-intelligence`)** — found 2026-09-19, see §9. Decided:
+      go fully manual (`npm run build && wrangler deploy` to `songss-app`),
+      matching the landing page. The manual deploy path is confirmed
+      working; the actual dashboard disconnect (Workers & Pages →
+      `songss-intelligence` → Settings → Build) has not been done yet —
+      until then that Worker keeps silently auto-deploying pushes to
+      `main`, harmlessly since nothing routes to it, but a future session
+      could mistake it for the live deploy target.
 - [x] ~~URGENT, customer-facing: app.songssintelligence.com login still
       broken~~ — RESOLVED 2026-09-14 (open since 2026-09-11, see
       `project_app_login_vercel_build_mystery_2026-09-11` +
