@@ -639,6 +639,29 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       events — checked via disposable direct-signed test calls only, not
       confirmed against a real Stripe test-mode event (no Stripe dashboard
       access from this environment).
+- [ ] **NEW, important pre-launch item (flagged 2026-09-19): no verified
+      self-service card-update flow for customers.** `Dashboard.tsx`'s
+      "Manage Subscription" button (both occurrences, header + the new
+      inactive-subscription empty state) links to a single hardcoded static
+      URL, `https://buyer.americaspay.com/p/login/bJe4gz9tjbuTfSa1zL3cc00`
+      — the same URL for every customer. This is architecturally NOT what a
+      real Stripe Customer Portal integration looks like (that's normally a
+      per-customer, short-lived session URL generated server-side via
+      `stripe.billingPortal.sessions.create({customer: ...})`); matches
+      Checkpoint 1's audit finding that AmericasPay has zero code-level
+      integration anywhere in this codebase. Whether that static login page
+      actually lets a logged-in customer update their card is unverified —
+      no browser/AmericasPay account access from this environment to check.
+      Matters now specifically because Phase 2's `is_subscription_active()`
+      `past_due` grace period (§5) assumes a customer *can* go fix a failed
+      card before Stripe gives up and cancels — if they can't self-serve
+      that, the grace period just delays an outcome they have no way to
+      prevent. Needs: (1) confirm with AmericasPay/Stripe whether card
+      self-service exists at all today; (2) if not, build a real
+      `stripe.billingPortal.sessions.create()`-backed "Manage Billing" link
+      (would need a small new backend endpoint — n8n or report-generator —
+      since no code anywhere currently calls the Stripe API directly for
+      this).
 - [ ] **Artist Traction/Growth system — Phase 2 follow-ups** (built
       2026-09-06, see `project_artist_traction_growth_2026-09-06`): Phase 1
       (Current Traction, real signal snapshots, Observed Growth eligibility
