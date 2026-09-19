@@ -64,6 +64,7 @@ export default function Submit() {
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<ReportRow | null>(null);
 
+  const [confirmedEmail, setConfirmedEmail] = useState("");
   const [artistName, setArtistName] = useState("");
   const [spotifyUrl, setSpotifyUrl] = useState("");
   const [songName, setSongName] = useState("");
@@ -144,6 +145,7 @@ export default function Submit() {
       else {
         setReport(row as ReportRow);
         if (row.artist_name) setArtistName(row.artist_name);
+        if (row.customer_email) setConfirmedEmail(row.customer_email);
       }
       setLoading(false);
     })();
@@ -171,7 +173,7 @@ export default function Submit() {
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!report || !artistName.trim()) return;
+    if (!report || !artistName.trim() || !confirmedEmail.trim()) return;
 
     if (!turnstileToken) {
       setError("Please complete the security check before submitting.");
@@ -187,6 +189,7 @@ export default function Submit() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           session_id:          report.session_id,
+          customer_email:      confirmedEmail.trim(),
           artist_name:         artistName.trim(),
           spotify_url:         spotifyUrl.trim(),
           song_name:           songName.trim(),
@@ -251,6 +254,24 @@ export default function Submit() {
 
             <Panel className="mt-8">
               <form onSubmit={onSubmit} className="space-y-6">
+                <Field label="Your Account Email" required htmlFor="confirmed-email">
+                  <Input
+                    id="confirmed-email"
+                    name="confirmed-email"
+                    type="email"
+                    value={confirmedEmail}
+                    onChange={(e) => setConfirmedEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    required
+                    maxLength={200}
+                    className="bg-transparent border-white/10 focus-visible:ring-1"
+                    style={{ borderColor: "rgba(255,255,255,0.08)" }}
+                  />
+                  <p className="mt-1 text-[11px]" style={{ color: "#5A5A5A" }}>
+                    Your report and account login will be linked to this address. If someone else completed checkout on your behalf (e.g. a business partner's card), confirm or correct it here.
+                  </p>
+                </Field>
+
                 <Field label="Artist or Song Name" required htmlFor="artist-name">
                   <Input
                     id="artist-name"
@@ -394,7 +415,7 @@ export default function Submit() {
                 <div className="pt-2">
                   <Button
                     type="submit"
-                    disabled={submitting || !artistName.trim() || !turnstileToken}
+                    disabled={submitting || !artistName.trim() || !confirmedEmail.trim() || !turnstileToken}
                     className="w-full h-12 font-mono uppercase tracking-[0.2em] text-xs"
                     style={{
                       background: `linear-gradient(180deg, ${C.cyan}, #009E92)`,
