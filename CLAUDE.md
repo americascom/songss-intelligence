@@ -639,29 +639,46 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       events — checked via disposable direct-signed test calls only, not
       confirmed against a real Stripe test-mode event (no Stripe dashboard
       access from this environment).
-- [ ] **NEW, important pre-launch item (flagged 2026-09-19): no verified
-      self-service card-update flow for customers.** `Dashboard.tsx`'s
-      "Manage Subscription" button (both occurrences, header + the new
-      inactive-subscription empty state) links to a single hardcoded static
-      URL, `https://buyer.americaspay.com/p/login/bJe4gz9tjbuTfSa1zL3cc00`
-      — the same URL for every customer. This is architecturally NOT what a
-      real Stripe Customer Portal integration looks like (that's normally a
-      per-customer, short-lived session URL generated server-side via
-      `stripe.billingPortal.sessions.create({customer: ...})`); matches
-      Checkpoint 1's audit finding that AmericasPay has zero code-level
-      integration anywhere in this codebase. Whether that static login page
-      actually lets a logged-in customer update their card is unverified —
-      no browser/AmericasPay account access from this environment to check.
-      Matters now specifically because Phase 2's `is_subscription_active()`
-      `past_due` grace period (§5) assumes a customer *can* go fix a failed
-      card before Stripe gives up and cancels — if they can't self-serve
-      that, the grace period just delays an outcome they have no way to
-      prevent. Needs: (1) confirm with AmericasPay/Stripe whether card
-      self-service exists at all today; (2) if not, build a real
-      `stripe.billingPortal.sessions.create()`-backed "Manage Billing" link
-      (would need a small new backend endpoint — n8n or report-generator —
-      since no code anywhere currently calls the Stripe API directly for
-      this).
+- [ ] **Pre-launch item (flagged 2026-09-19, corrected 2026-09-20): upgrade
+      the Customer Portal link from Stripe's no-code login flow to a real
+      per-customer `billingPortal.sessions.create()` session.**
+      `Dashboard.tsx`'s "Manage Subscription" button (both occurrences,
+      header + the inactive-subscription empty state) links to
+      `https://buyer.americaspay.com/p/login/bJe4gz9tjbuTfSa1zL3cc00`.
+      **Correction to this entry's original 2026-09-19 text**: that text
+      called this link "architecturally suspicious," reasoning from the
+      false premise that AmericasPay might be a separate third-party
+      processor — Gilberto clarified 2026-09-20 that AmericasPay is purely
+      Americascom's own branding/custom-domain layer over its own Stripe
+      account, no separate processor involved. The URL's `/p/login/<id>`
+      path is in fact Stripe's own standard **no-code Customer Portal**
+      login-link format (normally seen as `billing.stripe.com/p/login/...`,
+      here just served from the `buyer.americaspay.com` custom domain) —
+      confirmed against live Stripe docs, and this exact URL is already
+      independently listed as "Stripe Portal" in §12 of this doc. So this
+      is very likely a real, working Stripe portal link already — customers
+      log in via email + one-time passcode, then land in the real portal.
+      **Verify before treating this as broken**: check Settings → Billing →
+      Customer portal in the Stripe Dashboard (`dashboard.stripe.com/
+      settings/billing/portal`) confirms the portal is activated and its
+      "Payment methods" toggle is on (defaults to on) — if so, card
+      self-service may already work today with zero code changes. Do this
+      cheap check before any implementation work.
+      **The implementation item that's still worth doing regardless**: swap
+      the static no-code login link for a real per-customer session via
+      `stripe.billingPortal.sessions.create({customer: <stripe_customer_id>,
+      return_url: ...})`, returned by a small new authenticated backend
+      endpoint (n8n or report-generator — no code anywhere currently calls
+      the Stripe API directly). This is a genuine UX upgrade over the
+      no-code flow: skips the email/OTP login step entirely for an
+      already-authenticated dashboard user, and gives server-side control
+      over the return URL and which customer it's scoped to (the
+      `subscriptions.stripe_customer_id` column added 2026-09-19 already
+      has exactly the identifier this endpoint would need). Still matters
+      for Phase 2's `past_due` grace period (§5), which assumes a customer
+      can go fix a failed card before Stripe gives up — a smoother path to
+      doing that reduces unnecessary churn even if the rougher no-code path
+      technically works today.
 - [ ] **Artist Traction/Growth system — Phase 2 follow-ups** (built
       2026-09-06, see `project_artist_traction_growth_2026-09-06`): Phase 1
       (Current Traction, real signal snapshots, Observed Growth eligibility
