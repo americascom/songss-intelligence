@@ -10,6 +10,15 @@ import { supabase } from "@/integrations/supabase/client";
 
 const MANAGE_SUBSCRIPTION_URL = "https://buyer.americaspay.com/p/login/bJe4gz9tjbuTfSa1zL3cc00";
 
+// Stripe's no-code Customer Portal login link supports prefilled_email to
+// skip the customer having to retype an email it already knows -- Stripe
+// still emails a real one-time login link to that address, so this is a
+// convenience, not an auth bypass. See docs.stripe.com/no-code/customer-portal.
+const manageSubscriptionUrl = (email?: string | null) =>
+  email
+    ? `${MANAGE_SUBSCRIPTION_URL}?prefilled_email=${encodeURIComponent(email)}`
+    : MANAGE_SUBSCRIPTION_URL;
+
 interface QuotaStatus {
   plan_name: string;
   used: number;
@@ -125,7 +134,7 @@ const Dashboard = () => {
                 </Button>
               </Link>
               <a
-                href={MANAGE_SUBSCRIPTION_URL}
+                href={manageSubscriptionUrl(user.email)}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -205,7 +214,7 @@ const Dashboard = () => {
                     it to view your reports and generate new ones.
                   </p>
                   <a
-                    href={MANAGE_SUBSCRIPTION_URL}
+                    href={manageSubscriptionUrl(user.email)}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
