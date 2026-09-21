@@ -21,7 +21,7 @@ const plans = [
     ],
     isPopular: true,
     ctaText: "Get Started",
-    ctaLink: "https://buyer.americaspay.com/b/cNi8wPdJzbuTcFYbal3cd0M",
+    ctaLink: "https://buyer.americaspay.com/b/dRm9AT6h71UjbBUbal3cd0R",
   },
   {
     name: "Tier 2",
@@ -38,7 +38,7 @@ const plans = [
       "Weekly automated performance insights",
     ],
     ctaText: "Get Started",
-    ctaLink: "https://buyer.americaspay.com/b/5kQcN57lb9mL5dwemx3cd0N",
+    ctaLink: "https://buyer.americaspay.com/b/4gM14n6h70QffSaa6h3cd0S",
   },
   {
     name: "Tier 3",
@@ -55,7 +55,7 @@ const plans = [
       "Custom date-range analysis and priority BI reporting",
     ],
     ctaText: "Get Started",
-    ctaLink: "https://buyer.americaspay.com/b/aFa4gz9tj7eD49sguF3cd0O",
+    ctaLink: "https://buyer.americaspay.com/b/9B6fZhaxn2YndK2fqB3cd0T",
   },
   {
     name: "Tier 4",
@@ -72,7 +72,7 @@ const plans = [
       "Financial ROI projections and campaign conversion rates",
     ],
     ctaText: "Get Started",
-    ctaLink: "https://buyer.americaspay.com/b/4gM8wP6h742r9tM5Q13cd0P",
+    ctaLink: "https://buyer.americaspay.com/b/28E28rgVLgPd21kbal3cd0U",
   },
   {
     name: "Tier 5",
