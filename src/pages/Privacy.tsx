@@ -422,11 +422,13 @@ const Privacy = () => (
           <ul className="list-disc pl-6 space-y-2">
             <li>
               <strong className="text-foreground">AI Service Providers:</strong>{" "}
-              Google Cloud AI
+              Anthropic, OpenAI, Perplexity, Google Cloud AI
             </li>
             <li>
-              <strong className="text-foreground">Cloud Computing Services:</strong>{" "}
-              Vercel
+              <strong className="text-foreground">
+                Cloud Computing, Hosting &amp; Performance Monitoring:
+              </strong>{" "}
+              Cloudflare
             </li>
             <li>
               <strong className="text-foreground">
@@ -437,16 +439,6 @@ const Privacy = () => (
             <li>
               <strong className="text-foreground">Invoice and Billing:</strong>{" "}
               Stripe
-            </li>
-            <li>
-              <strong className="text-foreground">Website Hosting:</strong>{" "}
-              Vercel
-            </li>
-            <li>
-              <strong className="text-foreground">
-                Website Performance Monitoring:
-              </strong>{" "}
-              Cloudflare
             </li>
           </ul>
           <p>
@@ -508,7 +500,7 @@ const Privacy = () => (
             <strong className="text-foreground">Use of AI Technologies.</strong>{" "}
             We provide the AI Products through third-party service providers
             ("AI Service Providers"), including Google Cloud AI, Anthropic,
-            Perplexity and IBM Watson. As outlined in this Privacy Notice, your
+            OpenAI, and Perplexity. As outlined in this Privacy Notice, your
             input, output, and personal information will be shared with and
             processed by these AI Service Providers to enable your use of our
             AI Products for purposes outlined in{" "}
