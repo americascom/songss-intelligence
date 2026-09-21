@@ -589,14 +589,10 @@ const Terms = () => (
 
           <H2 id="third-party-trademarks">20. THIRD-PARTY TRADEMARKS</H2>
           <p>
-            Select tiers of the Services may incorporate AI analytics powered by{" "}
-            <strong className="text-foreground">IBM Granite™</strong>, indicated on the
-            applicable report where used.
-          </p>
-          <p>
-            IBM and IBM Granite are trademarks or registered trademarks of International
-            Business Machines Corporation in the United States and/or other countries.
-            All other trademarks are the property of their respective owners.
+            The Services may incorporate technology, data, or analytics from
+            third-party providers. Any such integration, where applicable, will be
+            indicated on the relevant report or feature. All third-party trademarks
+            referenced are the property of their respective owners.
           </p>
 
           <H2 id="contact-us">21. CONTACT US</H2>
