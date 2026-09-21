@@ -608,6 +608,29 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
   assuming they're live; commit if confirmed good.
 
 ### n8n / backend
+- [x] ~~**ROOT CAUSE CONFIRMED 2026-09-20: checkout was never creating real
+      Stripe Subscriptions**~~ RESOLVED 2026-09-21 (see
+      `project_subscription_mode_verification_2026-09-20`). Root cause: all
+      4 self-service tiers (Artist Indie/Growth/Pro Team/Enterprise)
+      checked out via static Stripe Payment Links in `Pricing.tsx`
+      (`buyer.americaspay.com/b/...`) that Gilberto confirmed via the
+      Stripe Dashboard were configured as **one-time payments**, not
+      recurring subscriptions — why `subscriptions` (§5) never received a
+      real row (all 10 pre-fix rows were the 2026-09-19 backfill). Not a
+      design flaw — the `subscriptions` table schema, capture/cancellation
+      nodes, and enforcement RPCs (§5, Phase 1+2 below) were always the
+      correct architecture, just had nothing real to react to. **Fix**:
+      Gilberto created 4 new Recurring Prices/Payment Links in Stripe;
+      swapped all 4 `ctaLink` values in `Pricing.tsx` plus 2 matching
+      upgrade-CTA links in `Report.tsx` (Enterprise, Pro Team) that pointed
+      at the same old one-time links — deployed and live 2026-09-21. Old
+      one-time links left archived in Stripe, not deleted. **Still open,
+      resume now that this is unblocked**: the scoped-but-not-built
+      `customer.subscription.updated` handler (plan upgrade/downgrade
+      sync) can now be built against real recurring checkouts — no
+      end-to-end real-subscription test has been run yet post-deploy, so
+      verify one actually lands a row in `subscriptions` before trusting
+      the pipeline further.
 - [ ] **Subscription lifecycle — Phase 1 (capture + cancellation) AND
       Phase 2 (enforcement) both LIVE** (2026-09-19, see
       `project_subscription_lifecycle_2026-09-19` — this was Checkpoint 3 of
@@ -629,16 +652,32 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       in this environment) — only SQL-level RPC testing and a clean
       build/typecheck, so verify the actual empty-state UI in a browser
       opportunistically.
-      **Deliberately still open, each its own future piece**: (1)
-      `customer.subscription.updated` sync for plan upgrade/downgrade; (2)
-      `invoice.payment_failed` dunning — deliberately not hand-rolled,
-      relies on Stripe's own `status` transitions via `.updated` instead
-      (see design rationale in the memory file); (3) the Stripe/AmericasPay
-      webhook endpoint needs `customer.subscription.updated`/`.deleted`
-      added to its subscribed-events list for any of this to receive real
-      events — checked via disposable direct-signed test calls only, not
-      confirmed against a real Stripe test-mode event (no Stripe dashboard
-      access from this environment).
+      ~~(3) webhook endpoint's subscribed-events list unconfirmed~~ —
+      RESOLVED 2026-09-20: Gilberto checked the Stripe Dashboard directly
+      (Developers → Webhooks) and confirmed the live endpoint has exactly
+      `checkout.session.completed`, `customer.subscription.deleted`,
+      `customer.subscription.updated`, `invoice.paid`, and
+      `invoice.payment_failed` subscribed — no gap, nothing to add. This
+      was verified against the real Stripe config (not this environment,
+      which still has no Stripe dashboard/API access), so Stripe will
+      genuinely deliver all 5 event types to the endpoint for real events
+      going forward.
+      **Still deliberately open, each its own future piece — event
+      delivery being confirmed does NOT mean these are built**: (1) no
+      n8n node yet consumes `customer.subscription.updated` for plan
+      upgrade/downgrade sync — today it will arrive at the webhook and
+      fall through unhandled; (2) `invoice.payment_failed` dunning is
+      deliberately not hand-rolled, relying on Stripe's own `status`
+      transitions via `.updated` instead (see design rationale in the
+      memory file) — but since (1) isn't built yet either, that path is
+      also not actually wired up end-to-end today. So: event delivery is
+      confirmed, but "subscription lifecycle architecture works end-to-end
+      for real events" is only true for the two paths that exist —
+      checkout (`checkout.session.completed`) and cancellation
+      (`customer.subscription.deleted`) — not for upgrade/downgrade or
+      dunning, which still need their own n8n workflow changes (Golden
+      Rule 1 confirmation required) before they do anything with the
+      events Stripe is now confirmed to be sending.
 - [x] ~~Customer Portal / card self-service~~ RESOLVED 2026-09-20 — was
       never actually broken. `Dashboard.tsx`'s "Manage Subscription" link
       (`buyer.americaspay.com/p/login/bJe4gz9tjbuTfSa1zL3cc00`) is Gilberto's
