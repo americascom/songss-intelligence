@@ -13,6 +13,7 @@ import {
   Building2, AlertTriangle, Newspaper, Heart,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { manageSubscriptionUrl } from "@/lib/subscriptionPortal";
 import ArtistIndieReport from "@/components/ArtistIndieReport";
 import { isSampleReportSession } from "@/lib/sampleReports";
 import PeerBenchmarkChart, { type PeerBenchmarkData } from "@/components/PeerBenchmarkChart";
@@ -957,7 +958,7 @@ function ReportInner() {
                   Get TikTok × DSP correlation, advanced NPV modeling, acquisition targets, and a dedicated strategy team.
                 </p>
                 <a
-                  href="https://buyer.americaspay.com/b/28E28rgVLgPd21kbal3cd0U"
+                  href={manageSubscriptionUrl(report.customer_email)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 rounded-lg px-7 py-4 text-xs font-bold uppercase tracking-[0.2em] transition-all hover:scale-[1.02]"
@@ -993,7 +994,7 @@ function ReportInner() {
                   Artist Pro adds a 6-axis radar profile, sync-readiness scoring, peer benchmarks, and curator pitch intelligence.
                 </p>
                 <a
-                  href="https://buyer.americaspay.com/b/9B6fZhaxn2YndK2fqB3cd0T"
+                  href={manageSubscriptionUrl(report.customer_email)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 rounded-lg px-7 py-4 text-xs font-bold uppercase tracking-[0.2em] transition-all hover:scale-[1.02]"

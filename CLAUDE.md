@@ -702,6 +702,24 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       still editable by the customer, doesn't bypass the real
       email-verification step) via a new `manageSubscriptionUrl()` helper
       in `Dashboard.tsx`. Typechecked + built clean.
+      **Re-verified live 2026-09-27**: Gilberto tested the real Dashboard
+      button and saw a "confirm your email" screen instead of instant portal
+      access, raising a valid question of whether `prefilled_email` was
+      actually working. Confirmed against live Stripe docs it was: the field
+      *was* pre-filled correctly, and the follow-up one-time-passcode/email
+      step is Stripe's own security measure that `prefilled_email` was never
+      designed to skip — expected behavior, not a bug. Same session,
+      `manageSubscriptionUrl()` was extracted out of `Dashboard.tsx` into a
+      shared `src/lib/subscriptionPortal.ts` (both the URL constant and the
+      helper), and `Report.tsx`'s two tier-specific "Upgrade to Enterprise"/
+      "Upgrade to Artist Pro" footer CTAs (`growth`/`pro` tiers) were
+      redirected from their old static one-time Payment Links to this same
+      Portal helper — those buttons used to create a **second, separate**
+      subscription on click rather than switching the existing one, which
+      is exactly the gap flagged when Phase 3 of the subscription lifecycle
+      work was scoped (see `project_subscription_lifecycle_2026-09-19`).
+      Typechecked + built clean. **Not yet committed or deployed** — needs
+      `npm run build && npx wrangler deploy` per §9 once Gilberto reviews.
 - [ ] **Artist Traction/Growth system — Phase 2 follow-ups** (built
       2026-09-06, see `project_artist_traction_growth_2026-09-06`): Phase 1
       (Current Traction, real signal snapshots, Observed Growth eligibility
