@@ -785,19 +785,16 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       to drop. Low priority; same "leave the unused field" pattern.
 
 ### Frontend
-- [ ] **JWT rotation #8 frontend deploy pending Gilberto** (2026-09-19, see
-      §6 + ARCHIVE — supersedes an identical #7 pending-deploy item from
-      earlier the same session, itself superseded before Gilberto ever
-      deployed it): both `.env` files patched and both bundles rebuilt +
-      byte-confirmed to contain the #8 anon key; `wrangler deploy` for
-      `songss-app` and the landing-page Worker left to Gilberto to run
-      himself. **Correction to how this was described after #7**: an
-      old/rotated-out anon key is NOT silently accepted — Kong/GoTrue
-      reject it with a real `401` (verified live, negative control both
-      rotations). Low-impact only because checkouts are closed and no real
-      customer traffic depends on either Worker right now, not because the
-      old key still works. Confirm the deploy actually happened next
-      session — until it does, both Workers are serving a dead key.
+- [x] ~~**JWT rotation #8 frontend deploy pending Gilberto**~~ DONE
+      (confirmed 2026-10-01): the live app bundle (`songss-app`) already
+      served the #8 anon key when checked (hash-matched against both `.env`
+      files and the backend `ANON_KEY`; REST call with it returned 200, a
+      corrupted key 401). The same session redeployed both Workers with
+      copy changes (landing `eaea814e`, app `fa98b54b`). The landing page
+      no longer contains any Supabase key at all — its only user, the
+      Sample Report SNIE-score lookup, was removed — so nothing to rotate
+      there. Superseded the earlier "both Workers serving a dead key"
+      concern.
 - [ ] **Disconnect Cloudflare Git integration from the wrong Worker
       (`songss-intelligence`)** — found 2026-09-19, see §9. Decided:
       go fully manual (`npm run build && wrangler deploy` to `songss-app`),
