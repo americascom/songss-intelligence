@@ -557,12 +557,11 @@ WARNING: do NOT rely on Cloudflare's Git integration for this repo. A
   match) and a decision to disconnect Git from `songss-intelligence`
   entirely going forward, matching the landing page's already-manual
   pattern rather than trying to retarget the Git integration.
-  **Open follow-up, dashboard-only, not yet done**: actually disconnect
-  Git from `songss-intelligence` in the Cloudflare dashboard (Workers &
-  Pages → `songss-intelligence` → Settings → Build) — decided but not
-  executed as of 2026-09-19. Until that happens, `songss-intelligence`
-  will keep silently auto-deploying every push; it is safe to ignore since
-  nothing routes to it, but don't mistake it for the real deploy.
+  **DONE 2026-10-01**: Git integration on `songss-intelligence` disconnected
+  (confirmed by Gilberto in the Cloudflare dashboard). Pushes to `main` no
+  longer auto-deploy anywhere; deploy only manually to `songss-app`. The
+  stray `songss-intelligence` Worker still exists but is inert — don't
+  mistake it for the real deploy target.
 Landing page: MANUAL via terminal only:
   export CLOUDFLARE_API_TOKEN=<create on the spot, revoke after use>
   cd /root/songss-landing-page && npm run build
@@ -795,15 +794,6 @@ WARNING: `wrangler.json`'s `assets.html_handling: "none"` is intentional —
       Sample Report SNIE-score lookup, was removed — so nothing to rotate
       there. Superseded the earlier "both Workers serving a dead key"
       concern.
-- [ ] **Disconnect Cloudflare Git integration from the wrong Worker
-      (`songss-intelligence`)** — found 2026-09-19, see §9. Decided:
-      go fully manual (`npm run build && wrangler deploy` to `songss-app`),
-      matching the landing page. The manual deploy path is confirmed
-      working; the actual dashboard disconnect (Workers & Pages →
-      `songss-intelligence` → Settings → Build) has not been done yet —
-      until then that Worker keeps silently auto-deploying pushes to
-      `main`, harmlessly since nothing routes to it, but a future session
-      could mistake it for the live deploy target.
 - [x] ~~URGENT, customer-facing: app.songssintelligence.com login still
       broken~~ — RESOLVED 2026-09-14 (open since 2026-09-11, see
       `project_app_login_vercel_build_mystery_2026-09-11` +
