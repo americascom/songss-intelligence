@@ -72,7 +72,7 @@ function check(name: string, fn: () => void) {
 // ── Scenario 1: high traction, observed growth ──────────────────────────────
 check("high traction + observed growth reflects strength and real growth", () => {
   const narrative = generateTractionNarrative({
-    artistName: "Billie Eilish",
+    artistName: "Established Artist",
     traction: baseTraction(),
     growth: observedGrowth(),
   });

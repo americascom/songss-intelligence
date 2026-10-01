@@ -9,7 +9,7 @@ const ecosystemCards = [
   {
     icon: BarChart3,
     title: "Music Intelligence",
-    description: "Neural A&R analysis and artist trajectory modeling across 60+ global DSPs",
+    description: "Neural A&R analysis and artist trajectory modeling across global streaming platforms",
   },
   {
     icon: Shield,

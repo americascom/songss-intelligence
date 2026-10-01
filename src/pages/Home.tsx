@@ -106,7 +106,7 @@ const Home = () => {
             Tracking Performance Across the World's Leading Platforms
           </h2>
           <p className="text-center text-sm text-muted-foreground mb-10 max-w-2xl mx-auto">
-            Real-time intelligence across 60+ global DSPs and rights databases.
+            Real-time intelligence across global streaming platforms and rights databases.
           </p>
           <div className="space-y-5">
             {[

@@ -189,7 +189,7 @@ const Pricing = () => {
                   SNIE™ Deep Scan <span className="text-xs font-normal text-primary bg-primary/10 px-2 py-0.5 rounded-full ml-2">Add-on</span>
                 </h3>
                 <p className="text-foreground/80 text-sm md:text-base leading-relaxed mt-3">
-                  Run an extended neural analysis on any artist or catalog. Cross-reference data across 60+ global DSPs and rights databases, generate a full Executive Intelligence Dossier and receive actionable acquisition or retention signals.
+                  Run an extended neural analysis on any artist or catalog. Cross-reference data across global streaming platforms and rights databases, generate a full Executive Intelligence Dossier and receive actionable acquisition or retention signals.
                 </p>
                 <p className="text-muted-foreground text-xs md:text-sm mt-4 italic">
                   — Powered by Songss Neural Intelligence Engine™
